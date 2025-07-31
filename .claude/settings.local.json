@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(find:*)",
+      "Bash(mkdir:*)",
+      "Bash(aider:*)",
+      "Bash(gemini:*)",
+      "Bash(gh issue create:*)",
+      "Bash(gh issue view:*)"
+    ],
+    "deny": []
+  }
+}
