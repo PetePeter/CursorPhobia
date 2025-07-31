@@ -56,6 +56,8 @@ public class WindowPusher : IWindowPusher, IDisposable
     private readonly ISafetyManager _safetyManager;
     private readonly IProximityDetector _proximityDetector;
     private readonly CursorPhobiaConfiguration _config;
+    private readonly MonitorManager _monitorManager;
+    private readonly EdgeWrapHandler _edgeWrapHandler;
     
     // Animation tracking
     private readonly Dictionary<IntPtr, WindowAnimation> _activeAnimations;
@@ -70,18 +72,24 @@ public class WindowPusher : IWindowPusher, IDisposable
     /// <param name="windowService">Service for window manipulation</param>
     /// <param name="safetyManager">Safety manager for boundary validation</param>
     /// <param name="proximityDetector">Proximity detector for push calculations</param>
+    /// <param name="monitorManager">Monitor manager for multi-monitor support</param>
+    /// <param name="edgeWrapHandler">Edge wrap handler for screen boundary wrapping</param>
     /// <param name="config">Configuration for animation and behavior settings</param>
     public WindowPusher(
         ILogger logger,
         IWindowManipulationService windowService,
         ISafetyManager safetyManager,
         IProximityDetector proximityDetector,
+        MonitorManager monitorManager,
+        EdgeWrapHandler edgeWrapHandler,
         CursorPhobiaConfiguration? config = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _windowService = windowService ?? throw new ArgumentNullException(nameof(windowService));
         _safetyManager = safetyManager ?? throw new ArgumentNullException(nameof(safetyManager));
         _proximityDetector = proximityDetector ?? throw new ArgumentNullException(nameof(proximityDetector));
+        _monitorManager = monitorManager ?? throw new ArgumentNullException(nameof(monitorManager));
+        _edgeWrapHandler = edgeWrapHandler ?? throw new ArgumentNullException(nameof(edgeWrapHandler));
         _config = config ?? CursorPhobiaConfiguration.CreateDefault();
         
         var validationErrors = _config.Validate();
@@ -141,6 +149,22 @@ public class WindowPusher : IWindowPusher, IDisposable
                 currentBounds.X + pushVector.X,
                 currentBounds.Y + pushVector.Y
             );
+            
+            // Check for edge wrapping
+            var wrapBehavior = new WrapBehavior
+            {
+                EnableWrapping = _config.MultiMonitor?.EnableWrapping ?? true,
+                PreferredBehavior = _config.MultiMonitor?.PreferredWrapBehavior ?? WrapPreference.Smart,
+                RespectTaskbarAreas = _config.MultiMonitor?.RespectTaskbarAreas ?? true
+            };
+            
+            var wrapDestination = _edgeWrapHandler.CalculateWrapDestination(currentBounds, pushVector, wrapBehavior);
+            if (wrapDestination.HasValue && _edgeWrapHandler.IsWrapSafe(currentBounds.Location, wrapDestination.Value, currentBounds.Size))
+            {
+                _logger.LogDebug("Edge wrapping detected for window {Handle:X} from ({CurrentX},{CurrentY}) to ({WrapX},{WrapY})",
+                    windowHandle.ToInt64(), currentBounds.X, currentBounds.Y, wrapDestination.Value.X, wrapDestination.Value.Y);
+                targetPosition = wrapDestination.Value;
+            }
             
             // Validate the target position with safety manager
             var safePosition = _safetyManager.ValidateWindowPosition(currentBounds, targetPosition);

@@ -80,6 +80,11 @@ public class CursorPhobiaConfiguration
     public bool EnableHoverTimeout { get; set; } = true;
     
     /// <summary>
+    /// Multi-monitor support and edge wrapping configuration
+    /// </summary>
+    public MultiMonitorConfiguration? MultiMonitor { get; set; } = new();
+    
+    /// <summary>
     /// Validates the configuration settings and returns any errors
     /// </summary>
     /// <returns>List of validation error messages, empty if valid</returns>
@@ -128,6 +133,12 @@ public class CursorPhobiaConfiguration
             
         if (HoverTimeoutMs > 30000)
             errors.Add("HoverTimeoutMs should not exceed 30000ms (30 seconds)");
+        
+        // Validate multi-monitor configuration
+        if (MultiMonitor != null)
+        {
+            errors.AddRange(MultiMonitor.Validate());
+        }
             
         return errors;
     }
@@ -266,4 +277,131 @@ public enum AnimationEasing
     /// Ease in-out - slow start and end, fast in middle
     /// </summary>
     EaseInOut
+}
+
+/// <summary>
+/// Configuration for multi-monitor support and edge wrapping behavior
+/// </summary>
+public class MultiMonitorConfiguration
+{
+    /// <summary>
+    /// Whether to enable edge wrapping when windows are pushed to screen boundaries
+    /// Default: true
+    /// </summary>
+    public bool EnableWrapping { get; set; } = true;
+    
+    /// <summary>
+    /// Preferred wrapping behavior when multiple options are available
+    /// Default: Smart (adjacent if available, otherwise opposite edge)
+    /// </summary>
+    public WrapPreference PreferredWrapBehavior { get; set; } = WrapPreference.Smart;
+    
+    /// <summary>
+    /// Whether to respect taskbar areas when calculating wrap destinations
+    /// Default: true (wrap to work area, not full monitor bounds)
+    /// </summary>
+    public bool RespectTaskbarAreas { get; set; } = true;
+    
+    /// <summary>
+    /// Per-monitor settings for customizing behavior on specific displays
+    /// Key is monitor device name or handle
+    /// </summary>
+    public Dictionary<string, PerMonitorSettings> PerMonitorSettings { get; set; } = new();
+    
+    /// <summary>
+    /// Validates the multi-monitor configuration
+    /// </summary>
+    /// <returns>List of validation error messages, empty if valid</returns>
+    public List<string> Validate()
+    {
+        var errors = new List<string>();
+        
+        // Validate per-monitor settings
+        foreach (var kvp in PerMonitorSettings)
+        {
+            if (string.IsNullOrWhiteSpace(kvp.Key))
+            {
+                errors.Add("Per-monitor settings cannot have empty monitor identifier");
+            }
+            
+            if (kvp.Value != null)
+            {
+                errors.AddRange(kvp.Value.Validate().Select(error => $"Monitor '{kvp.Key}': {error}"));
+            }
+        }
+        
+        return errors;
+    }
+}
+
+/// <summary>
+/// Per-monitor configuration settings
+/// </summary>
+public class PerMonitorSettings
+{
+    /// <summary>
+    /// Whether CursorPhobia is enabled for this specific monitor
+    /// Default: true
+    /// </summary>
+    public bool Enabled { get; set; } = true;
+    
+    /// <summary>
+    /// Custom proximity threshold for this monitor (overrides global setting if set)
+    /// </summary>
+    public int? CustomProximityThreshold { get; set; }
+    
+    /// <summary>
+    /// Custom push distance for this monitor (overrides global setting if set)
+    /// </summary>
+    public int? CustomPushDistance { get; set; }
+    
+    /// <summary>
+    /// Validates the per-monitor settings
+    /// </summary>
+    /// <returns>List of validation error messages, empty if valid</returns>
+    public List<string> Validate()
+    {
+        var errors = new List<string>();
+        
+        if (CustomProximityThreshold.HasValue)
+        {
+            if (CustomProximityThreshold.Value <= 0)
+                errors.Add("CustomProximityThreshold must be greater than 0");
+                
+            if (CustomProximityThreshold.Value > 500)
+                errors.Add("CustomProximityThreshold should not exceed 500 pixels");
+        }
+        
+        if (CustomPushDistance.HasValue)
+        {
+            if (CustomPushDistance.Value <= 0)
+                errors.Add("CustomPushDistance must be greater than 0");
+                
+            if (CustomPushDistance.Value > 1000)
+                errors.Add("CustomPushDistance should not exceed 1000 pixels");
+        }
+        
+        return errors;
+    }
+}
+
+/// <summary>
+/// Wrap behavior preferences for multi-monitor edge wrapping
+/// </summary>
+public enum WrapPreference
+{
+    /// <summary>
+    /// Wrap to adjacent monitor if available
+    /// </summary>
+    Adjacent,
+    
+    /// <summary>
+    /// Always wrap to opposite edge of current monitor
+    /// </summary>
+    Opposite,
+    
+    /// <summary>
+    /// Smart wrapping: adjacent if available, otherwise opposite
+    /// </summary>
+    Smart
 }
