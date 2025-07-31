@@ -290,6 +290,92 @@ public static class User32
     
     #endregion
     
+    #region Mouse and Cursor Functions
+    
+    /// <summary>
+    /// Retrieves the position of the mouse cursor, in screen coordinates
+    /// </summary>
+    /// <param name="lpPoint">Pointer to a POINT structure that receives the screen coordinates of the cursor</param>
+    /// <returns>True if successful, false otherwise</returns>
+    [DllImport(User32Dll, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool GetCursorPos(out POINT lpPoint);
+    
+    /// <summary>
+    /// Sets the position of the cursor
+    /// </summary>
+    /// <param name="x">New x-coordinate of the cursor, in screen coordinates</param>
+    /// <param name="y">New y-coordinate of the cursor, in screen coordinates</param>
+    /// <returns>True if successful, false otherwise</returns>
+    [DllImport(User32Dll, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool SetCursorPos(int x, int y);
+    
+    /// <summary>
+    /// Retrieves the window handle of the window that contains the specified point
+    /// </summary>
+    /// <param name="point">Point to be checked</param>
+    /// <returns>Handle to the window that contains the point, or IntPtr.Zero if no window exists at the given point</returns>
+    [DllImport(User32Dll, SetLastError = true)]
+    public static extern IntPtr WindowFromPoint(POINT point);
+    
+    #endregion
+    
+    #region Hook Functions
+    
+    /// <summary>
+    /// Installs an application-defined hook procedure into a hook chain
+    /// </summary>
+    /// <param name="idHook">Type of hook procedure to be installed</param>
+    /// <param name="lpfn">Pointer to the hook procedure</param>
+    /// <param name="hMod">Handle to the DLL containing the hook procedure</param>
+    /// <param name="dwThreadId">Identifier of the thread with which the hook procedure is to be associated</param>
+    /// <returns>Handle to the hook procedure, or IntPtr.Zero if failed</returns>
+    [DllImport(User32Dll, SetLastError = true)]
+    public static extern IntPtr SetWindowsHookEx(int idHook, LowLevelMouseProc lpfn, IntPtr hMod, uint dwThreadId);
+    
+    /// <summary>
+    /// Removes a hook procedure installed in a hook chain by the SetWindowsHookEx function
+    /// </summary>
+    /// <param name="hhk">Handle to the hook to be removed</param>
+    /// <returns>True if successful, false otherwise</returns>
+    [DllImport(User32Dll, SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool UnhookWindowsHookEx(IntPtr hhk);
+    
+    /// <summary>
+    /// Passes the hook information to the next hook procedure in the current hook chain
+    /// </summary>
+    /// <param name="hhk">Handle to the current hook</param>
+    /// <param name="nCode">Hook code passed to the current hook procedure</param>
+    /// <param name="wParam">Value passed to the current hook procedure</param>
+    /// <param name="lParam">Value passed to the current hook procedure</param>
+    /// <returns>Value returned by the next hook procedure in the chain</returns>
+    [DllImport(User32Dll, SetLastError = true)]
+    public static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
+    
+    #endregion
+    
+    #region Keyboard Functions
+    
+    /// <summary>
+    /// Retrieves the status of the specified virtual key
+    /// </summary>
+    /// <param name="nVirtKey">Virtual key code</param>
+    /// <returns>Key status</returns>
+    [DllImport(User32Dll, SetLastError = true)]
+    public static extern short GetKeyState(int nVirtKey);
+    
+    /// <summary>
+    /// Retrieves the status of the specified virtual key at the time the last input message was processed
+    /// </summary>
+    /// <param name="nVirtKey">Virtual key code</param>
+    /// <returns>Key status</returns>
+    [DllImport(User32Dll, SetLastError = true)]
+    public static extern short GetAsyncKeyState(int nVirtKey);
+    
+    #endregion
+    
     #region Helper Methods
     
     /// <summary>

@@ -66,6 +66,22 @@ public static class WindowsStructures
     public const uint ERROR_INVALID_WINDOW_HANDLE = 1400;
     public const uint ERROR_INVALID_PARAMETER = 87;
     
+    // Hook constants
+    public const int WH_MOUSE_LL = 14;
+    public const int HC_ACTION = 0;
+    
+    // Mouse messages
+    public const int WM_MOUSEMOVE = 0x0200;
+    public const int WM_LBUTTONDOWN = 0x0201;
+    public const int WM_LBUTTONUP = 0x0202;
+    public const int WM_RBUTTONDOWN = 0x0204;
+    public const int WM_RBUTTONUP = 0x0205;
+    
+    // Virtual key codes
+    public const int VK_CONTROL = 0x11;
+    public const int VK_LCONTROL = 0xA2;
+    public const int VK_RCONTROL = 0xA3;
+    
     #endregion
     
     #region Structures
@@ -194,6 +210,19 @@ public static class WindowsStructures
         }
     }
     
+    /// <summary>
+    /// Low-level mouse input structure
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    public struct MSLLHOOKSTRUCT
+    {
+        public POINT pt;
+        public uint mouseData;
+        public uint flags;
+        public uint time;
+        public IntPtr dwExtraInfo;
+    }
+    
     #endregion
     
     #region Delegates
@@ -215,6 +244,15 @@ public static class WindowsStructures
     /// <param name="dwData">Application-defined data</param>
     /// <returns>True to continue enumeration, false to stop</returns>
     public delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData);
+    
+    /// <summary>
+    /// Delegate for low-level mouse hook procedure
+    /// </summary>
+    /// <param name="nCode">Hook code</param>
+    /// <param name="wParam">Message parameter</param>
+    /// <param name="lParam">Pointer to MSLLHOOKSTRUCT</param>
+    /// <returns>Result of hook procedure</returns>
+    public delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
     
     #endregion
 }
