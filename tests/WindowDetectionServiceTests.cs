@@ -4,6 +4,7 @@ using Moq;
 using CursorPhobia.Core.Services;
 using CursorPhobia.Core.Models;
 using CursorPhobia.Core.Utilities;
+using ILogger = CursorPhobia.Core.Utilities.ILogger;
 
 namespace CursorPhobia.Tests;
 
@@ -12,12 +13,12 @@ namespace CursorPhobia.Tests;
 /// </summary>
 public class WindowDetectionServiceTests
 {
-    private readonly Mock<Logger> _mockLogger;
+    private readonly Mock<ILogger> _mockLogger;
     private readonly WindowDetectionService _service;
     
     public WindowDetectionServiceTests()
     {
-        _mockLogger = new Mock<Logger>(Mock.Of<Microsoft.Extensions.Logging.ILogger>(), "Test");
+        _mockLogger = new Mock<ILogger>();
         _service = new WindowDetectionService(_mockLogger.Object);
     }
     
@@ -105,15 +106,15 @@ public class WindowDetectionServiceTests
         // This test will work as an integration test
         if (result != null)
         {
-            Assert.Equal(hWnd, result.windowHandle);
-            Assert.IsType<string>(result.title);
-            Assert.IsType<string>(result.className);
-            Assert.IsType<Rectangle>(result.bounds);
-            Assert.IsType<int>(result.processId);
-            Assert.IsType<int>(result.threadId);
-            Assert.IsType<bool>(result.isVisible);
-            Assert.IsType<bool>(result.isTopmost);
-            Assert.IsType<bool>(result.isMinimized);
+            Assert.Equal(hWnd, result.WindowHandle);
+            Assert.IsType<string>(result.Title);
+            Assert.IsType<string>(result.ClassName);
+            Assert.IsType<Rectangle>(result.Bounds);
+            Assert.IsType<int>(result.ProcessId);
+            Assert.IsType<int>(result.ThreadId);
+            Assert.IsType<bool>(result.IsVisible);
+            Assert.IsType<bool>(result.IsTopmost);
+            Assert.IsType<bool>(result.IsMinimized);
         }
     }
     
@@ -144,7 +145,7 @@ public class WindowDetectionServiceTests
         
         // Assert
         Assert.NotNull(result);
-        Assert.All(result, window => Assert.True(window.isVisible));
+        Assert.All(result, window => Assert.True(window.IsVisible));
     }
     
     #endregion
@@ -162,7 +163,7 @@ public class WindowDetectionServiceTests
         Assert.IsType<List<WindowInfo>>(result);
         
         // Verify all returned windows are topmost
-        Assert.All(result, window => Assert.True(window.isTopmost));
+        Assert.All(result, window => Assert.True(window.IsTopmost));
         
         // Verify logging occurred
         _mockLogger.Verify(l => l.LogDebug(It.IsAny<string>()), Times.AtLeastOnce);
@@ -207,7 +208,7 @@ public class WindowDetectionServiceTests
             var isTopmost = _service.IsWindowAlwaysOnTop(handle);
             
             // These should either return valid results or safe defaults
-            Assert.True(info == null || info.windowHandle == handle);
+            Assert.True(info == null || info.WindowHandle == handle);
             Assert.IsType<bool>(isTopmost);
         }
     }
@@ -220,12 +221,12 @@ public class WindowDetectionServiceTests
 /// </summary>
 public class WindowDetectionServiceIntegrationTests
 {
-    private readonly Mock<Logger> _mockLogger;
+    private readonly Mock<ILogger> _mockLogger;
     private readonly WindowDetectionService _service;
     
     public WindowDetectionServiceIntegrationTests()
     {
-        _mockLogger = new Mock<Logger>(Mock.Of<Microsoft.Extensions.Logging.ILogger>(), "IntegrationTest");
+        _mockLogger = new Mock<ILogger>();
         _service = new WindowDetectionService(_mockLogger.Object);
     }
     
@@ -239,7 +240,7 @@ public class WindowDetectionServiceIntegrationTests
         Assert.NotEmpty(windows);
         
         // Should find at least some system windows like the desktop or taskbar
-        Assert.Contains(windows, w => !string.IsNullOrEmpty(w.className));
+        Assert.Contains(windows, w => !string.IsNullOrEmpty(w.ClassName));
     }
     
     [Fact]
@@ -251,6 +252,6 @@ public class WindowDetectionServiceIntegrationTests
         // Assert
         Assert.NotNull(topmostWindows);
         // We can't guarantee there will be topmost windows, but the method should work
-        Assert.All(topmostWindows, w => Assert.True(w.isTopmost));
+        Assert.All(topmostWindows, w => Assert.True(w.IsTopmost));
     }
 }

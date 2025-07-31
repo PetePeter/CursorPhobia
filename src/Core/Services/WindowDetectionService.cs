@@ -4,6 +4,7 @@ using CursorPhobia.Core.Models;
 using CursorPhobia.Core.Utilities;
 using CursorPhobia.Core.WindowsAPI;
 using static CursorPhobia.Core.WindowsAPI.WindowsStructures;
+using ILogger = CursorPhobia.Core.Utilities.ILogger;
 
 namespace CursorPhobia.Core.Services;
 
@@ -12,13 +13,13 @@ namespace CursorPhobia.Core.Services;
 /// </summary>
 public class WindowDetectionService : IWindowDetectionService
 {
-    private readonly Logger _logger;
+    private readonly ILogger _logger;
     
     /// <summary>
     /// Creates a new WindowDetectionService instance
     /// </summary>
     /// <param name="logger">Logger for diagnostic output</param>
-    public WindowDetectionService(Logger logger)
+    public WindowDetectionService(ILogger logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
@@ -36,7 +37,7 @@ public class WindowDetectionService : IWindowDetectionService
         
         foreach (var window in allWindows)
         {
-            if (IsWindowAlwaysOnTop(window.windowHandle))
+            if (IsWindowAlwaysOnTop(window.WindowHandle))
             {
                 topMostWindows.Add(window);
             }
@@ -93,7 +94,7 @@ public class WindowDetectionService : IWindowDetectionService
         try
         {
             // Get basic window properties
-            var title = User32.GetWindowTextSafe(hWnd);
+            var Title = User32.GetWindowTextSafe(hWnd);
             var className = User32.GetClassNameSafe(hWnd);
             var isVisible = User32.IsWindowVisible(hWnd);
             var isMinimized = User32.IsIconic(hWnd);
@@ -113,19 +114,19 @@ public class WindowDetectionService : IWindowDetectionService
             
             var windowInfo = new WindowInfo
             {
-                windowHandle = hWnd,
-                title = title,
-                className = className,
-                bounds = bounds,
-                processId = (int)processId,
-                threadId = (int)threadId,
-                isVisible = isVisible,
-                isTopmost = isTopmost,
-                isMinimized = isMinimized
+                WindowHandle = hWnd,
+                Title = Title,
+                ClassName = className,
+                Bounds = bounds,
+                ProcessId = (int)processId,
+                ThreadId = (int)threadId,
+                IsVisible = isVisible,
+                IsTopmost = isTopmost,
+                IsMinimized = isMinimized
             };
             
             _logger.LogDebug("Retrieved information for window {Handle:X}: '{Title}' ({ClassName})", 
-                hWnd.ToInt64(), title, className);
+                hWnd.ToInt64(), Title, className);
             
             return windowInfo;
         }
@@ -145,7 +146,7 @@ public class WindowDetectionService : IWindowDetectionService
         _logger.LogDebug("Starting enumeration of all visible windows");
         
         var windows = new List<WindowInfo>();
-        var windowHandles = new List<IntPtr>();
+        var WindowHandles = new List<IntPtr>();
         
         try
         {
@@ -154,15 +155,15 @@ public class WindowDetectionService : IWindowDetectionService
             {
                 if (User32.IsWindowVisible(hWnd))
                 {
-                    windowHandles.Add(hWnd);
+                    WindowHandles.Add(hWnd);
                 }
                 return true; // Continue enumeration
             }, IntPtr.Zero);
             
-            _logger.LogDebug("Found {Count} visible window handles", windowHandles.Count);
+            _logger.LogDebug("Found {Count} visible window handles", WindowHandles.Count);
             
             // Second pass: get detailed information for each window
-            foreach (var hWnd in windowHandles)
+            foreach (var hWnd in WindowHandles)
             {
                 var windowInfo = GetWindowInformation(hWnd);
                 if (windowInfo != null)
@@ -193,20 +194,20 @@ public class WindowDetectionService : IWindowDetectionService
     {
         return windows.Where(window =>
         {
-            // Skip windows with empty titles and certain system classes
-            if (string.IsNullOrWhiteSpace(window.title) && IsSystemWindowClass(window.className))
+            // Skip windows with empty Titles and certain system classes
+            if (string.IsNullOrWhiteSpace(window.Title) && IsSystemWindowClass(window.ClassName))
             {
                 return false;
             }
             
             // Skip very small windows (likely system windows)
-            if (window.bounds.Width < 50 || window.bounds.Height < 50)
+            if (window.Bounds.Width < 50 || window.Bounds.Height < 50)
             {
                 return false;
             }
             
             // Skip windows positioned far off-screen (negative coordinates beyond reasonable bounds)
-            if (window.bounds.X < -1000 || window.bounds.Y < -1000)
+            if (window.Bounds.X < -1000 || window.Bounds.Y < -1000)
             {
                 return false;
             }
@@ -233,7 +234,7 @@ public class WindowDetectionService : IWindowDetectionService
             "WorkerW",                 // Desktop worker
             "DV2ControlHost",          // Windows 10 start menu
             "Windows.UI.Core.CoreWindow", // Windows 10 apps background
-            "ApplicationFrameWindow",  // UWP app frame (but these usually have titles)
+            "ApplicationFrameWindow",  // UWP app frame (but these usually have Titles)
             "ImmersiveLauncher",      // Start screen
             "ImmersiveBackground",    // Background windows
             "EdgeUiInputTopWndClass", // Edge UI

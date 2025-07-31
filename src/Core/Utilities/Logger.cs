@@ -5,9 +5,9 @@ namespace CursorPhobia.Core.Utilities;
 /// <summary>
 /// Basic logging infrastructure for CursorPhobia
 /// </summary>
-public class Logger : ILogger
+public class Logger : ILogger, Microsoft.Extensions.Logging.ILogger
 {
-    private readonly ILogger _innerLogger;
+    private readonly Microsoft.Extensions.Logging.ILogger _innerLogger;
     private readonly string _categoryName;
     
     /// <summary>
@@ -15,7 +15,7 @@ public class Logger : ILogger
     /// </summary>
     /// <param name="innerLogger">The underlying logger implementation</param>
     /// <param name="categoryName">The category name for this logger</param>
-    public Logger(ILogger innerLogger, string categoryName)
+    public Logger(Microsoft.Extensions.Logging.ILogger innerLogger, string categoryName)
     {
         _innerLogger = innerLogger ?? throw new ArgumentNullException(nameof(innerLogger));
         _categoryName = categoryName ?? throw new ArgumentNullException(nameof(categoryName));

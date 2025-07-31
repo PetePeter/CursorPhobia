@@ -3,6 +3,7 @@ using Xunit;
 using Moq;
 using CursorPhobia.Core.Services;
 using CursorPhobia.Core.Utilities;
+using ILogger = CursorPhobia.Core.Utilities.ILogger;
 
 namespace CursorPhobia.Tests;
 
@@ -11,12 +12,12 @@ namespace CursorPhobia.Tests;
 /// </summary>
 public class WindowManipulationServiceTests
 {
-    private readonly Mock<Logger> _mockLogger;
+    private readonly Mock<ILogger> _mockLogger;
     private readonly WindowManipulationService _service;
     
     public WindowManipulationServiceTests()
     {
-        _mockLogger = new Mock<Logger>(Mock.Of<Microsoft.Extensions.Logging.ILogger>(), "Test");
+        _mockLogger = new Mock<ILogger>();
         _service = new WindowManipulationService(_mockLogger.Object);
     }
     
@@ -202,8 +203,9 @@ public class WindowManipulationServiceTests
         _service.MoveWindow(invalidHandle, 100, 100);
         
         // Assert
-        // Verify that error logging occurred for failed operations
-        _mockLogger.Verify(l => l.LogWarning(It.IsAny<string>()), Times.AtLeast(3));
+        // Verify that error/warning logging occurred for failed operations
+        _mockLogger.Verify(l => l.LogError(It.IsAny<string>(), It.IsAny<object[]>()), Times.AtLeast(2));
+        _mockLogger.Verify(l => l.LogWarning(It.IsAny<string>(), It.IsAny<object[]>()), Times.AtLeast(1));
     }
     
     #endregion
@@ -244,12 +246,12 @@ public class WindowManipulationServiceTests
 /// </summary>
 public class WindowManipulationServiceIntegrationTests
 {
-    private readonly Mock<Logger> _mockLogger;
+    private readonly Mock<ILogger> _mockLogger;
     private readonly WindowManipulationService _service;
     
     public WindowManipulationServiceIntegrationTests()
     {
-        _mockLogger = new Mock<Logger>(Mock.Of<Microsoft.Extensions.Logging.ILogger>(), "IntegrationTest");
+        _mockLogger = new Mock<ILogger>();
         _service = new WindowManipulationService(_mockLogger.Object);
     }
     

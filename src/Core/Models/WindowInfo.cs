@@ -11,46 +11,46 @@ namespace CursorPhobia.Core.Models
         /// <summary>
         /// The handle of the window.
         /// </summary>
-        public IntPtr windowHandle { get; set; }
+        public IntPtr WindowHandle { get; set; }
 
         /// <summary>
         /// The title of the window.
         /// </summary>
-        public string title { get; set; }
+        public string Title { get; set; } = string.Empty;
 
         /// <summary>
         /// The class name of the window.
         /// </summary>
-        public string className { get; set; }
+        public string ClassName { get; set; } = string.Empty;
 
         /// <summary>
         /// The bounds of the window.
         /// </summary>
-        public Rectangle bounds { get; set; }
+        public Rectangle Bounds { get; set; }
 
         /// <summary>
         /// The process ID owning the window.
         /// </summary>
-        public int processId { get; set; }
+        public int ProcessId { get; set; }
 
         /// <summary>
         /// The thread ID owning the window.
         /// </summary>
-        public int threadId { get; set; }
+        public int ThreadId { get; set; }
 
         /// <summary>
         /// Indicates whether the window is visible.
         /// </summary>
-        public bool isVisible { get; set; }
+        public bool IsVisible { get; set; }
 
         /// <summary>
         /// Indicates whether the window is topmost.
         /// </summary>
-        public bool isTopmost { get; set; }
+        public bool IsTopmost { get; set; }
 
         /// <summary>
         /// Indicates whether the window is minimized.
         /// </summary>
-        public bool isMinimized { get; set; }
+        public bool IsMinimized { get; set; }
     }
 }

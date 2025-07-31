@@ -25,7 +25,7 @@ class Program
             // Setup dependency injection and logging
             SetupServices();
             
-            _logger = LoggerFactory.CreateLogger<Program>();
+            _logger = CursorPhobia.Core.Utilities.LoggerFactory.CreateLogger<Program>();
             _logger.LogInformation("Starting CursorPhobia Phase 1 tests");
             
             var windowDetectionService = _serviceProvider!.GetRequiredService<IWindowDetectionService>();
@@ -62,8 +62,8 @@ class Program
         services.AddSingleton<Logger>(provider =>
         {
             var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
-            LoggerFactory.Initialize(loggerFactory);
-            return LoggerFactory.CreateLogger<Program>();
+            CursorPhobia.Core.Utilities.LoggerFactory.Initialize(loggerFactory);
+            return CursorPhobia.Core.Utilities.LoggerFactory.CreateLogger<Program>();
         });
         
         services.AddTransient<IWindowDetectionService, WindowDetectionService>();
@@ -108,7 +108,7 @@ class Program
             for (int i = 0; i < displayCount; i++)
             {
                 var window = windows[i];
-                System.Console.WriteLine($"  {i + 1}. '{window.title}' ({window.className}) - {window.bounds}");
+                System.Console.WriteLine($"  {i + 1}. '{window.Title}' ({window.ClassName}) - {window.Bounds}");
             }
             
             if (windows.Count > 10)
@@ -138,7 +138,7 @@ class Program
             
             foreach (var window in topmostWindows.Take(5))
             {
-                System.Console.WriteLine($"  - '{window.title}' ({window.className})");
+                System.Console.WriteLine($"  - '{window.Title}' ({window.ClassName})");
             }
             
             if (topmostWindows.Count > 5)
@@ -166,20 +166,20 @@ class Program
             if (windows.Count > 0)
             {
                 var testWindow = windows.First();
-                var windowInfo = detectionService.GetWindowInformation(testWindow.windowHandle);
+                var windowInfo = detectionService.GetWindowInformation(testWindow.WindowHandle);
                 
                 if (windowInfo != null)
                 {
                     System.Console.WriteLine("Sample window information:");
-                    System.Console.WriteLine($"  Handle: 0x{windowInfo.windowHandle:X}");
-                    System.Console.WriteLine($"  Title: '{windowInfo.title}'");
-                    System.Console.WriteLine($"  Class: {windowInfo.className}");
-                    System.Console.WriteLine($"  Bounds: {windowInfo.bounds}");
-                    System.Console.WriteLine($"  Process ID: {windowInfo.processId}");
-                    System.Console.WriteLine($"  Thread ID: {windowInfo.threadId}");
-                    System.Console.WriteLine($"  Visible: {windowInfo.isVisible}");
-                    System.Console.WriteLine($"  Topmost: {windowInfo.isTopmost}");
-                    System.Console.WriteLine($"  Minimized: {windowInfo.isMinimized}");
+                    System.Console.WriteLine($"  Handle: 0x{windowInfo.WindowHandle:X}");
+                    System.Console.WriteLine($"  Title: '{windowInfo.Title}'");
+                    System.Console.WriteLine($"  Class: {windowInfo.ClassName}");
+                    System.Console.WriteLine($"  Bounds: {windowInfo.Bounds}");
+                    System.Console.WriteLine($"  Process ID: {windowInfo.ProcessId}");
+                    System.Console.WriteLine($"  Thread ID: {windowInfo.ThreadId}");
+                    System.Console.WriteLine($"  Visible: {windowInfo.IsVisible}");
+                    System.Console.WriteLine($"  Topmost: {windowInfo.IsTopmost}");
+                    System.Console.WriteLine($"  Minimized: {windowInfo.IsMinimized}");
                     
                     System.Console.WriteLine("✓ Window information retrieval test passed\n");
                 }
@@ -211,9 +211,9 @@ class Program
             if (windows.Count > 0)
             {
                 var testWindow = windows.First();
-                var bounds = manipulationService.GetWindowBounds(testWindow.windowHandle);
+                var bounds = manipulationService.GetWindowBounds(testWindow.WindowHandle);
                 
-                System.Console.WriteLine($"Window bounds for '{testWindow.title}':");
+                System.Console.WriteLine($"Window bounds for '{testWindow.Title}':");
                 System.Console.WriteLine($"  Position: ({bounds.X}, {bounds.Y})");
                 System.Console.WriteLine($"  Size: {bounds.Width} x {bounds.Height}");
                 System.Console.WriteLine($"  Area: {bounds.Width * bounds.Height} pixels");
@@ -248,7 +248,7 @@ class Program
                 for (int i = 0; i < testCount; i++)
                 {
                     var window = windows[i];
-                    var isVisible = manipulationService.IsWindowVisible(window.windowHandle);
+                    var isVisible = manipulationService.IsWindowVisible(window.WindowHandle);
                     if (isVisible) visibleCount++;
                 }
                 

@@ -2,6 +2,7 @@ using System.Drawing;
 using CursorPhobia.Core.Utilities;
 using CursorPhobia.Core.WindowsAPI;
 using static CursorPhobia.Core.WindowsAPI.WindowsStructures;
+using ILogger = CursorPhobia.Core.Utilities.ILogger;
 
 namespace CursorPhobia.Core.Services;
 
@@ -39,13 +40,13 @@ public interface IWindowManipulationService
 /// </summary>
 public class WindowManipulationService : IWindowManipulationService
 {
-    private readonly Logger _logger;
+    private readonly ILogger _logger;
 
     /// <summary>
     /// Creates a new WindowManipulationService instance
     /// </summary>
     /// <param name="logger">Logger for diagnostic output</param>
-    public WindowManipulationService(Logger logger)
+    public WindowManipulationService(ILogger logger)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
