@@ -20,6 +20,7 @@ class Program
     private static IStartupManager? _startupManager;
     private static ISnoozeManager? _snoozeManager;
     private static ICursorPhobiaEngine? _engine;
+    private static IConfigurationWatcherService? _configWatcher;
     
     static async Task Main(string[] args)
     {
@@ -148,6 +149,15 @@ class Program
         // Configuration services (Phase B WI#5)
         services.AddSingleton<IConfigurationBackupService, ConfigurationBackupService>();
         services.AddSingleton<IConfigurationService, ConfigurationService>();
+        
+        // Configuration file watcher (Phase 3 WI#4)
+        services.AddSingleton<IConfigurationWatcherService>(provider =>
+        {
+            var logger = provider.GetRequiredService<CursorPhobia.Core.Utilities.ILogger>();
+            var configService = provider.GetRequiredService<IConfigurationService>();
+            var trayManager = provider.GetService<ISystemTrayManager>(); // Optional dependency
+            return new ConfigurationWatcherService(logger, configService, trayManager);
+        });
         
         // System tray and lifecycle management (Phase A WI#5)
         services.AddSingleton<ISystemTrayManager, SystemTrayManager>();
@@ -539,6 +549,7 @@ class Program
         _trayManager = _serviceProvider!.GetRequiredService<ISystemTrayManager>();
         _lifecycleManager = _serviceProvider!.GetRequiredService<IApplicationLifecycleManager>();
         _engine = _serviceProvider!.GetRequiredService<ICursorPhobiaEngine>();
+        _configWatcher = _serviceProvider!.GetRequiredService<IConfigurationWatcherService>();
         
         try
         {
@@ -577,6 +588,7 @@ class Program
             _startupManager = _serviceProvider!.GetRequiredService<IStartupManager>();
             _snoozeManager = _serviceProvider!.GetRequiredService<ISnoozeManager>();
             _engine = _serviceProvider!.GetRequiredService<ICursorPhobiaEngine>();
+            _configWatcher = _serviceProvider!.GetRequiredService<IConfigurationWatcherService>();
             
             await SetupTrayIntegration();
             
@@ -639,6 +651,9 @@ class Program
         // Setup lifecycle event handlers
         _lifecycleManager.ApplicationExitRequested += OnApplicationExitRequested;
         
+        // Setup configuration file watcher for live reloading (Phase 3 WI#4)
+        await SetupConfigurationWatcher();
+        
         // Start with engine disabled
         await _trayManager.UpdateStateAsync(TrayIconState.Disabled);
         await _trayManager.UpdateMenuStateAsync(false);
@@ -658,6 +673,14 @@ class Program
                 _engine.EngineStateChanged -= OnEngineStateChanged;
                 _engine.PerformanceIssueDetected -= OnEnginePerformanceIssue;
                 _engine.WindowPushed -= OnEngineWindowPushed;
+            }
+            
+            // Cleanup configuration watcher
+            if (_configWatcher != null)
+            {
+                await _configWatcher.StopWatchingAsync();
+                _configWatcher.ConfigurationFileChanged -= OnConfigurationFileChanged;
+                _configWatcher.ConfigurationFileChangeFailed -= OnConfigurationFileChangeFailed;
             }
             
             if (_trayManager != null)
@@ -684,6 +707,88 @@ class Program
         {
             _logger?.LogError(ex, "Error during tray integration cleanup");
         }
+    }
+    
+    private static async Task SetupConfigurationWatcher()
+    {
+        try
+        {
+            if (_configWatcher == null)
+                return;
+            
+            // Get the default configuration path
+            var configService = _serviceProvider!.GetRequiredService<IConfigurationService>();
+            var configPath = await configService.GetDefaultConfigurationPathAsync();
+            
+            // Setup event handlers for configuration changes
+            _configWatcher.ConfigurationFileChanged += OnConfigurationFileChanged;
+            _configWatcher.ConfigurationFileChangeFailed += OnConfigurationFileChangeFailed;
+            
+            // Start watching the configuration file
+            var success = await _configWatcher.StartWatchingAsync(configPath, 500);
+            
+            if (success)
+            {
+                _logger?.LogInformation("Configuration file watcher started: {Path}", configPath);
+                await _trayManager?.ShowNotificationAsync("CursorPhobia", 
+                    "Live configuration reloading enabled", false)!;
+            }
+            else
+            {
+                _logger?.LogWarning("Failed to start configuration file watcher for: {Path}", configPath);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error setting up configuration file watcher");
+        }
+    }
+    
+    // Configuration watcher event handlers
+    private static async void OnConfigurationFileChanged(object? sender, ConfigurationFileChangedEventArgs e)
+    {
+        try
+        {
+            _logger?.LogInformation("Configuration file changed, applying hot-swap: {Path}", e.FilePath);
+            
+            if (_engine != null)
+            {
+                // Use the engine's hot-swap capability to apply the new configuration
+                var updateResult = await _engine.UpdateConfigurationAsync(e.Configuration);
+                
+                if (updateResult.Success)
+                {
+                    _logger?.LogInformation("Configuration hot-swap successful: {Summary}", updateResult.GetSummary());
+                    
+                    // Show success notification
+                    await _trayManager?.ShowNotificationAsync("CursorPhobia Configuration",
+                        "Configuration reloaded and applied successfully", false)!;
+                }
+                else
+                {
+                    _logger?.LogWarning("Configuration hot-swap failed: {Error}", updateResult.ErrorMessage);
+                    
+                    // Show failure notification
+                    await _trayManager?.ShowNotificationAsync("CursorPhobia Configuration",
+                        $"Configuration reload failed: {updateResult.ErrorMessage}", true)!;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error processing configuration file change");
+            await _trayManager?.ShowNotificationAsync("CursorPhobia Configuration",
+                $"Error applying configuration: {ex.Message}", true)!;
+        }
+    }
+    
+    private static async void OnConfigurationFileChangeFailed(object? sender, ConfigurationFileChangeFailedEventArgs e)
+    {
+        _logger?.LogWarning("Configuration file change failed: {Path} - {Reason} - {Exception}", 
+            e.FilePath, e.FailureReason, e.Exception.Message);
+        
+        // The ConfigurationWatcherService already shows tray notifications for failures,
+        // but we can add additional logging or handling here if needed
     }
     
     // Tray event handlers
