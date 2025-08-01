@@ -1,0 +1,736 @@
+using System.ComponentModel;
+using CursorPhobia.Core.Models;
+using CursorPhobia.Core.Services;
+using CursorPhobia.Core.UI.Models;
+using CursorPhobia.Core.Utilities;
+
+namespace CursorPhobia.Core.UI.Forms;
+
+/// <summary>
+/// Main settings dialog for configuring CursorPhobia behavior
+/// </summary>
+public partial class SettingsForm : Form
+{
+    private readonly IConfigurationService _configService;
+    private readonly ICursorPhobiaEngine _engine;
+    private readonly ILogger _logger;
+    private readonly SettingsViewModel _viewModel;
+    private readonly System.Windows.Forms.Timer _previewUpdateTimer;
+    private string? _configurationPath;
+    private volatile bool _isInitializing;
+    private volatile bool _isClosing;
+
+    public SettingsForm(
+        IConfigurationService configService,
+        ICursorPhobiaEngine engine,
+        ILogger logger)
+    {
+        _configService = configService ?? throw new ArgumentNullException(nameof(configService));
+        _engine = engine ?? throw new ArgumentNullException(nameof(engine));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+        // Create view model with default configuration initially
+        _viewModel = new SettingsViewModel(CursorPhobiaConfiguration.CreateDefault());
+
+        // Initialize preview update timer
+        _previewUpdateTimer = new System.Windows.Forms.Timer
+        {
+            Interval = 100, // 10 FPS for preview updates
+            Enabled = false
+        };
+        _previewUpdateTimer.Tick += OnPreviewUpdateTimerTick;
+
+        InitializeComponent();
+        SetupDataBindings();
+        SetupEventHandlers();
+    }
+
+    /// <summary>
+    /// Gets the current configuration from the view model
+    /// </summary>
+    public CursorPhobiaConfiguration CurrentConfiguration => _viewModel.Configuration;
+
+    /// <summary>
+    /// Gets whether there are unsaved changes
+    /// </summary>
+    public bool HasUnsavedChanges => _viewModel.HasUnsavedChanges;
+
+    /// <summary>
+    /// Loads the configuration and initializes the form
+    /// </summary>
+    public async Task LoadConfigurationAsync()
+    {
+        try
+        {
+            _isInitializing = true;
+            
+            // Get the default configuration path
+            _configurationPath = await _configService.GetDefaultConfigurationPathAsync();
+            
+            // Load the configuration
+            var config = await _configService.LoadConfigurationAsync(_configurationPath);
+            
+            // Update the view model
+            _viewModel.Configuration = config;
+            _viewModel.HasUnsavedChanges = false;
+            
+            // Update the form title
+            Text = $"CursorPhobia Settings - {Path.GetFileName(_configurationPath)}";
+            
+            _logger.LogInformation($"Configuration loaded from: {_configurationPath}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Failed to load configuration: {ex.Message}");
+            MessageBox.Show(
+                $"Failed to load configuration: {ex.Message}\n\nUsing default settings.",
+                "Configuration Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+        }
+        finally
+        {
+            _isInitializing = false;
+        }
+    }
+
+    /// <summary>
+    /// Saves the current configuration
+    /// </summary>
+    public async Task<bool> SaveConfigurationAsync()
+    {
+        try
+        {
+            // Validate the configuration
+            var errors = _viewModel.ValidateConfiguration();
+            if (errors.Any())
+            {
+                var errorMessage = "Configuration validation failed:\n\n" + string.Join("\n", errors);
+                MessageBox.Show(errorMessage, "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+
+            // Save the configuration
+            if (string.IsNullOrEmpty(_configurationPath))
+            {
+                _configurationPath = await _configService.GetDefaultConfigurationPathAsync();
+            }
+
+            await _configService.SaveConfigurationAsync(_viewModel.Configuration, _configurationPath);
+            _viewModel.HasUnsavedChanges = false;
+
+            // Update the window title
+            Text = $"CursorPhobia Settings - {Path.GetFileName(_configurationPath)}";
+
+            _logger.LogInformation($"Configuration saved to: {_configurationPath}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Failed to save configuration: {ex.Message}");
+            MessageBox.Show(
+                $"Failed to save configuration: {ex.Message}",
+                "Save Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Validates the current settings and highlights any issues
+    /// </summary>
+    public bool ValidateCurrentSettings()
+    {
+        var errors = _viewModel.ValidateConfiguration();
+        
+        if (errors.Any())
+        {
+            // Clear previous error highlighting
+            ClearValidationErrors();
+            
+            // Highlight controls with errors and show tooltip
+            HighlightValidationErrors(errors);
+            
+            return false;
+        }
+        
+        ClearValidationErrors();
+        return true;
+    }
+
+    /// <summary>
+    /// Resets the configuration to defaults
+    /// </summary>
+    public void ResetToDefaults()
+    {
+        var result = MessageBox.Show(
+            "Are you sure you want to reset all settings to their default values? This cannot be undone.",
+            "Reset to Defaults",
+            MessageBoxButtons.YesNo,
+            MessageBoxIcon.Question);
+
+        if (result == DialogResult.Yes)
+        {
+            _viewModel.ApplyPreset("default");
+            UpdatePreview();
+        }
+    }
+
+    /// <summary>
+    /// Exports the current configuration to a file
+    /// </summary>
+    public async Task ExportConfigurationAsync()
+    {
+        using var saveDialog = new SaveFileDialog
+        {
+            Title = "Export Configuration",
+            Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+            DefaultExt = "json",
+            FileName = "CursorPhobia-Config.json"
+        };
+
+        if (saveDialog.ShowDialog() == DialogResult.OK)
+        {
+            try
+            {
+                await _configService.SaveConfigurationAsync(_viewModel.Configuration, saveDialog.FileName);
+                MessageBox.Show(
+                    $"Configuration exported successfully to:\n{saveDialog.FileName}",
+                    "Export Complete",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Failed to export configuration:\n{ex.Message}",
+                    "Export Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Imports configuration from a file
+    /// </summary>
+    public async Task ImportConfigurationAsync()
+    {
+        using var openDialog = new OpenFileDialog
+        {
+            Title = "Import Configuration",
+            Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
+            DefaultExt = "json"
+        };
+
+        if (openDialog.ShowDialog() == DialogResult.OK)
+        {
+            try
+            {
+                var importedConfig = await _configService.LoadConfigurationAsync(openDialog.FileName);
+                
+                var result = MessageBox.Show(
+                    $"Configuration loaded from:\n{openDialog.FileName}\n\nApply these settings?",
+                    "Import Configuration",
+                    MessageBoxButtons.YesNo,
+                    MessageBoxIcon.Question);
+
+                if (result == DialogResult.Yes)
+                {
+                    _viewModel.Configuration = importedConfig;
+                    _viewModel.HasUnsavedChanges = true;
+                    UpdatePreview();
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"Failed to import configuration:\n{ex.Message}",
+                    "Import Error",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+        }
+    }
+
+    protected override void OnLoad(EventArgs e)
+    {
+        base.OnLoad(e);
+        
+        // Load configuration when form loads
+        _ = Task.Run(async () =>
+        {
+            await LoadConfigurationAsync();
+            
+            // Update UI on main thread
+            if (InvokeRequired)
+            {
+                Invoke(() => UpdatePreview());
+            }
+            else
+            {
+                UpdatePreview();
+            }
+        });
+    }
+
+    protected override void OnFormClosing(FormClosingEventArgs e)
+    {
+        if (_isClosing) return;
+        _isClosing = true;
+        
+        if (_viewModel.HasUnsavedChanges)
+        {
+            var result = MessageBox.Show(
+                "You have unsaved changes. Do you want to save them before closing?",
+                "Unsaved Changes",
+                MessageBoxButtons.YesNoCancel,
+                MessageBoxIcon.Question);
+
+            switch (result)
+            {
+                case DialogResult.Yes:
+                    // Cancel the close operation and save asynchronously
+                    e.Cancel = true;
+                    _isClosing = false;
+                    _ = SaveAndCloseAsync();
+                    return;
+                case DialogResult.Cancel:
+                    e.Cancel = true;
+                    _isClosing = false;
+                    return;
+            }
+        }
+
+        base.OnFormClosing(e);
+    }
+    
+    private async Task SaveAndCloseAsync()
+    {
+        try
+        {
+            var saved = await SaveConfigurationAsync();
+            if (saved)
+            {
+                // Close the form on the UI thread
+                if (InvokeRequired)
+                {
+                    Invoke(() => 
+                    {
+                        _isClosing = true;
+                        Close();
+                    });
+                }
+                else
+                {
+                    _isClosing = true;
+                    Close();
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Error saving configuration during close: {ex.Message}");
+            MessageBox.Show(
+                $"Failed to save configuration: {ex.Message}",
+                "Save Error",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error);
+        }
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            // Unsubscribe from events to prevent memory leaks
+            if (_viewModel != null)
+            {
+                _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
+            }
+            
+            _previewUpdateTimer?.Dispose();
+        }
+        base.Dispose(disposing);
+    }
+
+    private void SetupDataBindings()
+    {
+        // General Tab Bindings
+        enableCtrlOverrideCheckBox.DataBindings.Add(
+            nameof(CheckBox.Checked), _viewModel, nameof(_viewModel.EnableCtrlOverride), false, DataSourceUpdateMode.OnPropertyChanged);
+        
+        applyToAllWindowsCheckBox.DataBindings.Add(
+            nameof(CheckBox.Checked), _viewModel, nameof(_viewModel.ApplyToAllWindows), false, DataSourceUpdateMode.OnPropertyChanged);
+
+        // Behavior Tab Bindings
+        proximityThresholdTrackBar.DataBindings.Add(
+            nameof(TrackBar.Value), _viewModel, nameof(_viewModel.ProximityThreshold), false, DataSourceUpdateMode.OnPropertyChanged);
+        
+        proximityThresholdNumeric.DataBindings.Add(
+            nameof(NumericUpDown.Value), _viewModel, nameof(_viewModel.ProximityThreshold), false, DataSourceUpdateMode.OnPropertyChanged);
+
+        pushDistanceTrackBar.DataBindings.Add(
+            nameof(TrackBar.Value), _viewModel, nameof(_viewModel.PushDistance), false, DataSourceUpdateMode.OnPropertyChanged);
+        
+        pushDistanceNumeric.DataBindings.Add(
+            nameof(NumericUpDown.Value), _viewModel, nameof(_viewModel.PushDistance), false, DataSourceUpdateMode.OnPropertyChanged);
+
+        enableAnimationsCheckBox.DataBindings.Add(
+            nameof(CheckBox.Checked), _viewModel, nameof(_viewModel.EnableAnimations), false, DataSourceUpdateMode.OnPropertyChanged);
+
+        animationDurationTrackBar.DataBindings.Add(
+            nameof(TrackBar.Value), _viewModel, nameof(_viewModel.AnimationDurationMs), false, DataSourceUpdateMode.OnPropertyChanged);
+        
+        animationDurationNumeric.DataBindings.Add(
+            nameof(NumericUpDown.Value), _viewModel, nameof(_viewModel.AnimationDurationMs), false, DataSourceUpdateMode.OnPropertyChanged);
+
+        animationEasingComboBox.DataBindings.Add(
+            nameof(ComboBox.SelectedItem), _viewModel, nameof(_viewModel.AnimationEasing), false, DataSourceUpdateMode.OnPropertyChanged);
+
+        enableHoverTimeoutCheckBox.DataBindings.Add(
+            nameof(CheckBox.Checked), _viewModel, nameof(_viewModel.EnableHoverTimeout), false, DataSourceUpdateMode.OnPropertyChanged);
+
+        hoverTimeoutNumeric.DataBindings.Add(
+            nameof(NumericUpDown.Value), _viewModel, nameof(_viewModel.HoverTimeoutMs), false, DataSourceUpdateMode.OnPropertyChanged);
+
+        // Multi-Monitor Tab Bindings
+        enableWrappingCheckBox.DataBindings.Add(
+            nameof(CheckBox.Checked), _viewModel, nameof(_viewModel.EnableWrapping), false, DataSourceUpdateMode.OnPropertyChanged);
+
+        wrapPreferenceComboBox.DataBindings.Add(
+            nameof(ComboBox.SelectedItem), _viewModel, nameof(_viewModel.PreferredWrapBehavior), false, DataSourceUpdateMode.OnPropertyChanged);
+
+        respectTaskbarAreasCheckBox.DataBindings.Add(
+            nameof(CheckBox.Checked), _viewModel, nameof(_viewModel.RespectTaskbarAreas), false, DataSourceUpdateMode.OnPropertyChanged);
+
+        // Advanced Tab Bindings
+        updateIntervalNumeric.DataBindings.Add(
+            nameof(NumericUpDown.Value), _viewModel, nameof(_viewModel.UpdateIntervalMs), false, DataSourceUpdateMode.OnPropertyChanged);
+
+        maxUpdateIntervalNumeric.DataBindings.Add(
+            nameof(NumericUpDown.Value), _viewModel, nameof(_viewModel.MaxUpdateIntervalMs), false, DataSourceUpdateMode.OnPropertyChanged);
+
+        screenEdgeBufferNumeric.DataBindings.Add(
+            nameof(NumericUpDown.Value), _viewModel, nameof(_viewModel.ScreenEdgeBuffer), false, DataSourceUpdateMode.OnPropertyChanged);
+
+        // Setup preset selection handler
+        presetComboBox.SelectedIndexChanged += (s, e) =>
+        {
+            if (presetComboBox.SelectedItem is string preset && !_isInitializing)
+            {
+                _viewModel.ApplyPreset(preset.ToLower());
+            }
+        };
+
+        // Setup trackbar synchronization
+        SetupTrackBarSync();
+    }
+
+    private void SetupTrackBarSync()
+    {
+        // Sync proximity threshold trackbar and numeric
+        proximityThresholdTrackBar.ValueChanged += (s, e) =>
+        {
+            if (!_isInitializing)
+                proximityThresholdNumeric.Value = proximityThresholdTrackBar.Value;
+        };
+
+        proximityThresholdNumeric.ValueChanged += (s, e) =>
+        {
+            if (!_isInitializing)
+                proximityThresholdTrackBar.Value = (int)proximityThresholdNumeric.Value;
+        };
+
+        // Sync push distance trackbar and numeric
+        pushDistanceTrackBar.ValueChanged += (s, e) =>
+        {
+            if (!_isInitializing)
+                pushDistanceNumeric.Value = pushDistanceTrackBar.Value;
+        };
+
+        pushDistanceNumeric.ValueChanged += (s, e) =>
+        {
+            if (!_isInitializing)
+                pushDistanceTrackBar.Value = (int)pushDistanceNumeric.Value;
+        };
+
+        // Sync animation duration trackbar and numeric
+        animationDurationTrackBar.ValueChanged += (s, e) =>
+        {
+            if (!_isInitializing)
+                animationDurationNumeric.Value = animationDurationTrackBar.Value;
+        };
+
+        animationDurationNumeric.ValueChanged += (s, e) =>
+        {
+            if (!_isInitializing)
+                animationDurationTrackBar.Value = (int)animationDurationNumeric.Value;
+        };
+
+        // Enable/disable animation controls based on animations checkbox
+        enableAnimationsCheckBox.CheckedChanged += (s, e) =>
+        {
+            var enabled = enableAnimationsCheckBox.Checked;
+            animationDurationTrackBar.Enabled = enabled;
+            animationDurationNumeric.Enabled = enabled;
+            animationEasingComboBox.Enabled = enabled;
+        };
+
+        // Enable/disable hover timeout numeric based on checkbox
+        enableHoverTimeoutCheckBox.CheckedChanged += (s, e) =>
+        {
+            hoverTimeoutNumeric.Enabled = enableHoverTimeoutCheckBox.Checked;
+        };
+
+        // Enable/disable wrap preference based on wrapping checkbox
+        enableWrappingCheckBox.CheckedChanged += (s, e) =>
+        {
+            wrapPreferenceComboBox.Enabled = enableWrappingCheckBox.Checked;
+        };
+    }
+
+    private void SetupEventHandlers()
+    {
+        // Subscribe to view model property changes
+        _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+    }
+
+    private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (_isInitializing) return;
+
+        // Update preview when settings change
+        if (e.PropertyName == nameof(SettingsViewModel.HasUnsavedChanges))
+        {
+            UpdateFormTitle();
+        }
+        else
+        {
+            // Throttle preview updates
+            _previewUpdateTimer.Stop();
+            _previewUpdateTimer.Start();
+        }
+    }
+
+    private void OnPreviewUpdateTimerTick(object? sender, EventArgs e)
+    {
+        _previewUpdateTimer.Stop();
+        UpdatePreview();
+    }
+
+    private void UpdatePreview()
+    {
+        try
+        {
+            // Validate configuration first
+            var isValid = ValidateCurrentSettings();
+            
+            // Update engine configuration for real-time preview
+            if (isValid && _engine != null)
+            {
+                // Apply configuration to engine for preview
+                // Note: UpdateConfiguration method may need to be added to ICursorPhobiaEngine interface
+                try
+                {
+                    var configMethod = _engine.GetType().GetMethod("UpdateConfiguration");
+                    configMethod?.Invoke(_engine, new object[] { _viewModel.Configuration });
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogDebug($"Engine configuration update not available: {ex.Message}");
+                }
+            }
+            
+            // Update any custom preview controls (e.g., animation preview panels)
+            UpdatePreviewControls();
+            
+            // Force redraw for custom preview controls
+            Invalidate();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning($"Preview update failed: {ex.Message}");
+        }
+    }
+    
+    private void UpdatePreviewControls()
+    {
+        // Update preview controls based on current settings
+        // This can be expanded when specific preview controls are added
+        
+        // Update status labels or preview text
+        if (Controls.Find("previewStatusLabel", true).FirstOrDefault() is Label statusLabel)
+        {
+            statusLabel.Text = _viewModel.HasUnsavedChanges ? "Preview (Unsaved)" : "Preview (Current)";
+        }
+        
+        // Update any animation preview panels
+        var animationPreviews = Controls.Find("animationPreviewPanel", true);
+        foreach (Control preview in animationPreviews)
+        {
+            preview.Enabled = _viewModel.EnableAnimations;
+            preview.Invalidate();
+        }
+    }
+
+    private void UpdateFormTitle()
+    {
+        var fileName = !string.IsNullOrEmpty(_configurationPath) 
+            ? Path.GetFileName(_configurationPath) 
+            : "New Configuration";
+            
+        var unsavedIndicator = _viewModel.HasUnsavedChanges ? "*" : "";
+        Text = $"CursorPhobia Settings - {fileName}{unsavedIndicator}";
+    }
+
+    private void ClearValidationErrors()
+    {
+        // Clear error highlighting on all input controls
+        ClearControlErrors(this);
+        
+        // Clear any error tooltips - tooltips are not stored as controls
+        // Individual tooltip cleanup will be handled per control
+    }
+    
+    private void ClearControlErrors(Control parent)
+    {
+        foreach (Control control in parent.Controls)
+        {
+            // Reset background color for input controls
+            switch (control)
+            {
+                case NumericUpDown numeric:
+                    numeric.BackColor = SystemColors.Window;
+                    break;
+                case TrackBar trackBar:
+                    trackBar.BackColor = SystemColors.Control;
+                    break;
+                case ComboBox combo:
+                    combo.BackColor = SystemColors.Window;
+                    break;
+                case CheckBox checkbox:
+                    checkbox.BackColor = Color.Transparent;
+                    break;
+            }
+            
+            // Recursively clear errors in child containers
+            if (control.HasChildren)
+            {
+                ClearControlErrors(control);
+            }
+        }
+    }
+
+    private void HighlightValidationErrors(List<string> errors)
+    {
+        // Map validation errors to specific controls and highlight them
+        foreach (var error in errors)
+        {
+            HighlightErrorForMessage(error);
+        }
+        
+        // Show error summary
+        var errorMessage = "Please correct the following issues:\n\n" + string.Join("\n", errors);
+        MessageBox.Show(errorMessage, "Validation Errors", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+    }
+    
+    private void HighlightErrorForMessage(string errorMessage)
+    {
+        var errorColor = Color.FromArgb(255, 192, 192); // Light red background
+        
+        // Map error messages to controls based on common validation patterns
+        if (errorMessage.Contains("ProximityThreshold", StringComparison.OrdinalIgnoreCase))
+        {
+            HighlightControl("proximityThresholdNumeric", errorColor, errorMessage);
+            HighlightControl("proximityThresholdTrackBar", errorColor, errorMessage);
+        }
+        else if (errorMessage.Contains("PushDistance", StringComparison.OrdinalIgnoreCase))
+        {
+            HighlightControl("pushDistanceNumeric", errorColor, errorMessage);
+            HighlightControl("pushDistanceTrackBar", errorColor, errorMessage);
+        }
+        else if (errorMessage.Contains("AnimationDuration", StringComparison.OrdinalIgnoreCase))
+        {
+            HighlightControl("animationDurationNumeric", errorColor, errorMessage);
+            HighlightControl("animationDurationTrackBar", errorColor, errorMessage);
+        }
+        else if (errorMessage.Contains("UpdateInterval", StringComparison.OrdinalIgnoreCase))
+        {
+            HighlightControl("updateIntervalNumeric", errorColor, errorMessage);
+        }
+        else if (errorMessage.Contains("MaxUpdateInterval", StringComparison.OrdinalIgnoreCase))
+        {
+            HighlightControl("maxUpdateIntervalNumeric", errorColor, errorMessage);
+        }
+        else if (errorMessage.Contains("HoverTimeout", StringComparison.OrdinalIgnoreCase))
+        {
+            HighlightControl("hoverTimeoutNumeric", errorColor, errorMessage);
+        }
+        else if (errorMessage.Contains("ScreenEdgeBuffer", StringComparison.OrdinalIgnoreCase))
+        {
+            HighlightControl("screenEdgeBufferNumeric", errorColor, errorMessage);
+        }
+    }
+    
+    private void HighlightControl(string controlName, Color errorColor, string errorMessage)
+    {
+        var controls = Controls.Find(controlName, true);
+        foreach (Control control in controls)
+        {
+            control.BackColor = errorColor;
+            
+            // Add tooltip with error message
+            var toolTip = new ToolTip
+            {
+                ToolTipTitle = "Validation Error",
+                ToolTipIcon = ToolTipIcon.Error,
+                IsBalloon = true
+            };
+            toolTip.SetToolTip(control, errorMessage);
+        }
+    }
+
+    // Event handlers for UI controls will be implemented in Designer.cs
+    private async void OnOkButtonClick(object sender, EventArgs e)
+    {
+        if (ValidateCurrentSettings())
+        {
+            if (await SaveConfigurationAsync())
+            {
+                DialogResult = DialogResult.OK;
+                Close();
+            }
+        }
+    }
+
+    private async void OnApplyButtonClick(object sender, EventArgs e)
+    {
+        if (ValidateCurrentSettings())
+        {
+            await SaveConfigurationAsync();
+        }
+    }
+
+    private void OnCancelButtonClick(object sender, EventArgs e)
+    {
+        DialogResult = DialogResult.Cancel;
+        Close();
+    }
+
+    private void OnResetButtonClick(object sender, EventArgs e)
+    {
+        ResetToDefaults();
+    }
+
+    private async void OnExportButtonClick(object sender, EventArgs e)
+    {
+        await ExportConfigurationAsync();
+    }
+
+    private async void OnImportButtonClick(object sender, EventArgs e)
+    {
+        await ImportConfigurationAsync();
+    }
+}

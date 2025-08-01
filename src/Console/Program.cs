@@ -143,6 +143,10 @@ class Program
         // Engine
         services.AddTransient<ICursorPhobiaEngine, CursorPhobiaEngine>();
         
+        // Configuration services (Phase B WI#5)
+        services.AddSingleton<IConfigurationBackupService, ConfigurationBackupService>();
+        services.AddSingleton<IConfigurationService, ConfigurationService>();
+        
         // System tray and lifecycle management (Phase A WI#5)
         services.AddSingleton<ISystemTrayManager, SystemTrayManager>();
         services.AddSingleton<IApplicationLifecycleManager, ApplicationLifecycleManager>();
@@ -701,9 +705,35 @@ class Program
     
     private static void OnTraySettingsRequested(object? sender, EventArgs e)
     {
-        // Placeholder for Phase B - Settings UI
-        _logger?.LogInformation("Settings requested from tray - not implemented in Phase A");
-        _trayManager?.ShowNotificationAsync("CursorPhobia", "Settings not yet implemented", false);
+        try
+        {
+            _logger?.LogInformation("Opening settings dialog from tray");
+            
+            // Create and show settings form
+            using var settingsForm = new CursorPhobia.Core.UI.Forms.SettingsForm(
+                _serviceProvider!.GetRequiredService<IConfigurationService>(),
+                _engine!,
+                _logger!);
+            
+            var result = settingsForm.ShowDialog();
+            
+            if (result == DialogResult.OK)
+            {
+                _logger?.LogInformation("Settings saved successfully");
+                _trayManager?.ShowNotificationAsync("CursorPhobia", 
+                    "Settings saved successfully", false);
+            }
+            else
+            {
+                _logger?.LogInformation("Settings dialog cancelled");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error opening settings dialog");
+            _trayManager?.ShowNotificationAsync("CursorPhobia", 
+                "Error opening settings: " + ex.Message, true);
+        }
     }
     
     private static void OnTrayAboutRequested(object? sender, EventArgs e)
