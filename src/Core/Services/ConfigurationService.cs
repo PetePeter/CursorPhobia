@@ -10,6 +10,15 @@ namespace CursorPhobia.Core.Services;
 /// </summary>
 public class ConfigurationService : IConfigurationService
 {
+    // Constants for magic strings
+    private const string TempFileExtension = ".tmp";
+    private const string DefaultConfigFileName = "config.json";
+    private const string ApplicationDirectoryName = "CursorPhobia";
+    
+    // Path validation constants
+    private static readonly string[] ForbiddenPathElements = { ".." };
+    private static readonly char[] InvalidPathChars = Path.GetInvalidPathChars();
+    private static readonly char[] InvalidFileNameChars = Path.GetInvalidFileNameChars();
     private readonly ILogger _logger;
     private readonly JsonSerializerOptions _jsonOptions;
     
@@ -158,8 +167,11 @@ public class ConfigurationService : IConfigurationService
                 _logger.LogDebug("Created directory: {Directory}", directory);
             }
             
+            // Validate the file path to prevent directory traversal attacks
+            ValidateConfigurationPath(filePath);
+            
             // Use atomic write: write to temp file first, then rename
-            var tempFilePath = filePath + ".tmp";
+            var tempFilePath = filePath + TempFileExtension;
             
             try
             {
@@ -174,12 +186,18 @@ public class ConfigurationService : IConfigurationService
                     await writer.FlushAsync();
                 }
                 
-                // Atomic rename - this ensures we never have a partially written config file
+                // Atomic replacement - this ensures we never have a partially written config file
+                // Use File.Replace for true atomic operation that handles existing files correctly
                 if (File.Exists(filePath))
                 {
-                    File.Delete(filePath);
+                    // File.Replace handles the atomic replacement operation
+                    File.Replace(tempFilePath, filePath, null);
                 }
-                File.Move(tempFilePath, filePath);
+                else
+                {
+                    // If target doesn't exist, just move the temp file
+                    File.Move(tempFilePath, filePath);
+                }
                 
                 _logger.LogInformation("Successfully saved configuration to: {FilePath}", filePath);
             }
@@ -239,28 +257,108 @@ public class ConfigurationService : IConfigurationService
     /// <returns>Default configuration file path</returns>
     public async Task<string> GetDefaultConfigurationPathAsync()
     {
-        return await Task.Run(() =>
+        return await Task.FromResult(GetDefaultConfigurationPath());
+    }
+    
+    /// <summary>
+    /// Gets the default configuration file path (%APPDATA%\CursorPhobia\config.json)
+    /// This is a synchronous operation since no async work is performed
+    /// </summary>
+    /// <returns>Default configuration file path</returns>
+    private string GetDefaultConfigurationPath()
+    {
+        try
         {
-            try
+            var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
+            if (string.IsNullOrEmpty(appDataPath))
             {
-                var appDataPath = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
-                if (string.IsNullOrEmpty(appDataPath))
-                {
-                    _logger.LogWarning("Could not determine APPDATA folder path. Using current directory.");
-                    appDataPath = Environment.CurrentDirectory;
-                }
-                    
-                var cursorPhobiaDirectory = Path.Combine(appDataPath, "CursorPhobia");
-                var configFilePath = Path.Combine(cursorPhobiaDirectory, "config.json");
+                _logger.LogWarning("Could not determine APPDATA folder path. Using current directory.");
+                appDataPath = Environment.CurrentDirectory;
+            }
                 
-                _logger.LogDebug("Default configuration path: {ConfigPath}", configFilePath);
-                return configFilePath;
-            }
-            catch (Exception ex)
+            var cursorPhobiaDirectory = Path.Combine(appDataPath, ApplicationDirectoryName);
+            var configFilePath = Path.Combine(cursorPhobiaDirectory, DefaultConfigFileName);
+            
+            _logger.LogDebug("Default configuration path: {ConfigPath}", configFilePath);
+            return configFilePath;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error determining default configuration path. Using fallback.");
+            return Path.Combine(Environment.CurrentDirectory, ApplicationDirectoryName, DefaultConfigFileName);
+        }
+    }
+    
+    /// <summary>
+    /// Validates a configuration file path to prevent directory traversal attacks and ensure path safety
+    /// </summary>
+    /// <param name="filePath">The file path to validate</param>
+    /// <exception cref="ArgumentException">Thrown when the path contains suspicious patterns</exception>
+    private void ValidateConfigurationPath(string filePath)
+    {
+        if (string.IsNullOrWhiteSpace(filePath))
+        {
+            throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
+        }
+        
+        try
+        {
+            // Check for directory traversal patterns
+            var normalizedPath = filePath.Replace('\\', '/');
+            if (ForbiddenPathElements.Any(element => normalizedPath.Contains(element)))
             {
-                _logger.LogError(ex, "Error determining default configuration path. Using fallback.");
-                return Path.Combine(Environment.CurrentDirectory, "CursorPhobia", "config.json");
+                throw new ArgumentException($"Path contains directory traversal patterns: {filePath}", nameof(filePath));
             }
-        });
+            
+            // Check for invalid path characters (but allow drive colons on Windows)
+            var pathToCheck = filePath;
+            if (Path.IsPathRooted(filePath) && filePath.Length >= 2 && filePath[1] == ':')
+            {
+                // Skip the drive letter part for Windows paths (e.g., "C:" part)
+                pathToCheck = filePath.Substring(2);
+            }
+            
+            if (pathToCheck.IndexOfAny(InvalidPathChars) >= 0)
+            {
+                throw new ArgumentException($"Path contains invalid characters: {filePath}", nameof(filePath));
+            }
+            
+            // Check filename for invalid characters
+            var fileName = Path.GetFileName(filePath);
+            if (!string.IsNullOrEmpty(fileName) && fileName.IndexOfAny(InvalidFileNameChars) >= 0)
+            {
+                throw new ArgumentException($"Filename contains invalid characters: {fileName}", nameof(filePath));
+            }
+            
+            // Get the full path to check for suspicious absolute paths
+            var fullPath = Path.GetFullPath(filePath);
+            
+            // Prevent access to system directories (basic check)
+            var systemPath = Environment.GetFolderPath(Environment.SpecialFolder.System);
+            var windowsPath = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
+            var programFilesPath = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
+            
+            if (!string.IsNullOrEmpty(systemPath) && fullPath.StartsWith(systemPath, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException($"Access to system directory not allowed: {fullPath}", nameof(filePath));
+            }
+            
+            if (!string.IsNullOrEmpty(windowsPath) && fullPath.StartsWith(windowsPath, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException($"Access to Windows directory not allowed: {fullPath}", nameof(filePath));
+            }
+            
+            if (!string.IsNullOrEmpty(programFilesPath) && fullPath.StartsWith(programFilesPath, StringComparison.OrdinalIgnoreCase))
+            {
+                throw new ArgumentException($"Access to Program Files directory not allowed: {fullPath}", nameof(filePath));
+            }
+            
+            _logger.LogDebug("Path validation successful for: {FilePath}", filePath);
+        }
+        catch (Exception ex) when (!(ex is ArgumentException))
+        {
+            _logger.LogError(ex, "Error during path validation for: {FilePath}", filePath);
+            throw new ArgumentException($"Invalid path format: {filePath}", nameof(filePath), ex);
+        }
     }
 }

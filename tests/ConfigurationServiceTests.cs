@@ -437,6 +437,72 @@ public class ConfigurationServiceTests : IDisposable
     }
     
     [Fact]
+    public async Task SaveConfigurationAsync_WithPathTraversalAttempt_ThrowsArgumentException()
+    {
+        // Arrange
+        var config = CursorPhobiaConfiguration.CreateDefault();
+        var maliciousPath = Path.Combine(_testDirectory, "..", "..", "system32", "config.json");
+        
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ArgumentException>(async () =>
+        {
+            await _configurationService.SaveConfigurationAsync(config, maliciousPath);
+        });
+        
+        Assert.Contains("directory traversal patterns", exception.Message);
+    }
+    
+    [Fact]
+    public async Task SaveConfigurationAsync_WithInvalidPathCharacters_ThrowsArgumentException()
+    {
+        // Arrange
+        var config = CursorPhobiaConfiguration.CreateDefault();
+        var invalidPath = Path.Combine(_testDirectory, "config\x00.json"); // Contains null character which is invalid
+        
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<ArgumentException>(async () =>
+        {
+            await _configurationService.SaveConfigurationAsync(config, invalidPath);
+        });
+        
+        Assert.Contains("invalid characters", exception.Message);
+    }
+    
+    [Fact]
+    public async Task SaveConfigurationAsync_WithSystemDirectoryPath_ThrowsArgumentException()
+    {
+        // Arrange
+        var config = CursorPhobiaConfiguration.CreateDefault();
+        var systemPath = Environment.GetFolderPath(Environment.SpecialFolder.System);
+        var systemConfigPath = Path.Combine(systemPath, "test_config.json");
+        
+        // Act & Assert
+        if (!string.IsNullOrEmpty(systemPath))
+        {
+            var exception = await Assert.ThrowsAsync<ArgumentException>(async () =>
+            {
+                await _configurationService.SaveConfigurationAsync(config, systemConfigPath);
+            });
+            
+            Assert.Contains("system directory not allowed", exception.Message);
+        }
+    }
+    
+    [Fact]
+    public async Task SaveConfigurationAsync_WithValidPath_PassesValidation()
+    {
+        // Arrange
+        var config = CursorPhobiaConfiguration.CreateDefault();
+        var validPath = Path.Combine(_testDirectory, "valid", "config.json");
+        
+        // Act & Assert - Should not throw
+        await _configurationService.SaveConfigurationAsync(config, validPath);
+        
+        // Verify file was created
+        Assert.True(File.Exists(validPath));
+    }
+    
+    [Fact]
     public async Task ConfigurationService_RoundTrip_PreservesAllProperties()
     {
         // Arrange - Create a configuration with non-default values
