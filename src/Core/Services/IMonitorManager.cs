@@ -6,7 +6,7 @@ namespace CursorPhobia.Core.Services;
 /// <summary>
 /// Interface for monitor management operations
 /// </summary>
-public interface IMonitorManager
+public interface IMonitorManager : IDisposable
 {
     /// <summary>
     /// Gets all connected monitors with their information
@@ -69,4 +69,29 @@ public interface IMonitorManager
     /// <param name="windowRect">Rectangle to check</param>
     /// <returns>DPI information for the containing monitor, or default if not found</returns>
     DpiInfo GetDpiForRectangle(Rectangle windowRect);
+    
+    /// <summary>
+    /// Event raised when monitor configuration changes are detected
+    /// </summary>
+    event EventHandler<MonitorChangeEventArgs>? MonitorConfigurationChanged;
+    
+    /// <summary>
+    /// Starts monitoring for display configuration changes
+    /// </summary>
+    void StartMonitoring();
+    
+    /// <summary>
+    /// Stops monitoring for display configuration changes
+    /// </summary>
+    void StopMonitoring();
+    
+    /// <summary>
+    /// Gets whether the monitor manager is currently monitoring for changes
+    /// </summary>
+    bool IsMonitoring { get; }
+    
+    /// <summary>
+    /// Gets the time when the last monitor configuration change was detected
+    /// </summary>
+    DateTime? LastConfigurationChangeDetected { get; }
 }

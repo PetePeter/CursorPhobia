@@ -622,6 +622,23 @@ public class MockMonitorManager : MonitorManager
         var monitor = GetMonitorContaining(windowRect);
         return monitor != null ? GetMonitorDpi(monitor) : new DpiInfo();
     }
+    
+    /// <summary>
+    /// Sets the monitor list for testing configuration changes
+    /// </summary>
+    public void SetMonitorList(List<MonitorInfo> monitors)
+    {
+        _monitors.Clear();
+        _monitors.AddRange(monitors);
+    }
+    
+    /// <summary>
+    /// Simulates a monitor configuration change event
+    /// </summary>
+    public void SimulateConfigurationChange(MonitorChangeEventArgs eventArgs)
+    {
+        OnMonitorConfigurationChanged(eventArgs);
+    }
 }
 
 /// <summary>

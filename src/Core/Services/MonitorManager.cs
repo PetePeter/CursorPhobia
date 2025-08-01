@@ -2,6 +2,7 @@ using System.Drawing;
 using System.Runtime.InteropServices;
 using CursorPhobia.Core.Models;
 using CursorPhobia.Core.WindowsAPI;
+using CursorPhobia.Core.Utilities;
 using static CursorPhobia.Core.WindowsAPI.WindowsStructures;
 
 namespace CursorPhobia.Core.Services;
@@ -14,6 +15,47 @@ public class MonitorManager : IMonitorManager
     private readonly List<MonitorInfo> _cachedMonitors = new();
     private DateTime _lastCacheUpdate = DateTime.MinValue;
     private readonly TimeSpan _cacheTimeout = TimeSpan.FromSeconds(5);
+    private readonly IMonitorConfigurationWatcher? _configurationWatcher;
+    private readonly ILogger? _logger;
+    private readonly object _lockObject = new();
+    private bool _disposed;
+    
+    /// <summary>
+    /// Event raised when monitor configuration changes are detected
+    /// </summary>
+    public event EventHandler<MonitorChangeEventArgs>? MonitorConfigurationChanged;
+    
+    /// <summary>
+    /// Gets whether the monitor manager is currently monitoring for changes
+    /// </summary>
+    public bool IsMonitoring => _configurationWatcher?.IsMonitoring ?? false;
+    
+    /// <summary>
+    /// Gets the time when the last monitor configuration change was detected
+    /// </summary>
+    public DateTime? LastConfigurationChangeDetected => _configurationWatcher?.LastChangeDetected;
+    
+    /// <summary>
+    /// Default constructor for basic monitor management without change detection
+    /// </summary>
+    public MonitorManager()
+    {
+        // No configuration watcher - basic functionality only
+    }
+    
+    /// <summary>
+    /// Constructor with configuration watcher for automatic cache invalidation
+    /// </summary>
+    /// <param name="configurationWatcher">Watcher for monitor configuration changes</param>
+    /// <param name="logger">Logger for diagnostic information</param>
+    public MonitorManager(IMonitorConfigurationWatcher configurationWatcher, ILogger logger)
+    {
+        _configurationWatcher = configurationWatcher ?? throw new ArgumentNullException(nameof(configurationWatcher));
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        
+        // Subscribe to configuration changes
+        _configurationWatcher.MonitorConfigurationChanged += OnMonitorConfigurationChanged;
+    }
     
     /// <summary>
     /// Gets all connected monitors with their information
@@ -21,12 +63,18 @@ public class MonitorManager : IMonitorManager
     /// <returns>List of monitor information</returns>
     public virtual List<MonitorInfo> GetAllMonitors()
     {
-        if (DateTime.Now - _lastCacheUpdate > _cacheTimeout)
+        lock (_lockObject)
         {
-            RefreshMonitors();
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(MonitorManager));
+                
+            if (DateTime.Now - _lastCacheUpdate > _cacheTimeout)
+            {
+                RefreshMonitors();
+            }
+            
+            return new List<MonitorInfo>(_cachedMonitors);
         }
-        
-        return new List<MonitorInfo>(_cachedMonitors);
     }
     
     /// <summary>
@@ -226,6 +274,110 @@ public class MonitorManager : IMonitorManager
     {
         var monitor = GetMonitorContaining(windowRect);
         return monitor != null ? GetMonitorDpi(monitor) : new DpiInfo();
+    }
+    
+    /// <summary>
+    /// Starts monitoring for display configuration changes
+    /// </summary>
+    public void StartMonitoring()
+    {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(MonitorManager));
+            
+        if (_configurationWatcher == null)
+        {
+            _logger?.LogWarning("Cannot start monitoring: No configuration watcher available");
+            return;
+        }
+        
+        _configurationWatcher.StartMonitoring();
+        _logger?.LogInformation("MonitorManager started monitoring for configuration changes");
+    }
+    
+    /// <summary>
+    /// Stops monitoring for display configuration changes
+    /// </summary>
+    public void StopMonitoring()
+    {
+        if (_disposed || _configurationWatcher == null)
+            return;
+            
+        _configurationWatcher.StopMonitoring();
+        _logger?.LogInformation("MonitorManager stopped monitoring for configuration changes");
+    }
+    
+    /// <summary>
+    /// Raises the MonitorConfigurationChanged event
+    /// </summary>
+    /// <param name="eventArgs">Event arguments</param>
+    protected virtual void OnMonitorConfigurationChanged(MonitorChangeEventArgs eventArgs)
+    {
+        try
+        {
+            lock (_lockObject)
+            {
+                if (_disposed)
+                    return;
+                
+                // Invalidate cache immediately
+                _lastCacheUpdate = DateTime.MinValue;
+                _logger?.LogInformation($"Monitor cache invalidated due to configuration change: {eventArgs.ChangeType}");
+            }
+            
+            // Forward the event to subscribers
+            MonitorConfigurationChanged?.Invoke(this, eventArgs);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError($"Error handling monitor configuration change: {ex.Message}");
+        }
+    }
+    
+    /// <summary>
+    /// Event handler for monitor configuration changes from watcher
+    /// </summary>
+    private void OnMonitorConfigurationChanged(object? sender, MonitorChangeEventArgs e)
+    {
+        OnMonitorConfigurationChanged(e);
+    }
+    
+    /// <summary>
+    /// Disposes the monitor manager
+    /// </summary>
+    public void Dispose()
+    {
+        Dispose(true);
+        GC.SuppressFinalize(this);
+    }
+    
+    /// <summary>
+    /// Protected dispose method
+    /// </summary>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed)
+            return;
+        
+        if (disposing)
+        {
+            lock (_lockObject)
+            {
+                try
+                {
+                    if (_configurationWatcher != null)
+                    {
+                        _configurationWatcher.MonitorConfigurationChanged -= OnMonitorConfigurationChanged;
+                        _configurationWatcher.Dispose();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger?.LogError($"Error during MonitorManager disposal: {ex.Message}");
+                }
+                
+                _disposed = true;
+            }
+        }
     }
 }
 
