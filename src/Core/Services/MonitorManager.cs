@@ -17,7 +17,8 @@ public class MonitorManager : IMonitorManager
     private readonly TimeSpan _cacheTimeout = TimeSpan.FromSeconds(5);
     private readonly IMonitorConfigurationWatcher? _configurationWatcher;
     private readonly ILogger? _logger;
-    private readonly object _lockObject = new();
+    private readonly IPerformanceMonitoringService? _performanceMonitor;
+    private readonly ReaderWriterLockSlim _cacheLock = new();
     private bool _disposed;
     
     /// <summary>
@@ -48,10 +49,12 @@ public class MonitorManager : IMonitorManager
     /// </summary>
     /// <param name="configurationWatcher">Watcher for monitor configuration changes</param>
     /// <param name="logger">Logger for diagnostic information</param>
-    public MonitorManager(IMonitorConfigurationWatcher configurationWatcher, ILogger logger)
+    /// <param name="performanceMonitor">Optional performance monitoring service</param>
+    public MonitorManager(IMonitorConfigurationWatcher configurationWatcher, ILogger logger, IPerformanceMonitoringService? performanceMonitor = null)
     {
         _configurationWatcher = configurationWatcher ?? throw new ArgumentNullException(nameof(configurationWatcher));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _performanceMonitor = performanceMonitor;
         
         // Subscribe to configuration changes
         _configurationWatcher.MonitorConfigurationChanged += OnMonitorConfigurationChanged;
@@ -63,17 +66,56 @@ public class MonitorManager : IMonitorManager
     /// <returns>List of monitor information</returns>
     public virtual List<MonitorInfo> GetAllMonitors()
     {
-        lock (_lockObject)
+        using var tracker = _performanceMonitor?.TrackMetric("MonitorManager.GetAllMonitors");
+        
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(MonitorManager));
+        
+        try
         {
+            _cacheLock.EnterReadLock();
+            
             if (_disposed)
                 throw new ObjectDisposedException(nameof(MonitorManager));
                 
+            // Check if cache needs refresh under read lock first
+            bool needsRefresh = DateTime.Now - _lastCacheUpdate > _cacheTimeout;
+            
+            if (!needsRefresh)
+            {
+                _performanceMonitor?.IncrementCounter("MonitorManager.CacheHits");
+                return new List<MonitorInfo>(_cachedMonitors);
+            }
+        }
+        finally
+        {
+            _cacheLock.ExitReadLock();
+        }
+        
+        // Need to refresh - upgrade to write lock
+        _performanceMonitor?.IncrementCounter("MonitorManager.CacheMisses");
+        
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(MonitorManager));
+        
+        try
+        {
+            _cacheLock.EnterWriteLock();
+            
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(MonitorManager));
+                
+            // Double-check pattern - another thread might have refreshed while we waited
             if (DateTime.Now - _lastCacheUpdate > _cacheTimeout)
             {
                 RefreshMonitors();
             }
             
             return new List<MonitorInfo>(_cachedMonitors);
+        }
+        finally
+        {
+            _cacheLock.ExitWriteLock();
         }
     }
     
@@ -187,36 +229,77 @@ public class MonitorManager : IMonitorManager
     
     /// <summary>
     /// Refreshes the monitor cache by enumerating all displays
+    /// NOTE: This method must be called while holding a write lock on _cacheLock
     /// </summary>
     private void RefreshMonitors()
     {
-        _cachedMonitors.Clear();
+        using var tracker = _performanceMonitor?.TrackMetric("MonitorManager.RefreshMonitors");
         
-        var monitors = new List<MonitorInfo>();
-        var callback = new MonitorEnumProc(EnumerateMonitorsCallback);
-        
-        bool EnumerateMonitorsCallback(IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData)
+        try
         {
-            var monitorInfo = MONITORINFO.Create();
-            if (User32.GetMonitorInfo(hMonitor, ref monitorInfo))
+            _cachedMonitors.Clear();
+            
+            var monitors = new List<MonitorInfo>();
+            var errorCount = 0;
+            var callback = new MonitorEnumProc(EnumerateMonitorsCallback);
+            
+            bool EnumerateMonitorsCallback(IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData)
             {
-                var monitor = new MonitorInfo(
-                    hMonitor,
-                    monitorInfo.rcMonitor.ToRectangle(),
-                    monitorInfo.rcWork.ToRectangle(),
-                    (monitorInfo.dwFlags & MonitorFlags.MONITORINFOF_PRIMARY) != 0
-                );
+                try
+                {
+                    var monitorInfo = MONITORINFO.Create();
+                    if (User32.GetMonitorInfo(hMonitor, ref monitorInfo))
+                    {
+                        var monitor = new MonitorInfo(
+                            hMonitor,
+                            monitorInfo.rcMonitor.ToRectangle(),
+                            monitorInfo.rcWork.ToRectangle(),
+                            (monitorInfo.dwFlags & MonitorFlags.MONITORINFOF_PRIMARY) != 0
+                        );
+                        
+                        monitors.Add(monitor);
+                    }
+                    else
+                    {
+                        errorCount++;
+                        _logger?.LogWarning($"Failed to get monitor info for handle {hMonitor}");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    errorCount++;
+                    _logger?.LogWarning($"Error enumerating monitor {hMonitor}: {ex.Message}");
+                }
                 
-                monitors.Add(monitor);
+                return true; // Continue enumeration
             }
             
-            return true; // Continue enumeration
+            bool enumResult = User32.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, callback, IntPtr.Zero);
+            if (!enumResult)
+            {
+                _logger?.LogWarning("EnumDisplayMonitors returned false - monitor enumeration may be incomplete");
+                _performanceMonitor?.IncrementCounter("MonitorManager.EnumerationFailures");
+            }
+            
+            _cachedMonitors.AddRange(monitors);
+            _lastCacheUpdate = DateTime.Now;
+            
+            _performanceMonitor?.IncrementCounter("MonitorManager.CacheRefreshes");
+            _performanceMonitor?.IncrementCounter("MonitorManager.MonitorsDetected", monitors.Count);
+            
+            if (errorCount > 0)
+            {
+                _performanceMonitor?.IncrementCounter("MonitorManager.EnumerationErrors", errorCount);
+            }
+            
+            _logger?.LogDebug($"Monitor cache refreshed with {monitors.Count} monitors ({errorCount} errors)");
         }
-        
-        User32.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, callback, IntPtr.Zero);
-        
-        _cachedMonitors.AddRange(monitors);
-        _lastCacheUpdate = DateTime.Now;
+        catch (Exception ex)
+        {
+            _performanceMonitor?.IncrementCounter("MonitorManager.CriticalRefreshErrors");
+            _logger?.LogError($"Critical error during monitor refresh: {ex.Message}");
+            // Don't update _lastCacheUpdate on error so we'll retry on next call
+        }
     }
     
     /// <summary>
@@ -251,7 +334,20 @@ public class MonitorManager : IMonitorManager
     /// <returns>DPI information for the monitor</returns>
     public virtual DpiInfo GetMonitorDpi(MonitorInfo monitor)
     {
-        return DpiInfo.FromMonitor(monitor.monitorHandle);
+        using var tracker = _performanceMonitor?.TrackMetric("MonitorManager.GetMonitorDpi");
+        
+        try
+        {
+            var dpiInfo = DpiInfo.FromMonitor(monitor.monitorHandle);
+            _performanceMonitor?.IncrementCounter("MonitorManager.DpiQueriesSuccess");
+            return dpiInfo;
+        }
+        catch (Exception ex)
+        {
+            _performanceMonitor?.IncrementCounter("MonitorManager.DpiQueriesFailure");
+            _logger?.LogWarning($"Failed to get DPI for monitor {monitor.monitorHandle}: {ex.Message}");
+            return new DpiInfo(); // Return default DPI on error
+        }
     }
     
     /// <summary>
@@ -312,24 +408,37 @@ public class MonitorManager : IMonitorManager
     /// <param name="eventArgs">Event arguments</param>
     protected virtual void OnMonitorConfigurationChanged(MonitorChangeEventArgs eventArgs)
     {
+        if (_disposed)
+            return;
+            
         try
         {
-            lock (_lockObject)
-            {
-                if (_disposed)
-                    return;
-                
-                // Invalidate cache immediately
-                _lastCacheUpdate = DateTime.MinValue;
-                _logger?.LogInformation($"Monitor cache invalidated due to configuration change: {eventArgs.ChangeType}");
-            }
+            _cacheLock.EnterWriteLock();
             
-            // Forward the event to subscribers
+            if (_disposed)
+                return;
+            
+            // Invalidate cache immediately
+            _lastCacheUpdate = DateTime.MinValue;
+            _logger?.LogInformation($"Monitor cache invalidated due to configuration change: {eventArgs.ChangeType}");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError($"Error invalidating monitor cache: {ex.Message}");
+        }
+        finally
+        {
+            _cacheLock.ExitWriteLock();
+        }
+        
+        try
+        {
+            // Forward the event to subscribers outside of lock to prevent deadlocks
             MonitorConfigurationChanged?.Invoke(this, eventArgs);
         }
         catch (Exception ex)
         {
-            _logger?.LogError($"Error handling monitor configuration change: {ex.Message}");
+            _logger?.LogError($"Error notifying monitor configuration change subscribers: {ex.Message}");
         }
     }
     
@@ -360,8 +469,10 @@ public class MonitorManager : IMonitorManager
         
         if (disposing)
         {
-            lock (_lockObject)
+            try
             {
+                _cacheLock.EnterWriteLock();
+                
                 try
                 {
                     if (_configurationWatcher != null)
@@ -376,6 +487,11 @@ public class MonitorManager : IMonitorManager
                 }
                 
                 _disposed = true;
+            }
+            finally
+            {
+                _cacheLock.ExitWriteLock();
+                _cacheLock.Dispose();
             }
         }
     }

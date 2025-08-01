@@ -15,7 +15,7 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
     private readonly IConfigurationService _configurationService;
     private readonly ILogger _logger;
 
-    private readonly object _lockObject = new();
+    private readonly ReaderWriterLockSlim _stateLock = new();
     private bool _disposed;
     private List<MonitorInfo> _lastKnownMonitors = new();
 
@@ -27,7 +27,21 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
     /// <summary>
     /// Gets whether the manager is currently monitoring for changes
     /// </summary>
-    public bool IsMonitoring => _monitorWatcher.IsMonitoring;
+    public bool IsMonitoring 
+    { 
+        get 
+        {
+            try
+            {
+                _stateLock.EnterReadLock();
+                return !_disposed && _monitorWatcher.IsMonitoring;
+            }
+            finally
+            {
+                _stateLock.ExitReadLock();
+            }
+        }
+    }
 
     /// <summary>
     /// Creates a new PerMonitorConfigurationManager instance
@@ -59,8 +73,10 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
     /// </summary>
     public void StartMonitoring()
     {
-        lock (_lockObject)
+        try
         {
+            _stateLock.EnterWriteLock();
+            
             if (_disposed)
                 throw new ObjectDisposedException(nameof(PerMonitorConfigurationManager));
 
@@ -81,6 +97,10 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
                 throw;
             }
         }
+        finally
+        {
+            _stateLock.ExitWriteLock();
+        }
     }
 
     /// <summary>
@@ -88,8 +108,10 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
     /// </summary>
     public void StopMonitoring()
     {
-        lock (_lockObject)
+        try
         {
+            _stateLock.EnterWriteLock();
+            
             if (_disposed)
                 return;
 
@@ -105,6 +127,10 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
                 _logger.LogError($"Error stopping per-monitor configuration monitoring: {ex.Message}");
             }
         }
+        finally
+        {
+            _stateLock.ExitWriteLock();
+        }
     }
 
     /// <summary>
@@ -114,13 +140,41 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
     /// <returns>Migrated configuration</returns>
     public async Task<CursorPhobiaConfiguration> MigrateCurrentConfigurationAsync(CursorPhobiaConfiguration configuration)
     {
+        List<MonitorInfo> lastKnownMonitors;
+        
+        try
+        {
+            _stateLock.EnterReadLock();
+            
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(PerMonitorConfigurationManager));
+                
+            lastKnownMonitors = new List<MonitorInfo>(_lastKnownMonitors);
+        }
+        finally
+        {
+            _stateLock.ExitReadLock();
+        }
+        
         try
         {
             var currentMonitors = _monitorManager.GetAllMonitors();
-            var migratedConfiguration = _settingsMigrator.MigrateSettings(configuration, _lastKnownMonitors, currentMonitors);
+            var migratedConfiguration = _settingsMigrator.MigrateSettings(configuration, lastKnownMonitors, currentMonitors);
             
-            // Update our known monitors
-            _lastKnownMonitors = currentMonitors;
+            // Update our known monitors under write lock
+            try
+            {
+                _stateLock.EnterWriteLock();
+                
+                if (!_disposed)
+                {
+                    _lastKnownMonitors = currentMonitors;
+                }
+            }
+            finally
+            {
+                _stateLock.ExitWriteLock();
+            }
             
             _logger.LogInformation("Manual per-monitor configuration migration completed");
             return migratedConfiguration;
@@ -159,10 +213,20 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
     /// </summary>
     private async void OnMonitorConfigurationChanged(object? sender, MonitorChangeEventArgs e)
     {
-        lock (_lockObject)
+        List<MonitorInfo> oldMonitors;
+        
+        try
         {
+            _stateLock.EnterReadLock();
+            
             if (_disposed)
                 return;
+                
+            oldMonitors = new List<MonitorInfo>(_lastKnownMonitors);
+        }
+        finally
+        {
+            _stateLock.ExitReadLock();
         }
 
         try
@@ -174,7 +238,6 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
             var currentConfiguration = await _configurationService.LoadConfigurationAsync(configPath);
 
             // Perform migration
-            var oldMonitors = _lastKnownMonitors;
             var newMonitors = e.CurrentMonitors.ToList();
             
             var migratedConfiguration = _settingsMigrator.MigrateSettings(currentConfiguration, oldMonitors, newMonitors);
@@ -187,10 +250,22 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
             // Save the migrated configuration
             await _configurationService.SaveConfigurationAsync(migratedConfiguration, configPath);
 
-            // Update our tracking
-            _lastKnownMonitors = new List<MonitorInfo>(newMonitors);
+            // Update our tracking under write lock
+            try
+            {
+                _stateLock.EnterWriteLock();
+                
+                if (!_disposed)
+                {
+                    _lastKnownMonitors = new List<MonitorInfo>(newMonitors);
+                }
+            }
+            finally
+            {
+                _stateLock.ExitWriteLock();
+            }
 
-            // Raise migration event
+            // Raise migration event (outside lock to prevent deadlocks)
             var migrationEventArgs = new PerMonitorSettingsMigratedEventArgs(
                 currentConfiguration,
                 migratedConfiguration,
@@ -199,7 +274,14 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
                 orphanedCount,
                 newMonitorCount);
 
-            SettingsMigrated?.Invoke(this, migrationEventArgs);
+            try
+            {
+                SettingsMigrated?.Invoke(this, migrationEventArgs);
+            }
+            catch (Exception eventEx)
+            {
+                _logger.LogError($"Error notifying settings migration subscribers: {eventEx.Message}");
+            }
 
             _logger.LogInformation("Per-monitor settings migration completed: {Migrated} migrated, {Orphaned} orphaned, {New} new",
                 migratedCount, orphanedCount, newMonitorCount);
@@ -255,8 +337,10 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
     /// </summary>
     public void Dispose()
     {
-        lock (_lockObject)
+        try
         {
+            _stateLock.EnterWriteLock();
+            
             if (_disposed)
                 return;
 
@@ -266,7 +350,8 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
                 _monitorWatcher.MonitorConfigurationChanged -= OnMonitorConfigurationChanged;
 
                 // Stop monitoring
-                StopMonitoring();
+                _monitorWatcher.StopMonitoring();
+                _lastKnownMonitors.Clear();
 
                 _disposed = true;
                 _logger.LogDebug("PerMonitorConfigurationManager disposed");
@@ -275,6 +360,11 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
             {
                 _logger.LogError($"Error during PerMonitorConfigurationManager disposal: {ex.Message}");
             }
+        }
+        finally
+        {
+            _stateLock.ExitWriteLock();
+            _stateLock.Dispose();
         }
 
         GC.SuppressFinalize(this);
