@@ -37,6 +37,8 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
     private readonly Stopwatch _performanceStopwatch = Stopwatch.StartNew();
     private long _updateCount = 0;
     private long _totalUpdateTimeMs = 0;
+    private long _successfulUpdates = 0;
+    private long _failedUpdates = 0;
     
     /// <summary>
     /// Gets whether the engine is currently running
@@ -169,6 +171,8 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
                 _performanceStopwatch.Restart();
                 _updateCount = 0;
                 _totalUpdateTimeMs = 0;
+                _successfulUpdates = 0;
+                _failedUpdates = 0;
             }
             
             _logger.LogInformation("CursorPhobiaEngine started successfully. Tracking {WindowCount} windows", 
@@ -323,10 +327,12 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
             return;
         
         var updateStartTime = Stopwatch.StartNew();
+        var updateSuccessful = false;
         
         try
         {
             await ProcessUpdateCycleAsync();
+            updateSuccessful = true;
         }
         catch (Exception ex)
         {
@@ -338,6 +344,11 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
             updateStartTime.Stop();
             _updateCount++;
             _totalUpdateTimeMs += updateStartTime.ElapsedMilliseconds;
+            
+            if (updateSuccessful)
+                _successfulUpdates++;
+            else
+                _failedUpdates++;
             
             // Log performance warnings if updates are taking too long
             if (updateStartTime.ElapsedMilliseconds > _config.MaxUpdateIntervalMs)
@@ -519,7 +530,9 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
             UpdateCount = _updateCount,
             AverageUpdateTimeMs = AverageUpdateTimeMs,
             TrackedWindowCount = TrackedWindowCount,
-            ConfiguredUpdateIntervalMs = _config.UpdateIntervalMs
+            ConfiguredUpdateIntervalMs = _config.UpdateIntervalMs,
+            SuccessfulUpdates = _successfulUpdates,
+            FailedUpdates = _failedUpdates
         };
     }
     
@@ -727,6 +740,21 @@ public class EnginePerformanceStats
     /// Configured update interval in milliseconds
     /// </summary>
     public int ConfiguredUpdateIntervalMs { get; set; }
+    
+    /// <summary>
+    /// Total number of successful update cycles
+    /// </summary>
+    public long SuccessfulUpdates { get; set; }
+    
+    /// <summary>
+    /// Total number of failed update cycles
+    /// </summary>
+    public long FailedUpdates { get; set; }
+    
+    /// <summary>
+    /// Total number of update cycles (successful + failed)
+    /// </summary>
+    public long TotalUpdates => SuccessfulUpdates + FailedUpdates;
     
     /// <summary>
     /// Calculated updates per second based on configured interval

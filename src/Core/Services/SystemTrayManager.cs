@@ -28,6 +28,10 @@ public class SystemTrayManager : ISystemTrayManager
     /// Event raised when the user requests to toggle enable/disable from the tray menu
     /// </summary>
     public event EventHandler? ToggleEngineRequested;
+    public event EventHandler<SnoozeRequestedEventArgs>? SnoozeRequested;
+    public event EventHandler? CustomSnoozeRequested;
+    public event EventHandler? EndSnoozeRequested;
+    public event EventHandler? PerformanceStatsRequested;
     
     /// <summary>
     /// Event raised when the user requests to open settings from the tray menu
@@ -314,6 +318,38 @@ public class SystemTrayManager : ISystemTrayManager
         _toggleMenuItem.Click += (sender, e) => ToggleEngineRequested?.Invoke(this, EventArgs.Empty);
         _contextMenu.Items.Add(_toggleMenuItem);
         
+        // Snooze submenu
+        var snoozeMenuItem = new ToolStripMenuItem("Sn&ooze");
+        
+        // Quick snooze options
+        var snooze5minItem = new ToolStripMenuItem("5 minutes");
+        snooze5minItem.Click += (sender, e) => SnoozeRequested?.Invoke(this, new SnoozeRequestedEventArgs(TimeSpan.FromMinutes(5)));
+        snoozeMenuItem.DropDownItems.Add(snooze5minItem);
+        
+        var snooze15minItem = new ToolStripMenuItem("15 minutes");
+        snooze15minItem.Click += (sender, e) => SnoozeRequested?.Invoke(this, new SnoozeRequestedEventArgs(TimeSpan.FromMinutes(15)));
+        snoozeMenuItem.DropDownItems.Add(snooze15minItem);
+        
+        var snooze30minItem = new ToolStripMenuItem("30 minutes");
+        snooze30minItem.Click += (sender, e) => SnoozeRequested?.Invoke(this, new SnoozeRequestedEventArgs(TimeSpan.FromMinutes(30)));
+        snoozeMenuItem.DropDownItems.Add(snooze30minItem);
+        
+        var snooze1hourItem = new ToolStripMenuItem("1 hour");
+        snooze1hourItem.Click += (sender, e) => SnoozeRequested?.Invoke(this, new SnoozeRequestedEventArgs(TimeSpan.FromHours(1)));
+        snoozeMenuItem.DropDownItems.Add(snooze1hourItem);
+        
+        snoozeMenuItem.DropDownItems.Add(new ToolStripSeparator());
+        
+        var snoozeCustomItem = new ToolStripMenuItem("Custom...");
+        snoozeCustomItem.Click += (sender, e) => CustomSnoozeRequested?.Invoke(this, EventArgs.Empty);
+        snoozeMenuItem.DropDownItems.Add(snoozeCustomItem);
+        
+        var endSnoozeItem = new ToolStripMenuItem("End Snooze");
+        endSnoozeItem.Click += (sender, e) => EndSnoozeRequested?.Invoke(this, EventArgs.Empty);
+        snoozeMenuItem.DropDownItems.Add(endSnoozeItem);
+        
+        _contextMenu.Items.Add(snoozeMenuItem);
+        
         // Separator
         _contextMenu.Items.Add(new ToolStripSeparator());
         
@@ -321,6 +357,11 @@ public class SystemTrayManager : ISystemTrayManager
         var settingsMenuItem = new ToolStripMenuItem("&Settings...");
         settingsMenuItem.Click += (sender, e) => SettingsRequested?.Invoke(this, EventArgs.Empty);
         _contextMenu.Items.Add(settingsMenuItem);
+        
+        // Performance Stats
+        var statsMenuItem = new ToolStripMenuItem("&Performance Stats...");
+        statsMenuItem.Click += (sender, e) => PerformanceStatsRequested?.Invoke(this, EventArgs.Empty);
+        _contextMenu.Items.Add(statsMenuItem);
         
         // About
         var aboutMenuItem = new ToolStripMenuItem("&About CursorPhobia...");
@@ -463,5 +504,18 @@ public class SystemTrayManager : ISystemTrayManager
         _contextMenu?.Dispose();
         _contextMenu = null;
         _toggleMenuItem = null;
+    }
+}
+
+/// <summary>
+/// Event arguments for snooze requests
+/// </summary>
+public class SnoozeRequestedEventArgs : EventArgs
+{
+    public TimeSpan Duration { get; }
+
+    public SnoozeRequestedEventArgs(TimeSpan duration)
+    {
+        Duration = duration;
     }
 }

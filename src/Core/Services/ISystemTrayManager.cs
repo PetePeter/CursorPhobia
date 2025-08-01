@@ -29,6 +29,26 @@ public interface ISystemTrayManager : IDisposable
     event EventHandler? ExitRequested;
     
     /// <summary>
+    /// Event raised when the user requests a snooze with specific duration from the tray menu
+    /// </summary>
+    event EventHandler<SnoozeRequestedEventArgs>? SnoozeRequested;
+    
+    /// <summary>
+    /// Event raised when the user requests custom snooze dialog from the tray menu
+    /// </summary>
+    event EventHandler? CustomSnoozeRequested;
+    
+    /// <summary>
+    /// Event raised when the user requests to end current snooze from the tray menu
+    /// </summary>
+    event EventHandler? EndSnoozeRequested;
+    
+    /// <summary>
+    /// Event raised when the user requests performance stats dialog from the tray menu
+    /// </summary>
+    event EventHandler? PerformanceStatsRequested;
+    
+    /// <summary>
     /// Gets whether the tray manager is currently initialized and visible
     /// </summary>
     bool IsInitialized { get; }

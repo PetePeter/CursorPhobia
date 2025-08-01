@@ -14,6 +14,7 @@ namespace CursorPhobia.Core.UI.Forms
         // General Tab Controls
         private CheckBox enableCtrlOverrideCheckBox;
         private CheckBox applyToAllWindowsCheckBox;
+        private CheckBox startWithWindowsCheckBox;
         
         // Behavior Tab Controls
         private TrackBar proximityThresholdTrackBar;
@@ -129,20 +130,31 @@ namespace CursorPhobia.Core.UI.Forms
                 UseVisualStyleBackColor = true
             };
 
+            // Start with Windows
+            startWithWindowsCheckBox = new CheckBox
+            {
+                Text = "Start with Windows (auto-start on system boot)",
+                Location = new Point(12, 72),
+                Size = new Size(400, 20),
+                UseVisualStyleBackColor = true
+            };
+
             // Add help text
             var generalHelpLabel = new Label
             {
                 Text = "General settings control the basic behavior of CursorPhobia.\n\n" +
                        "• CTRL Override: Hold CTRL to temporarily disable window pushing\n" +
-                       "• All Windows: Apply to all windows, not just the active window",
-                Location = new Point(12, 80),
-                Size = new Size(550, 60),
+                       "• All Windows: Apply to all windows, not just the active window\n" +
+                       "• Start with Windows: Automatically start CursorPhobia when Windows starts",
+                Location = new Point(12, 110),
+                Size = new Size(550, 80),
                 ForeColor = SystemColors.GrayText
             };
 
             generalTabPage.Controls.AddRange(new Control[] {
                 enableCtrlOverrideCheckBox,
                 applyToAllWindowsCheckBox,
+                startWithWindowsCheckBox,
                 generalHelpLabel
             });
         }

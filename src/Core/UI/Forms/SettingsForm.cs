@@ -364,6 +364,9 @@ public partial class SettingsForm : Form
         applyToAllWindowsCheckBox.DataBindings.Add(
             nameof(CheckBox.Checked), _viewModel, nameof(_viewModel.ApplyToAllWindows), false, DataSourceUpdateMode.OnPropertyChanged);
 
+        startWithWindowsCheckBox.DataBindings.Add(
+            nameof(CheckBox.Checked), _viewModel, nameof(_viewModel.StartWithWindows), false, DataSourceUpdateMode.OnPropertyChanged);
+
         // Behavior Tab Bindings
         proximityThresholdTrackBar.DataBindings.Add(
             nameof(TrackBar.Value), _viewModel, nameof(_viewModel.ProximityThreshold), false, DataSourceUpdateMode.OnPropertyChanged);

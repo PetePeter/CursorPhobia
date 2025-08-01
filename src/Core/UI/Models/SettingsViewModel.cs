@@ -156,6 +156,22 @@ public class SettingsViewModel : INotifyPropertyChanged
         set => SetConfigProperty(_config.ScreenEdgeBuffer, value, v => _config.ScreenEdgeBuffer = v);
     }
 
+    // Auto-start functionality (not part of configuration, handled separately)
+    private bool _startWithWindows;
+    public bool StartWithWindows
+    {
+        get => _startWithWindows;
+        set
+        {
+            if (_startWithWindows != value)
+            {
+                _startWithWindows = value;
+                OnPropertyChanged();
+                HasUnsavedChanges = true;
+            }
+        }
+    }
+
     /// <summary>
     /// Validates the current configuration
     /// </summary>

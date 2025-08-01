@@ -17,6 +17,8 @@ class Program
     private static Logger? _logger;
     private static ISystemTrayManager? _trayManager;
     private static IApplicationLifecycleManager? _lifecycleManager;
+    private static IStartupManager? _startupManager;
+    private static ISnoozeManager? _snoozeManager;
     private static ICursorPhobiaEngine? _engine;
     
     static async Task Main(string[] args)
@@ -150,6 +152,8 @@ class Program
         // System tray and lifecycle management (Phase A WI#5)
         services.AddSingleton<ISystemTrayManager, SystemTrayManager>();
         services.AddSingleton<IApplicationLifecycleManager, ApplicationLifecycleManager>();
+        services.AddSingleton<IStartupManager, StartupManager>();
+        services.AddSingleton<ISnoozeManager, SnoozeManager>();
         
         _serviceProvider = services.BuildServiceProvider();
     }
@@ -570,6 +574,8 @@ class Program
             // Initialize services
             _trayManager = _serviceProvider!.GetRequiredService<ISystemTrayManager>();
             _lifecycleManager = _serviceProvider!.GetRequiredService<IApplicationLifecycleManager>();
+            _startupManager = _serviceProvider!.GetRequiredService<IStartupManager>();
+            _snoozeManager = _serviceProvider!.GetRequiredService<ISnoozeManager>();
             _engine = _serviceProvider!.GetRequiredService<ICursorPhobiaEngine>();
             
             await SetupTrayIntegration();
@@ -617,7 +623,11 @@ class Program
         
         // Setup tray event handlers
         _trayManager.ToggleEngineRequested += OnTrayToggleEngineRequested;
+        _trayManager.SnoozeRequested += OnTraySnoozeRequested;
+        _trayManager.CustomSnoozeRequested += OnTrayCustomSnoozeRequested;
+        _trayManager.EndSnoozeRequested += OnTrayEndSnoozeRequested;
         _trayManager.SettingsRequested += OnTraySettingsRequested;
+        _trayManager.PerformanceStatsRequested += OnTrayPerformanceStatsRequested;
         _trayManager.AboutRequested += OnTrayAboutRequested;
         _trayManager.ExitRequested += OnTrayExitRequested;
         
@@ -653,7 +663,11 @@ class Program
             if (_trayManager != null)
             {
                 _trayManager.ToggleEngineRequested -= OnTrayToggleEngineRequested;
+                _trayManager.SnoozeRequested -= OnTraySnoozeRequested;
+                _trayManager.CustomSnoozeRequested -= OnTrayCustomSnoozeRequested;
+                _trayManager.EndSnoozeRequested -= OnTrayEndSnoozeRequested;
                 _trayManager.SettingsRequested -= OnTraySettingsRequested;
+                _trayManager.PerformanceStatsRequested -= OnTrayPerformanceStatsRequested;
                 _trayManager.AboutRequested -= OnTrayAboutRequested;
                 _trayManager.ExitRequested -= OnTrayExitRequested;
                 
@@ -753,6 +767,91 @@ class Program
             Application.Exit();
         }
     }
+
+    private static async void OnTraySnoozeRequested(object? sender, SnoozeRequestedEventArgs e)
+    {
+        try
+        {
+            _logger?.LogInformation("Snooze requested from tray: {Duration}", e.Duration);
+            
+            if (_snoozeManager != null)
+            {
+                await _snoozeManager.SnoozeAsync(e.Duration);
+                await _trayManager!.ShowNotificationAsync("CursorPhobia", 
+                    $"Snoozed for {FormatTimeSpan(e.Duration)}", false);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error processing snooze request");
+            await _trayManager!.ShowNotificationAsync("CursorPhobia", 
+                $"Snooze error: {ex.Message}", true);
+        }
+    }
+
+    private static void OnTrayCustomSnoozeRequested(object? sender, EventArgs e)
+    {
+        try
+        {
+            _logger?.LogInformation("Custom snooze requested from tray");
+            
+            // Show a custom snooze dialog
+            using var snoozeForm = new CustomSnoozeDialog();
+            if (snoozeForm.ShowDialog() == DialogResult.OK)
+            {
+                Task.Run(async () =>
+                {
+                    await _snoozeManager!.SnoozeAsync(snoozeForm.SelectedDuration);
+                    await _trayManager!.ShowNotificationAsync("CursorPhobia", 
+                        $"Snoozed for {FormatTimeSpan(snoozeForm.SelectedDuration)}", false);
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error showing custom snooze dialog");
+            Task.Run(async () => await _trayManager!.ShowNotificationAsync("CursorPhobia", 
+                $"Custom snooze error: {ex.Message}", true));
+        }
+    }
+
+    private static async void OnTrayEndSnoozeRequested(object? sender, EventArgs e)
+    {
+        try
+        {
+            _logger?.LogInformation("End snooze requested from tray");
+            
+            if (_snoozeManager != null)
+            {
+                await _snoozeManager.EndSnoozeAsync();
+                await _trayManager!.ShowNotificationAsync("CursorPhobia", "Snooze ended", false);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error ending snooze");
+            await _trayManager!.ShowNotificationAsync("CursorPhobia", 
+                $"End snooze error: {ex.Message}", true);
+        }
+    }
+
+    private static void OnTrayPerformanceStatsRequested(object? sender, EventArgs e)
+    {
+        try
+        {
+            _logger?.LogInformation("Performance stats requested from tray");
+            
+            // Show performance statistics dialog
+            using var statsForm = new PerformanceStatsDialog(_engine!, _logger!);
+            statsForm.ShowDialog();
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error showing performance stats");
+            Task.Run(async () => await _trayManager!.ShowNotificationAsync("CursorPhobia", 
+                $"Stats error: {ex.Message}", true));
+        }
+    }
     
     // Engine event handlers for tray notifications
     private static async void OnEngineStateChanged(object? sender, EngineStateChangedEventArgs e)
@@ -809,5 +908,122 @@ class Program
         {
             Application.Exit();
         }
+    }
+
+    /// <summary>
+    /// Formats a TimeSpan for user-friendly display
+    /// </summary>
+    private static string FormatTimeSpan(TimeSpan timeSpan)
+    {
+        if (timeSpan.TotalDays >= 1)
+            return $"{(int)timeSpan.TotalDays}d {timeSpan.Hours}h";
+        else if (timeSpan.TotalHours >= 1)
+            return $"{(int)timeSpan.TotalHours}h {timeSpan.Minutes}m";
+        else if (timeSpan.TotalMinutes >= 1)
+            return $"{timeSpan.Minutes}m";
+        else
+            return $"{timeSpan.Seconds}s";
+    }
+}
+
+/// <summary>
+/// Simple custom snooze dialog for Phase C
+/// </summary>
+public class CustomSnoozeDialog : Form
+{
+    public TimeSpan SelectedDuration { get; private set; } = TimeSpan.FromMinutes(30);
+
+    public CustomSnoozeDialog()
+    {
+        Text = "Custom Snooze";
+        Size = new Size(300, 150);
+        StartPosition = FormStartPosition.CenterScreen;
+        FormBorderStyle = FormBorderStyle.FixedDialog;
+        MaximizeBox = false;
+        MinimizeBox = false;
+
+        var label = new Label
+        {
+            Text = "Snooze for (minutes):",
+            Location = new Point(10, 20),
+            Size = new Size(120, 20)
+        };
+
+        var numericUpDown = new NumericUpDown
+        {
+            Location = new Point(140, 18),
+            Size = new Size(80, 20),
+            Minimum = 1,
+            Maximum = 1440, // 24 hours
+            Value = 30
+        };
+
+        var okButton = new Button
+        {
+            Text = "OK",
+            Location = new Point(140, 60),
+            Size = new Size(75, 23),
+            DialogResult = DialogResult.OK
+        };
+
+        var cancelButton = new Button
+        {
+            Text = "Cancel",
+            Location = new Point(225, 60),
+            Size = new Size(75, 23),
+            DialogResult = DialogResult.Cancel
+        };
+
+        okButton.Click += (s, e) => {
+            SelectedDuration = TimeSpan.FromMinutes((double)numericUpDown.Value);
+        };
+
+        Controls.AddRange(new Control[] { label, numericUpDown, okButton, cancelButton });
+    }
+}
+
+/// <summary>
+/// Simple performance statistics dialog for Phase C
+/// </summary>
+public class PerformanceStatsDialog : Form
+{
+    public PerformanceStatsDialog(ICursorPhobiaEngine engine, Logger logger)
+    {
+        Text = "CursorPhobia Performance Statistics";
+        Size = new Size(400, 300);
+        StartPosition = FormStartPosition.CenterScreen;
+        FormBorderStyle = FormBorderStyle.Sizable;
+
+        var textBox = new TextBox
+        {
+            Multiline = true,
+            ReadOnly = true,
+            ScrollBars = ScrollBars.Vertical,
+            Dock = DockStyle.Fill,
+            Font = new Font("Consolas", 9)
+        };
+
+        var stats = new System.Text.StringBuilder();
+        stats.AppendLine("CursorPhobia Performance Statistics");
+        stats.AppendLine("=====================================");
+        stats.AppendLine();
+        stats.AppendLine($"Engine Status: {(engine.IsRunning ? "Running" : "Stopped")}");
+        stats.AppendLine($"Tracked Windows: {engine.TrackedWindowCount}");
+        stats.AppendLine($"Average Update Time: {engine.AverageUpdateTimeMs:F2} ms");
+        stats.AppendLine();
+        
+        var performanceStats = engine.GetPerformanceStats();
+        stats.AppendLine($"Total Updates: {performanceStats.TotalUpdates}");
+        stats.AppendLine($"Successful Updates: {performanceStats.SuccessfulUpdates}");
+        stats.AppendLine($"Failed Updates: {performanceStats.FailedUpdates}");
+        stats.AppendLine($"Success Rate: {(performanceStats.TotalUpdates > 0 ? (performanceStats.SuccessfulUpdates * 100.0 / performanceStats.TotalUpdates):0):F1}%");
+        stats.AppendLine();
+        stats.AppendLine($"Memory Usage: {GC.GetTotalMemory(false) / 1024 / 1024:F1} MB");
+        stats.AppendLine($"Generation 0 Collections: {GC.CollectionCount(0)}");
+        stats.AppendLine($"Generation 1 Collections: {GC.CollectionCount(1)}");
+        stats.AppendLine($"Generation 2 Collections: {GC.CollectionCount(2)}");
+
+        textBox.Text = stats.ToString();
+        Controls.Add(textBox);
     }
 }

@@ -1,0 +1,56 @@
+CursorPhobia Test Console - Phase A: System Tray Integration (WI#5)
+=====================================================================
+
+Running in automated mode - basic tests only
+
+Running Basic Functionality Tests...
+
+Test 1: Enumerating visible windows...
+Found 12 visible windows:
+  1. 'Chat | Rating Development Roundtable: Thoughts, Ideas, Solutions | Microsoft Teams' (TeamsWebView) - {X=-9,Y=633,Width=1183,Height=944}
+  2. '' (AlwaysOnTop_Border) - {X=-17,Y=618,Width=1199,Height=967}
+  3. '✳ Job Search' (CASCADIA_HOSTING_WINDOW_CLASS) - {X=1013,Y=2282,Width=1129,Height=635}
+  4. 'work - 10.98.1.5 - Remote Desktop Connection' (TscShellContainerClass) - {X=0,Y=0,Width=3840,Height=2160}
+  5. '[DEBT] Remove global window pollution - 296 instances across 36 files · Issue #21 · PetePeter/VitiDo.Sit - Profile 1 - Microsoft​ Edge' (Chrome_WidgetWin_1) - {X=1303,Y=928,Width=1724,Height=959}
+  6. 'VitiDo2 - File Explorer' (CabinetWClass) - {X=655,Y=576,Width=960,Height=700}
+  7. 'Series - File Explorer' (CabinetWClass) - {X=629,Y=550,Width=960,Height=700}
+  8. 'VitiDo - File Explorer' (CabinetWClass) - {X=603,Y=524,Width=960,Height=700}
+  9. 'Settings' (Windows.UI.Core.CoreWindow) - {X=0,Y=1,Width=507,Height=571}
+  10. 'Settings' (ApplicationFrameWindow) - {X=84,Y=505,Width=523,Height=580}
+  ... and 2 more windows
+✓ Window enumeration test passed
+
+Test 2: Detecting topmost windows...
+Found 2 topmost windows:
+  - 'Chat | Rating Development Roundtable: Thoughts, Ideas, Solutions | Microsoft Teams' (TeamsWebView)
+  - '' (AlwaysOnTop_Border)
+✓ Topmost window detection test passed
+
+Test 3: Testing window information retrieval...
+Sample window information:
+  Handle: 0x2020C
+  Title: 'Chat | Rating Development Roundtable: Thoughts, Ideas, Solutions | Microsoft Teams'
+  Class: TeamsWebView
+  Bounds: {X=-9,Y=633,Width=1183,Height=944}
+  Process ID: 8636
+  Thread ID: 4008
+  Visible: True
+  Topmost: True
+  Minimized: False
+✓ Window information retrieval test passed
+
+Test 4: Testing window bounds retrieval...
+Window bounds for 'Chat | Rating Development Roundtable: Thoughts, Ideas, Solutions | Microsoft Teams':
+  Position: (-9, 633)
+  Size: 1183 x 944
+  Area: 1116752 pixels
+✓ Window bounds retrieval test passed
+
+Test 5: Testing window visibility checks...
+Tested 5 windows:
+  5 are visible
+  0 are not visible
+✓ Window visibility check test passed
+
+
+All basic functionality tests completed!
