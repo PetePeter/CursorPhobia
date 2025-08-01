@@ -376,6 +376,38 @@ public static class User32
     
     #endregion
     
+    #region DPI Functions
+    
+    /// <summary>
+    /// Retrieves the dots per inch (DPI) for the specified monitor
+    /// </summary>
+    /// <param name="hMonitor">Handle to the monitor</param>
+    /// <param name="dpiType">Type of DPI being queried</param>
+    /// <param name="dpiX">The DPI value along the x-axis</param>
+    /// <param name="dpiY">The DPI value along the y-axis</param>
+    /// <returns>S_OK if successful, otherwise an error code</returns>
+    [DllImport("Shcore.dll", SetLastError = true)]
+    public static extern int GetDpiForMonitor(IntPtr hMonitor, int dpiType, out uint dpiX, out uint dpiY);
+    
+    /// <summary>
+    /// Sets the process-default DPI awareness
+    /// </summary>
+    /// <param name="value">The DPI awareness value for the process</param>
+    /// <returns>True if successful, false otherwise</returns>
+    [DllImport("Shcore.dll", SetLastError = true)]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool SetProcessDpiAwareness(int value);
+    
+    /// <summary>
+    /// Determines the DPI awareness of the current process
+    /// </summary>
+    /// <param name="value">Pointer to a PROCESS_DPI_AWARENESS value</param>
+    /// <returns>S_OK if successful, otherwise an error code</returns>
+    [DllImport("Shcore.dll", SetLastError = true)]
+    public static extern int GetProcessDpiAwareness(IntPtr hProcess, out int value);
+    
+    #endregion
+    
     #region Helper Methods
     
     /// <summary>

@@ -82,6 +82,19 @@ public static class WindowsStructures
     public const int VK_LCONTROL = 0xA2;
     public const int VK_RCONTROL = 0xA3;
     
+    // DPI Awareness constants
+    public const int PROCESS_DPI_UNAWARE = 0;
+    public const int PROCESS_SYSTEM_DPI_AWARE = 1;
+    public const int PROCESS_PER_MONITOR_DPI_AWARE = 2;
+    
+    // Monitor DPI types
+    public const int MDT_EFFECTIVE_DPI = 0;
+    public const int MDT_ANGULAR_DPI = 1;
+    public const int MDT_RAW_DPI = 2;
+    
+    // Default DPI value
+    public const int DEFAULT_DPI = 96;
+    
     #endregion
     
     #region Structures

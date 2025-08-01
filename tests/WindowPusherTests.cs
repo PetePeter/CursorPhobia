@@ -524,6 +524,7 @@ public class MockMonitorManager : MonitorManager
     private readonly Dictionary<(MonitorInfo, EdgeDirection), MonitorInfo?> _adjacentMonitors = new();
     private readonly Dictionary<Rectangle, MonitorInfo?> _rectangleMonitorOverrides = new();
     private readonly Dictionary<Point, MonitorInfo?> _pointMonitorOverrides = new();
+    private readonly Dictionary<MonitorInfo, DpiInfo> _monitorDpiOverrides = new();
 
     public void AddMonitor(MonitorInfo monitor)
     {
@@ -543,6 +544,16 @@ public class MockMonitorManager : MonitorManager
     public void SetMonitorForPoint(Point point, MonitorInfo? monitor)
     {
         _pointMonitorOverrides[point] = monitor;
+    }
+    
+    public void SetMonitorDpi(MonitorInfo monitor, DpiInfo dpiInfo)
+    {
+        _monitorDpiOverrides[monitor] = dpiInfo;
+    }
+    
+    public void SetMonitorDpi(MonitorInfo monitor, uint dpiX, uint dpiY)
+    {
+        _monitorDpiOverrides[monitor] = new DpiInfo(dpiX, dpiY);
     }
 
     public override List<MonitorInfo> GetAllMonitors()
@@ -593,6 +604,23 @@ public class MockMonitorManager : MonitorManager
     public override MonitorInfo? GetMonitorInDirection(MonitorInfo sourceMonitor, EdgeDirection direction)
     {
         return _adjacentMonitors.TryGetValue((sourceMonitor, direction), out var adjacent) ? adjacent : null;
+    }
+    
+    public override DpiInfo GetMonitorDpi(MonitorInfo monitor)
+    {
+        return _monitorDpiOverrides.TryGetValue(monitor, out var dpiInfo) ? dpiInfo : new DpiInfo();
+    }
+    
+    public override DpiInfo GetDpiForPoint(Point point)
+    {
+        var monitor = GetMonitorContaining(point);
+        return monitor != null ? GetMonitorDpi(monitor) : new DpiInfo();
+    }
+    
+    public override DpiInfo GetDpiForRectangle(Rectangle windowRect)
+    {
+        var monitor = GetMonitorContaining(windowRect);
+        return monitor != null ? GetMonitorDpi(monitor) : new DpiInfo();
     }
 }
 

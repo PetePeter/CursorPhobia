@@ -9,7 +9,7 @@ namespace CursorPhobia.Core.Services;
 /// <summary>
 /// Manages multi-monitor detection and information retrieval
 /// </summary>
-public class MonitorManager
+public class MonitorManager : IMonitorManager
 {
     private readonly List<MonitorInfo> _cachedMonitors = new();
     private DateTime _lastCacheUpdate = DateTime.MinValue;
@@ -194,6 +194,38 @@ public class MonitorManager
         }
         
         return false;
+    }
+    
+    /// <summary>
+    /// Gets DPI information for the specified monitor
+    /// </summary>
+    /// <param name="monitor">Monitor to get DPI for</param>
+    /// <returns>DPI information for the monitor</returns>
+    public virtual DpiInfo GetMonitorDpi(MonitorInfo monitor)
+    {
+        return DpiInfo.FromMonitor(monitor.monitorHandle);
+    }
+    
+    /// <summary>
+    /// Gets DPI information for the monitor containing the specified point
+    /// </summary>
+    /// <param name="point">Point to check</param>
+    /// <returns>DPI information for the containing monitor, or default if not found</returns>
+    public virtual DpiInfo GetDpiForPoint(Point point)
+    {
+        var monitor = GetMonitorContaining(point);
+        return monitor != null ? GetMonitorDpi(monitor) : new DpiInfo();
+    }
+    
+    /// <summary>
+    /// Gets DPI information for the monitor containing the specified rectangle
+    /// </summary>
+    /// <param name="windowRect">Rectangle to check</param>
+    /// <returns>DPI information for the containing monitor, or default if not found</returns>
+    public virtual DpiInfo GetDpiForRectangle(Rectangle windowRect)
+    {
+        var monitor = GetMonitorContaining(windowRect);
+        return monitor != null ? GetMonitorDpi(monitor) : new DpiInfo();
     }
 }
 
