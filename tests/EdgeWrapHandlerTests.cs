@@ -2,21 +2,20 @@ using System.Drawing;
 using CursorPhobia.Core.Models;
 using CursorPhobia.Core.Services;
 using Xunit;
-using Moq;
 
 namespace CursorPhobia.Tests;
 
 public class EdgeWrapHandlerTests
 {
-    private readonly Mock<MonitorManager> _mockMonitorManager;
+    private readonly MockMonitorManager _mockMonitorManager;
     private readonly EdgeWrapHandler _edgeWrapHandler;
     private readonly MonitorInfo _primaryMonitor;
     private readonly MonitorInfo _secondaryMonitor;
     
     public EdgeWrapHandlerTests()
     {
-        _mockMonitorManager = new Mock<MonitorManager>();
-        _edgeWrapHandler = new EdgeWrapHandler(_mockMonitorManager.Object);
+        _mockMonitorManager = new MockMonitorManager();
+        _edgeWrapHandler = new EdgeWrapHandler(_mockMonitorManager);
         
         // Setup test monitors
         _primaryMonitor = new MonitorInfo(
@@ -34,6 +33,15 @@ public class EdgeWrapHandlerTests
             false,
             "Secondary"
         );
+        
+        // Add monitors to mock manager
+        _mockMonitorManager.AddMonitor(_primaryMonitor);
+        _mockMonitorManager.AddMonitor(_secondaryMonitor);
+        
+        
+        // Set up adjacency relationships
+        _mockMonitorManager.SetAdjacentMonitor(_primaryMonitor, EdgeDirection.Right, _secondaryMonitor);
+        _mockMonitorManager.SetAdjacentMonitor(_secondaryMonitor, EdgeDirection.Left, _primaryMonitor);
     }
     
     [Fact]
@@ -66,7 +74,7 @@ public class EdgeWrapHandlerTests
         var pushVector = new Point(-50, 0);
         var wrapBehavior = new WrapBehavior { EnableWrapping = true };
         
-        _mockMonitorManager.Setup(m => m.GetMonitorContaining(windowRect)).Returns((MonitorInfo?)null);
+        _mockMonitorManager.SetMonitorForRectangle(windowRect, null);
         
         // Act
         var result = _edgeWrapHandler.CalculateWrapDestination(windowRect, pushVector, wrapBehavior);
@@ -83,7 +91,7 @@ public class EdgeWrapHandlerTests
         var pushVector = new Point(10, 10); // Small push not reaching edge
         var wrapBehavior = new WrapBehavior { EnableWrapping = true };
         
-        _mockMonitorManager.Setup(m => m.GetMonitorContaining(windowRect)).Returns(_primaryMonitor);
+        _mockMonitorManager.SetMonitorForRectangle(windowRect, _primaryMonitor);
         
         // Act
         var result = _edgeWrapHandler.CalculateWrapDestination(windowRect, pushVector, wrapBehavior);
@@ -104,10 +112,11 @@ public class EdgeWrapHandlerTests
             PreferredBehavior = WrapPreference.Opposite
         };
         
-        _mockMonitorManager.Setup(m => m.GetMonitorContaining(windowRect)).Returns(_primaryMonitor);
+        _mockMonitorManager.SetMonitorForRectangle(windowRect, _primaryMonitor);
         
         // Act
         var result = _edgeWrapHandler.CalculateWrapDestination(windowRect, pushVector, wrapBehavior);
+        
         
         // Assert
         Assert.NotNull(result);
@@ -128,7 +137,7 @@ public class EdgeWrapHandlerTests
             PreferredBehavior = WrapPreference.Opposite
         };
         
-        _mockMonitorManager.Setup(m => m.GetMonitorContaining(windowRect)).Returns(_primaryMonitor);
+        _mockMonitorManager.SetMonitorForRectangle(windowRect, _primaryMonitor);
         
         // Act
         var result = _edgeWrapHandler.CalculateWrapDestination(windowRect, pushVector, wrapBehavior);
@@ -152,7 +161,7 @@ public class EdgeWrapHandlerTests
             PreferredBehavior = WrapPreference.Opposite
         };
         
-        _mockMonitorManager.Setup(m => m.GetMonitorContaining(windowRect)).Returns(_primaryMonitor);
+        _mockMonitorManager.SetMonitorForRectangle(windowRect, _primaryMonitor);
         
         // Act
         var result = _edgeWrapHandler.CalculateWrapDestination(windowRect, pushVector, wrapBehavior);
@@ -176,7 +185,7 @@ public class EdgeWrapHandlerTests
             PreferredBehavior = WrapPreference.Opposite
         };
         
-        _mockMonitorManager.Setup(m => m.GetMonitorContaining(windowRect)).Returns(_primaryMonitor);
+        _mockMonitorManager.SetMonitorForRectangle(windowRect, _primaryMonitor);
         
         // Act
         var result = _edgeWrapHandler.CalculateWrapDestination(windowRect, pushVector, wrapBehavior);
@@ -200,9 +209,8 @@ public class EdgeWrapHandlerTests
             PreferredBehavior = WrapPreference.Adjacent
         };
         
-        _mockMonitorManager.Setup(m => m.GetMonitorContaining(windowRect)).Returns(_primaryMonitor);
-        _mockMonitorManager.Setup(m => m.GetMonitorInDirection(_primaryMonitor, EdgeDirection.Right))
-                          .Returns(_secondaryMonitor);
+        _mockMonitorManager.SetMonitorForRectangle(windowRect, _primaryMonitor);
+        _mockMonitorManager.SetAdjacentMonitor(_primaryMonitor, EdgeDirection.Right, _secondaryMonitor);
         
         // Act
         var result = _edgeWrapHandler.CalculateWrapDestination(windowRect, pushVector, wrapBehavior);
@@ -226,9 +234,8 @@ public class EdgeWrapHandlerTests
             PreferredBehavior = WrapPreference.Adjacent
         };
         
-        _mockMonitorManager.Setup(m => m.GetMonitorContaining(windowRect)).Returns(_primaryMonitor);
-        _mockMonitorManager.Setup(m => m.GetMonitorInDirection(_primaryMonitor, EdgeDirection.Left))
-                          .Returns((MonitorInfo?)null); // No adjacent monitor
+        _mockMonitorManager.SetMonitorForRectangle(windowRect, _primaryMonitor);
+        _mockMonitorManager.SetAdjacentMonitor(_primaryMonitor, EdgeDirection.Left, null); // No adjacent monitor
         
         // Act
         var result = _edgeWrapHandler.CalculateWrapDestination(windowRect, pushVector, wrapBehavior);
@@ -252,9 +259,8 @@ public class EdgeWrapHandlerTests
             PreferredBehavior = WrapPreference.Smart
         };
         
-        _mockMonitorManager.Setup(m => m.GetMonitorContaining(windowRect)).Returns(_primaryMonitor);
-        _mockMonitorManager.Setup(m => m.GetMonitorInDirection(_primaryMonitor, EdgeDirection.Right))
-                          .Returns(_secondaryMonitor);
+        _mockMonitorManager.SetMonitorForRectangle(windowRect, _primaryMonitor);
+        _mockMonitorManager.SetAdjacentMonitor(_primaryMonitor, EdgeDirection.Right, _secondaryMonitor);
         
         // Act
         var result = _edgeWrapHandler.CalculateWrapDestination(windowRect, pushVector, wrapBehavior);
@@ -276,9 +282,8 @@ public class EdgeWrapHandlerTests
             PreferredBehavior = WrapPreference.Smart
         };
         
-        _mockMonitorManager.Setup(m => m.GetMonitorContaining(windowRect)).Returns(_primaryMonitor);
-        _mockMonitorManager.Setup(m => m.GetMonitorInDirection(_primaryMonitor, EdgeDirection.Left))
-                          .Returns((MonitorInfo?)null);
+        _mockMonitorManager.SetMonitorForRectangle(windowRect, _primaryMonitor);
+        _mockMonitorManager.SetAdjacentMonitor(_primaryMonitor, EdgeDirection.Left, null);
         
         // Act
         var result = _edgeWrapHandler.CalculateWrapDestination(windowRect, pushVector, wrapBehavior);
@@ -312,7 +317,7 @@ public class EdgeWrapHandlerTests
         var windowSize = new Size(300, 200);
         var newRect = new Rectangle(newPosition, windowSize);
         
-        _mockMonitorManager.Setup(m => m.GetMonitorContaining(newRect)).Returns(_primaryMonitor);
+        _mockMonitorManager.SetMonitorForRectangle(newRect, _primaryMonitor);
         
         // Act
         var result = _edgeWrapHandler.IsWrapSafe(originalPosition, newPosition, windowSize);
@@ -330,7 +335,7 @@ public class EdgeWrapHandlerTests
         var windowSize = new Size(300, 200);
         var newRect = new Rectangle(newPosition, windowSize);
         
-        _mockMonitorManager.Setup(m => m.GetMonitorContaining(newRect)).Returns((MonitorInfo?)null);
+        _mockMonitorManager.SetMonitorForRectangle(newRect, null);
         
         // Act
         var result = _edgeWrapHandler.IsWrapSafe(originalPosition, newPosition, windowSize);

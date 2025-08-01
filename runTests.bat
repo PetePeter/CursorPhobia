@@ -26,7 +26,7 @@ if %ERRORLEVEL% neq 0 (
 
 echo.
 echo Running console test application...
-dotnet run --project src/Console/CursorPhobia.Console.csproj >nul 2>&1
+dotnet run --project src/Console/CursorPhobia.Console.csproj -- --automated >nul 2>&1
 
 if %ERRORLEVEL% neq 0 (
     echo CONSOLE TEST FAILED!

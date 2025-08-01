@@ -23,7 +23,9 @@ public class WindowPusherTests
         var proximityDetector = new MockProximityDetector();
         
         // Act
-        using var pusher = new WindowPusher(logger, windowService, safetyManager, proximityDetector);
+        var monitorManager = new MockMonitorManager();
+        var edgeWrapHandler = new MockEdgeWrapHandler(monitorManager);
+        using var pusher = new WindowPusher(logger, windowService, safetyManager, proximityDetector, monitorManager, edgeWrapHandler);
         
         // Assert
         Assert.NotNull(pusher);
@@ -38,8 +40,10 @@ public class WindowPusherTests
         var proximityDetector = new MockProximityDetector();
         
         // Act & Assert
+        var monitorManager = new MockMonitorManager();
+        var edgeWrapHandler = new MockEdgeWrapHandler(monitorManager);
         Assert.Throws<ArgumentNullException>(() => 
-            new WindowPusher(null!, windowService, safetyManager, proximityDetector));
+            new WindowPusher(null!, windowService, safetyManager, proximityDetector, monitorManager, edgeWrapHandler));
     }
     
     [Fact]
@@ -51,8 +55,10 @@ public class WindowPusherTests
         var proximityDetector = new MockProximityDetector();
         
         // Act & Assert
+        var monitorManager = new MockMonitorManager();
+        var edgeWrapHandler = new MockEdgeWrapHandler(monitorManager);
         Assert.Throws<ArgumentNullException>(() => 
-            new WindowPusher(logger, null!, safetyManager, proximityDetector));
+            new WindowPusher(logger, null!, safetyManager, proximityDetector, monitorManager, edgeWrapHandler));
     }
     
     [Fact]
@@ -64,8 +70,10 @@ public class WindowPusherTests
         var proximityDetector = new MockProximityDetector();
         
         // Act & Assert
+        var monitorManager = new MockMonitorManager();
+        var edgeWrapHandler = new MockEdgeWrapHandler(monitorManager);
         Assert.Throws<ArgumentNullException>(() => 
-            new WindowPusher(logger, windowService, null!, proximityDetector));
+            new WindowPusher(logger, windowService, null!, proximityDetector, monitorManager, edgeWrapHandler));
     }
     
     [Fact]
@@ -77,8 +85,10 @@ public class WindowPusherTests
         var safetyManager = new MockSafetyManager();
         
         // Act & Assert
+        var monitorManager = new MockMonitorManager();
+        var edgeWrapHandler = new MockEdgeWrapHandler(monitorManager);
         Assert.Throws<ArgumentNullException>(() => 
-            new WindowPusher(logger, windowService, safetyManager, null!));
+            new WindowPusher(logger, windowService, safetyManager, null!, monitorManager, edgeWrapHandler));
     }
     
     [Fact]
@@ -92,8 +102,10 @@ public class WindowPusherTests
         var invalidConfig = new CursorPhobiaConfiguration { ProximityThreshold = -1 };
         
         // Act & Assert
+        var monitorManager = new MockMonitorManager();
+        var edgeWrapHandler = new MockEdgeWrapHandler(monitorManager);
         Assert.Throws<ArgumentException>(() => 
-            new WindowPusher(logger, windowService, safetyManager, proximityDetector, invalidConfig));
+            new WindowPusher(logger, windowService, safetyManager, proximityDetector, monitorManager, edgeWrapHandler, invalidConfig));
     }
     
     #endregion
@@ -480,13 +492,20 @@ public class WindowPusherTests
         IWindowManipulationService? windowService = null,
         ISafetyManager? safetyManager = null,
         IProximityDetector? proximityDetector = null,
-        CursorPhobiaConfiguration? config = null)
+        CursorPhobiaConfiguration? config = null,
+        MonitorManager? monitorManager = null,
+        EdgeWrapHandler? edgeWrapHandler = null)
     {
+        var mockMonitorManager = monitorManager ?? new MockMonitorManager();
+        var mockEdgeWrapHandler = edgeWrapHandler ?? new MockEdgeWrapHandler(mockMonitorManager);
+        
         return new WindowPusher(
             new TestLogger(),
             windowService ?? new MockWindowManipulationService(),
             safetyManager ?? new MockSafetyManager(),
             proximityDetector ?? new MockProximityDetector(),
+            mockMonitorManager,
+            mockEdgeWrapHandler,
             config
         );
     }
@@ -495,6 +514,120 @@ public class WindowPusherTests
 }
 
 #region Mock Services
+
+/// <summary>
+/// Mock implementation of MonitorManager for testing
+/// </summary>
+public class MockMonitorManager : MonitorManager
+{
+    private readonly List<MonitorInfo> _monitors = new();
+    private readonly Dictionary<(MonitorInfo, EdgeDirection), MonitorInfo?> _adjacentMonitors = new();
+    private readonly Dictionary<Rectangle, MonitorInfo?> _rectangleMonitorOverrides = new();
+    private readonly Dictionary<Point, MonitorInfo?> _pointMonitorOverrides = new();
+
+    public void AddMonitor(MonitorInfo monitor)
+    {
+        _monitors.Add(monitor);
+    }
+    
+    public void SetAdjacentMonitor(MonitorInfo sourceMonitor, EdgeDirection direction, MonitorInfo? adjacentMonitor)
+    {
+        _adjacentMonitors[(sourceMonitor, direction)] = adjacentMonitor;
+    }
+    
+    public void SetMonitorForRectangle(Rectangle rectangle, MonitorInfo? monitor)
+    {
+        _rectangleMonitorOverrides[rectangle] = monitor;
+    }
+    
+    public void SetMonitorForPoint(Point point, MonitorInfo? monitor)
+    {
+        _pointMonitorOverrides[point] = monitor;
+    }
+
+    public override List<MonitorInfo> GetAllMonitors()
+    {
+        return new List<MonitorInfo>(_monitors);
+    }
+    
+    public override MonitorInfo? GetMonitorContaining(Point point)
+    {
+        if (_pointMonitorOverrides.TryGetValue(point, out var overrideMonitor))
+            return overrideMonitor;
+            
+        return _monitors.FirstOrDefault(m => m.ContainsPoint(point));
+    }
+    
+    public override MonitorInfo? GetMonitorContaining(Rectangle windowRect)
+    {
+        if (_rectangleMonitorOverrides.TryGetValue(windowRect, out var overrideMonitor))
+            return overrideMonitor;
+            
+        // Use window center point to determine containing monitor
+        // This handles edge cases where window touches monitor edge
+        var windowCenter = new Point(
+            windowRect.X + windowRect.Width / 2,
+            windowRect.Y + windowRect.Height / 2
+        );
+        
+        foreach (var monitor in _monitors)
+        {
+            if (monitor.workAreaBounds.Contains(windowCenter))
+            {
+                return monitor;
+            }
+        }
+        
+        // Fallback: check against full monitor bounds if not in work area
+        foreach (var monitor in _monitors)
+        {
+            if (monitor.monitorBounds.Contains(windowCenter))
+            {
+                return monitor;
+            }
+        }
+        
+        return null;
+    }
+    
+    public override MonitorInfo? GetMonitorInDirection(MonitorInfo sourceMonitor, EdgeDirection direction)
+    {
+        return _adjacentMonitors.TryGetValue((sourceMonitor, direction), out var adjacent) ? adjacent : null;
+    }
+}
+
+/// <summary>
+/// Mock implementation of EdgeWrapHandler for testing
+/// </summary>
+public class MockEdgeWrapHandler : EdgeWrapHandler
+{
+    private Point? _wrapDestination;
+    private bool _isWrapSafe = true;
+
+    public MockEdgeWrapHandler(MonitorManager monitorManager) : base(monitorManager)
+    {
+    }
+
+    public void SetWrapDestination(Point? destination)
+    {
+        _wrapDestination = destination;
+    }
+    
+    public void SetWrapSafe(bool isSafe)
+    {
+        _isWrapSafe = isSafe;
+    }
+
+    public new Point? CalculateWrapDestination(Rectangle windowRect, Point pushVector, WrapBehavior wrapBehavior)
+    {
+        return _wrapDestination;
+    }
+    
+    public new bool IsWrapSafe(Point originalPosition, Point newPosition, Size windowSize)
+    {
+        return _isWrapSafe;
+    }
+}
 
 /// <summary>
 /// Mock implementation of IWindowManipulationService for testing

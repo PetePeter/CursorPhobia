@@ -21,13 +21,24 @@ class Program
         System.Console.WriteLine("========================================================");
         System.Console.WriteLine();
         
+        // Check for automated mode (when run from batch)
+        bool isAutomatedMode = args.Contains("--automated") || System.Console.IsInputRedirected;
+        
         try
         {
             // Setup dependency injection and logging
-            SetupServices();
+            SetupServices(isAutomatedMode);
             
-            _logger = CursorPhobia.Core.Utilities.LoggerFactory.CreateLogger<Program>();
+            // Get logger after services are set up
+            _logger = _serviceProvider!.GetRequiredService<Logger>();
             _logger.LogInformation("Starting CursorPhobia tests");
+            
+            if (isAutomatedMode)
+            {
+                System.Console.WriteLine("Running in automated mode - basic tests only");
+                await RunBasicTests();
+                return;
+            }
             
             // Show menu options
             ShowMenu();
@@ -64,14 +75,17 @@ class Program
         }
         finally
         {
-            System.Console.WriteLine("\nPress any key to exit...");
-            System.Console.ReadKey();
+            if (!isAutomatedMode)
+            {
+                System.Console.WriteLine("\nPress any key to exit...");
+                System.Console.ReadKey();
+            }
             
             _serviceProvider?.Dispose();
         }
     }
     
-    private static void SetupServices()
+    private static void SetupServices(bool isAutomatedMode = false)
     {
         var services = new ServiceCollection();
         
@@ -79,7 +93,8 @@ class Program
         services.AddLogging(builder =>
         {
             builder.AddConsole();
-            builder.SetMinimumLevel(LogLevel.Debug);
+            // Use Warning level in automated mode to reduce noise
+            builder.SetMinimumLevel(isAutomatedMode ? LogLevel.Warning : LogLevel.Debug);
         });
         
         // Add our services
@@ -88,6 +103,12 @@ class Program
             var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
             CursorPhobia.Core.Utilities.LoggerFactory.Initialize(loggerFactory);
             return CursorPhobia.Core.Utilities.LoggerFactory.CreateLogger<Program>();
+        });
+        
+        // Register ILogger for services that need it
+        services.AddSingleton<CursorPhobia.Core.Utilities.ILogger>(provider =>
+        {
+            return provider.GetRequiredService<Logger>();
         });
         
         // Core services

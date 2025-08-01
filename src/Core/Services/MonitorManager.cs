@@ -19,7 +19,7 @@ public class MonitorManager
     /// Gets all connected monitors with their information
     /// </summary>
     /// <returns>List of monitor information</returns>
-    public List<MonitorInfo> GetAllMonitors()
+    public virtual List<MonitorInfo> GetAllMonitors()
     {
         if (DateTime.Now - _lastCacheUpdate > _cacheTimeout)
         {
@@ -34,7 +34,7 @@ public class MonitorManager
     /// </summary>
     /// <param name="point">Point to check</param>
     /// <returns>Monitor containing the point, or null if not found</returns>
-    public MonitorInfo? GetMonitorContaining(Point point)
+    public virtual MonitorInfo? GetMonitorContaining(Point point)
     {
         var monitors = GetAllMonitors();
         return monitors.FirstOrDefault(m => m.ContainsPoint(point));
@@ -45,7 +45,7 @@ public class MonitorManager
     /// </summary>
     /// <param name="windowRect">Rectangle to check</param>
     /// <returns>Monitor with largest intersection, or null if not found</returns>
-    public MonitorInfo? GetMonitorContaining(Rectangle windowRect)
+    public virtual MonitorInfo? GetMonitorContaining(Rectangle windowRect)
     {
         var monitors = GetAllMonitors();
         MonitorInfo? bestMonitor = null;
@@ -106,7 +106,7 @@ public class MonitorManager
     /// <param name="sourceMonitor">Source monitor</param>
     /// <param name="direction">Direction to look</param>
     /// <returns>Monitor in the specified direction, or null if not found</returns>
-    public MonitorInfo? GetMonitorInDirection(MonitorInfo sourceMonitor, EdgeDirection direction)
+    public virtual MonitorInfo? GetMonitorInDirection(MonitorInfo sourceMonitor, EdgeDirection direction)
     {
         var allMonitors = GetAllMonitors();
         var sourceBounds = sourceMonitor.monitorBounds;
