@@ -1,0 +1,6 @@
+X:\coding\CursorPhobia\obj\Debug\net8.0-windows\ThreadingTest.csproj.AssemblyReference.cache
+X:\coding\CursorPhobia\obj\Debug\net8.0-windows\ThreadingTest.GeneratedMSBuildEditorConfig.editorconfig
+X:\coding\CursorPhobia\obj\Debug\net8.0-windows\ThreadingTest.AssemblyInfoInputs.cache
+X:\coding\CursorPhobia\obj\Debug\net8.0-windows\ThreadingTest.AssemblyInfo.cs
+X:\coding\CursorPhobia\obj\Debug\net8.0-windows\ThreadingTest.csproj.CoreCompileInputs.cache
+X:\coding\CursorPhobia\obj\Debug\net8.0-windows\ThreadingTest.sourcelink.json

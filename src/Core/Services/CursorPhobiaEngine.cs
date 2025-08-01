@@ -69,6 +69,16 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
     public event EventHandler<WindowPushEventArgs>? WindowPushed;
     
     /// <summary>
+    /// Event raised when the engine state changes (for tray notifications)
+    /// </summary>
+    public event EventHandler<EngineStateChangedEventArgs>? EngineStateChanged;
+    
+    /// <summary>
+    /// Event raised when performance issues are detected (for tray warnings)
+    /// </summary>
+    public event EventHandler<EnginePerformanceEventArgs>? PerformanceIssueDetected;
+    
+    /// <summary>
     /// Creates a new CursorPhobiaEngine instance
     /// </summary>
     /// <param name="logger">Logger for diagnostic output</param>
@@ -165,11 +175,13 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
                 _trackedWindows.Count);
             
             EngineStarted?.Invoke(this, EventArgs.Empty);
+            EngineStateChanged?.Invoke(this, new EngineStateChangedEventArgs(EngineState.Running, "Engine started successfully"));
             return true;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error starting CursorPhobiaEngine");
+            EngineStateChanged?.Invoke(this, new EngineStateChangedEventArgs(EngineState.Error, $"Failed to start: {ex.Message}"));
             return false;
         }
     }
@@ -209,10 +221,12 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
                     AverageUpdateTimeMs);
                 
                 EngineStopped?.Invoke(this, EventArgs.Empty);
+                EngineStateChanged?.Invoke(this, new EngineStateChangedEventArgs(EngineState.Stopped, "Engine stopped successfully"));
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error stopping CursorPhobiaEngine");
+                EngineStateChanged?.Invoke(this, new EngineStateChangedEventArgs(EngineState.Error, $"Error during stop: {ex.Message}"));
             }
         }
         
@@ -330,6 +344,12 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
             {
                 _logger.LogWarning("Update cycle took {Duration}ms, exceeding max interval of {MaxInterval}ms", 
                     updateStartTime.ElapsedMilliseconds, _config.MaxUpdateIntervalMs);
+                
+                // Raise performance issue event for tray notification
+                PerformanceIssueDetected?.Invoke(this, new EnginePerformanceEventArgs(
+                    "Slow Update Cycle", 
+                    $"Update cycle took {updateStartTime.ElapsedMilliseconds}ms (max: {_config.MaxUpdateIntervalMs}ms)",
+                    updateStartTime.ElapsedMilliseconds));
             }
         }
     }
@@ -571,6 +591,16 @@ public interface ICursorPhobiaEngine
     event EventHandler<WindowPushEventArgs>? WindowPushed;
     
     /// <summary>
+    /// Event raised when the engine state changes (for tray notifications)
+    /// </summary>
+    event EventHandler<EngineStateChangedEventArgs>? EngineStateChanged;
+    
+    /// <summary>
+    /// Event raised when performance issues are detected (for tray warnings)
+    /// </summary>
+    event EventHandler<EnginePerformanceEventArgs>? PerformanceIssueDetected;
+    
+    /// <summary>
     /// Starts the cursor phobia engine
     /// </summary>
     /// <returns>True if started successfully, false otherwise</returns>
@@ -707,4 +737,98 @@ public class EnginePerformanceStats
     /// Estimated CPU usage percentage (very rough estimate)
     /// </summary>
     public double EstimatedCpuUsagePercent => AverageUpdateTimeMs > 0 ? (AverageUpdateTimeMs / ConfiguredUpdateIntervalMs) * 100 : 0;
+}
+
+/// <summary>
+/// Enumeration of possible engine states for tray notifications
+/// </summary>
+public enum EngineState
+{
+    /// <summary>
+    /// Engine is stopped or not initialized
+    /// </summary>
+    Stopped,
+    
+    /// <summary>
+    /// Engine is running normally
+    /// </summary>
+    Running,
+    
+    /// <summary>
+    /// Engine encountered an error
+    /// </summary>
+    Error
+}
+
+/// <summary>
+/// Event arguments for engine state change events
+/// </summary>
+public class EngineStateChangedEventArgs : EventArgs
+{
+    /// <summary>
+    /// The new engine state
+    /// </summary>
+    public EngineState State { get; }
+    
+    /// <summary>
+    /// Optional message describing the state change
+    /// </summary>
+    public string? Message { get; }
+    
+    /// <summary>
+    /// Timestamp when the state change occurred
+    /// </summary>
+    public DateTime Timestamp { get; }
+    
+    /// <summary>
+    /// Creates new engine state changed event arguments
+    /// </summary>
+    /// <param name="state">The new engine state</param>
+    /// <param name="message">Optional message describing the state change</param>
+    public EngineStateChangedEventArgs(EngineState state, string? message = null)
+    {
+        State = state;
+        Message = message;
+        Timestamp = DateTime.UtcNow;
+    }
+}
+
+/// <summary>
+/// Event arguments for engine performance issue events
+/// </summary>
+public class EnginePerformanceEventArgs : EventArgs
+{
+    /// <summary>
+    /// Title/type of the performance issue
+    /// </summary>
+    public string IssueType { get; }
+    
+    /// <summary>
+    /// Detailed description of the performance issue
+    /// </summary>
+    public string Description { get; }
+    
+    /// <summary>
+    /// Performance metric value (e.g., update time in ms)
+    /// </summary>
+    public double MetricValue { get; }
+    
+    /// <summary>
+    /// Timestamp when the performance issue was detected
+    /// </summary>
+    public DateTime Timestamp { get; }
+    
+    /// <summary>
+    /// Creates new engine performance event arguments
+    /// </summary>
+    /// <param name="issueType">Title/type of the performance issue</param>
+    /// <param name="description">Detailed description of the performance issue</param>
+    /// <param name="metricValue">Performance metric value</param>
+    public EnginePerformanceEventArgs(string issueType, string description, double metricValue)
+    {
+        IssueType = issueType ?? throw new ArgumentNullException(nameof(issueType));
+        Description = description ?? throw new ArgumentNullException(nameof(description));
+        MetricValue = metricValue;
+        Timestamp = DateTime.UtcNow;
+    }
 }

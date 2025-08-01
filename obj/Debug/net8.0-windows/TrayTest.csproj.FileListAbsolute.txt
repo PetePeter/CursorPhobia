@@ -1,0 +1,6 @@
+X:\coding\CursorPhobia\obj\Debug\net8.0-windows\TrayTest.csproj.AssemblyReference.cache
+X:\coding\CursorPhobia\obj\Debug\net8.0-windows\TrayTest.GeneratedMSBuildEditorConfig.editorconfig
+X:\coding\CursorPhobia\obj\Debug\net8.0-windows\TrayTest.AssemblyInfoInputs.cache
+X:\coding\CursorPhobia\obj\Debug\net8.0-windows\TrayTest.AssemblyInfo.cs
+X:\coding\CursorPhobia\obj\Debug\net8.0-windows\TrayTest.csproj.CoreCompileInputs.cache
+X:\coding\CursorPhobia\obj\Debug\net8.0-windows\TrayTest.sourcelink.json

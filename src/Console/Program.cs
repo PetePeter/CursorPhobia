@@ -1,4 +1,5 @@
 using System.Drawing;
+using System.Windows.Forms;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using CursorPhobia.Core.Services;
@@ -8,21 +9,27 @@ using CursorPhobia.Core.Models;
 namespace CursorPhobia.Console;
 
 /// <summary>
-/// Console application to test CursorPhobia functionality including the new Phase 2C Engine
+/// Console application to test CursorPhobia functionality including system tray integration (Phase A WI#5)
 /// </summary>
 class Program
 {
     private static ServiceProvider? _serviceProvider;
     private static Logger? _logger;
+    private static ISystemTrayManager? _trayManager;
+    private static IApplicationLifecycleManager? _lifecycleManager;
+    private static ICursorPhobiaEngine? _engine;
     
     static async Task Main(string[] args)
     {
-        System.Console.WriteLine("CursorPhobia Test Console - Phase 2C Engine Integration");
-        System.Console.WriteLine("========================================================");
+        System.Console.WriteLine("CursorPhobia Test Console - Phase A: System Tray Integration (WI#5)");
+        System.Console.WriteLine("=====================================================================");
         System.Console.WriteLine();
         
         // Check for automated mode (when run from batch)
         bool isAutomatedMode = args.Contains("--automated") || System.Console.IsInputRedirected;
+        
+        // Check for tray mode (runs with system tray instead of console menu)
+        bool isTrayMode = args.Contains("--tray") && !isAutomatedMode;
         
         try
         {
@@ -31,7 +38,7 @@ class Program
             
             // Get logger after services are set up
             _logger = _serviceProvider!.GetRequiredService<Logger>();
-            _logger.LogInformation("Starting CursorPhobia tests");
+            _logger.LogInformation("Starting CursorPhobia application");
             
             if (isAutomatedMode)
             {
@@ -40,12 +47,19 @@ class Program
                 return;
             }
             
+            if (isTrayMode)
+            {
+                System.Console.WriteLine("Starting in tray mode...");
+                await RunTrayMode();
+                return;
+            }
+            
             // Show menu options
             ShowMenu();
             
             while (true)
             {
-                System.Console.Write("\nEnter your choice (1-3, q to quit): ");
+                System.Console.Write("\nEnter your choice (1-4, q to quit): ");
                 var choice = System.Console.ReadLine()?.ToLower();
                 
                 switch (choice)
@@ -58,6 +72,9 @@ class Program
                         break;
                     case "3":
                         await RunPerformanceTests();
+                        break;
+                    case "4":
+                        await RunTrayDemo();
                         break;
                     case "q":
                     case "quit":
@@ -126,6 +143,10 @@ class Program
         // Engine
         services.AddTransient<ICursorPhobiaEngine, CursorPhobiaEngine>();
         
+        // System tray and lifecycle management (Phase A WI#5)
+        services.AddSingleton<ISystemTrayManager, SystemTrayManager>();
+        services.AddSingleton<IApplicationLifecycleManager, ApplicationLifecycleManager>();
+        
         _serviceProvider = services.BuildServiceProvider();
     }
     
@@ -135,10 +156,12 @@ class Program
         System.Console.WriteLine("1. Basic Functionality Tests (Phase 1 & 2A/2B components)");
         System.Console.WriteLine("2. CursorPhobia Engine Demo (Phase 2C - Live window pushing)");
         System.Console.WriteLine("3. Performance Tests (Engine benchmarking)");
+        System.Console.WriteLine("4. System Tray Demo (Phase A WI#5 - Tray integration)");
         System.Console.WriteLine("q. Quit");
         System.Console.WriteLine();
-        System.Console.WriteLine("Note: Option 2 will actively push windows away from your cursor!");
+        System.Console.WriteLine("Note: Options 2 & 4 will actively push windows away from your cursor!");
         System.Console.WriteLine("      Use CTRL key to temporarily disable, or press any key to stop.");
+        System.Console.WriteLine("      Option 4 runs with system tray icon and context menu.");
     }
     
     private static async Task RunBasicTests()
@@ -485,5 +508,276 @@ class Program
         }
         
         await Task.Delay(1000);
+    }
+    
+    private static async Task RunTrayDemo()
+    {
+        System.Console.WriteLine("\nStarting System Tray Demo (Phase A WI#5)...\n");
+        System.Console.WriteLine("⚠️  WARNING: This will show a system tray icon and actively push windows!");
+        System.Console.WriteLine("    Use the tray context menu to control the engine.");
+        System.Console.WriteLine("    Press any key to stop the demo.\n");
+        
+        System.Console.Write("Press ENTER to start, or any other key to cancel: ");
+        var key = System.Console.ReadKey();
+        System.Console.WriteLine();
+        
+        if (key.Key != ConsoleKey.Enter)
+        {
+            System.Console.WriteLine("Demo cancelled.");
+            return;
+        }
+        
+        // Initialize tray and lifecycle managers
+        _trayManager = _serviceProvider!.GetRequiredService<ISystemTrayManager>();
+        _lifecycleManager = _serviceProvider!.GetRequiredService<IApplicationLifecycleManager>();
+        _engine = _serviceProvider!.GetRequiredService<ICursorPhobiaEngine>();
+        
+        try
+        {
+            await SetupTrayIntegration();
+            
+            System.Console.WriteLine("✅ System tray demo started!");
+            System.Console.WriteLine("📍 Check your system tray for the CursorPhobia icon");
+            System.Console.WriteLine("🔧 Right-click the tray icon to control the engine");
+            System.Console.WriteLine("\nPress any key to stop the demo...\n");
+            
+            System.Console.ReadKey(true);
+            System.Console.WriteLine("\nStopping tray demo...");
+        }
+        catch (Exception ex)
+        {
+            System.Console.WriteLine($"❌ Tray demo error: {ex.Message}");
+        }
+        finally
+        {
+            await CleanupTrayIntegration();
+            System.Console.WriteLine("✅ Tray demo stopped");
+        }
+    }
+    
+    private static async Task RunTrayMode()
+    {
+        try
+        {
+            // Initialize application with Windows Forms
+            Application.EnableVisualStyles();
+            Application.SetCompatibleTextRenderingDefault(false);
+            
+            // Initialize services
+            _trayManager = _serviceProvider!.GetRequiredService<ISystemTrayManager>();
+            _lifecycleManager = _serviceProvider!.GetRequiredService<IApplicationLifecycleManager>();
+            _engine = _serviceProvider!.GetRequiredService<ICursorPhobiaEngine>();
+            
+            await SetupTrayIntegration();
+            
+            _logger!.LogInformation("CursorPhobia started in tray mode");
+            System.Console.WriteLine("✅ CursorPhobia is now running in the system tray");
+            System.Console.WriteLine("Right-click the tray icon to control the application");
+            
+            // Run the Windows Forms message loop
+            Application.Run();
+            
+            _logger.LogInformation("Application message loop ended");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error in tray mode");
+            System.Console.WriteLine($"❌ Tray mode error: {ex.Message}");
+        }
+        finally
+        {
+            await CleanupTrayIntegration();
+        }
+    }
+    
+    private static async Task SetupTrayIntegration()
+    {
+        // Initialize lifecycle manager
+        if (!await _lifecycleManager!.InitializeAsync())
+        {
+            throw new Exception("Failed to initialize lifecycle manager");
+        }
+        
+        // Register services for lifecycle management
+        if (_engine is IDisposable disposableEngine)
+        {
+            _lifecycleManager.RegisterService(disposableEngine, "CursorPhobia Engine");
+        }
+        _lifecycleManager.RegisterService(_trayManager!, "System Tray Manager");
+        
+        // Initialize tray manager
+        if (!await _trayManager!.InitializeAsync())
+        {
+            throw new Exception("Failed to initialize tray manager");
+        }
+        
+        // Setup tray event handlers
+        _trayManager.ToggleEngineRequested += OnTrayToggleEngineRequested;
+        _trayManager.SettingsRequested += OnTraySettingsRequested;
+        _trayManager.AboutRequested += OnTrayAboutRequested;
+        _trayManager.ExitRequested += OnTrayExitRequested;
+        
+        // Setup engine event handlers for tray notifications
+        _engine!.EngineStateChanged += OnEngineStateChanged;
+        _engine.PerformanceIssueDetected += OnEnginePerformanceIssue;
+        _engine.WindowPushed += OnEngineWindowPushed;
+        
+        // Setup lifecycle event handlers
+        _lifecycleManager.ApplicationExitRequested += OnApplicationExitRequested;
+        
+        // Start with engine disabled
+        await _trayManager.UpdateStateAsync(TrayIconState.Disabled);
+        await _trayManager.UpdateMenuStateAsync(false);
+    }
+    
+    private static async Task CleanupTrayIntegration()
+    {
+        try
+        {
+            if (_engine != null)
+            {
+                if (_engine.IsRunning)
+                {
+                    await _engine.StopAsync();
+                }
+                
+                _engine.EngineStateChanged -= OnEngineStateChanged;
+                _engine.PerformanceIssueDetected -= OnEnginePerformanceIssue;
+                _engine.WindowPushed -= OnEngineWindowPushed;
+            }
+            
+            if (_trayManager != null)
+            {
+                _trayManager.ToggleEngineRequested -= OnTrayToggleEngineRequested;
+                _trayManager.SettingsRequested -= OnTraySettingsRequested;
+                _trayManager.AboutRequested -= OnTrayAboutRequested;
+                _trayManager.ExitRequested -= OnTrayExitRequested;
+                
+                await _trayManager.HideAsync();
+            }
+            
+            if (_lifecycleManager != null)
+            {
+                _lifecycleManager.ApplicationExitRequested -= OnApplicationExitRequested;
+                await _lifecycleManager.ShutdownAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error during tray integration cleanup");
+        }
+    }
+    
+    // Tray event handlers
+    private static async void OnTrayToggleEngineRequested(object? sender, EventArgs e)
+    {
+        try
+        {
+            if (_engine!.IsRunning)
+            {
+                await _engine.StopAsync();
+                await _trayManager!.ShowNotificationAsync("CursorPhobia", "Engine disabled", false);
+            }
+            else
+            {
+                if (await _engine.StartAsync())
+                {
+                    await _trayManager!.ShowNotificationAsync("CursorPhobia", "Engine enabled", false);
+                }
+                else
+                {
+                    await _trayManager!.ShowNotificationAsync("CursorPhobia", "Failed to start engine", true);
+                }
+            }
+            
+            await _trayManager.UpdateMenuStateAsync(_engine.IsRunning);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error toggling engine from tray");
+            await _trayManager!.ShowNotificationAsync("CursorPhobia", $"Error: {ex.Message}", true);
+        }
+    }
+    
+    private static void OnTraySettingsRequested(object? sender, EventArgs e)
+    {
+        // Placeholder for Phase B - Settings UI
+        _logger?.LogInformation("Settings requested from tray - not implemented in Phase A");
+        _trayManager?.ShowNotificationAsync("CursorPhobia", "Settings not yet implemented", false);
+    }
+    
+    private static void OnTrayAboutRequested(object? sender, EventArgs e)
+    {
+        var message = "CursorPhobia v1.0 (Phase A)\nSystem Tray Integration\n\nPushes windows away from cursor";
+        MessageBox.Show(message, "About CursorPhobia", MessageBoxButtons.OK, MessageBoxIcon.Information);
+    }
+    
+    private static async void OnTrayExitRequested(object? sender, EventArgs e)
+    {
+        _logger?.LogInformation("Exit requested from tray");
+        await _lifecycleManager!.ShutdownAsync();
+        
+        // Exit the application message loop if running in tray mode
+        if (Application.MessageLoop)
+        {
+            Application.Exit();
+        }
+    }
+    
+    // Engine event handlers for tray notifications
+    private static async void OnEngineStateChanged(object? sender, EngineStateChangedEventArgs e)
+    {
+        try
+        {
+            var trayState = e.State switch
+            {
+                EngineState.Running => TrayIconState.Enabled,
+                EngineState.Stopped => TrayIconState.Disabled,
+                EngineState.Error => TrayIconState.Error,
+                _ => TrayIconState.Disabled
+            };
+            
+            var tooltip = e.Message ?? $"CursorPhobia - {e.State}";
+            await _trayManager!.UpdateStateAsync(trayState, tooltip);
+            
+            _logger?.LogDebug("Tray state updated: {State} - {Message}", e.State, e.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error updating tray state");
+        }
+    }
+    
+    private static async void OnEnginePerformanceIssue(object? sender, EnginePerformanceEventArgs e)
+    {
+        try
+        {
+            await _trayManager!.UpdateStateAsync(TrayIconState.Warning, 
+                $"CursorPhobia - Performance Warning: {e.IssueType}");
+            
+            _logger?.LogWarning("Performance issue detected: {IssueType} - {Description}", 
+                e.IssueType, e.Description);
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error handling performance issue");
+        }
+    }
+    
+    private static void OnEngineWindowPushed(object? sender, WindowPushEventArgs e)
+    {
+        // Optional: Could show brief notifications or update statistics
+        _logger?.LogDebug("Window pushed: {Title}", e.WindowInfo.Title);
+    }
+    
+    private static void OnApplicationExitRequested(object? sender, EventArgs e)
+    {
+        _logger?.LogInformation("Application exit requested by lifecycle manager");
+        
+        // Exit the application message loop if running
+        if (Application.MessageLoop)
+        {
+            Application.Exit();
+        }
     }
 }
