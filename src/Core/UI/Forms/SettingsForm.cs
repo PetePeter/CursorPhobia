@@ -14,6 +14,7 @@ public partial class SettingsForm : Form
     private readonly IConfigurationService _configService;
     private readonly ICursorPhobiaEngine _engine;
     private readonly ILogger _logger;
+    private readonly IMonitorManager? _monitorManager;
     private readonly SettingsViewModel _viewModel;
     private readonly System.Windows.Forms.Timer _previewUpdateTimer;
     private string? _configurationPath;
@@ -23,11 +24,13 @@ public partial class SettingsForm : Form
     public SettingsForm(
         IConfigurationService configService,
         ICursorPhobiaEngine engine,
-        ILogger logger)
+        ILogger logger,
+        IMonitorManager? monitorManager = null)
     {
         _configService = configService ?? throw new ArgumentNullException(nameof(configService));
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _monitorManager = monitorManager;
 
         // Create view model with default configuration initially
         _viewModel = new SettingsViewModel(CursorPhobiaConfiguration.CreateDefault());
@@ -498,6 +501,24 @@ public partial class SettingsForm : Form
     {
         // Subscribe to view model property changes
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
+        
+        // Setup per-monitor event handlers
+        SetupPerMonitorEventHandlers();
+    }
+    
+    private void SetupPerMonitorEventHandlers()
+    {
+        // Monitor selection change
+        monitorListBox.SelectedIndexChanged += OnMonitorSelectionChanged;
+        
+        // Per-monitor setting changes
+        perMonitorEnabledCheckBox.CheckedChanged += OnPerMonitorSettingChanged;
+        useGlobalSettingsCheckBox.CheckedChanged += OnPerMonitorSettingChanged;
+        perMonitorProximityThresholdNumeric.ValueChanged += OnPerMonitorSettingChanged;
+        perMonitorPushDistanceNumeric.ValueChanged += OnPerMonitorSettingChanged;
+        
+        // Load monitor list when form is first shown
+        Load += (s, e) => LoadMonitorList();
     }
 
     private void OnViewModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -736,4 +757,184 @@ public partial class SettingsForm : Form
     {
         await ImportConfigurationAsync();
     }
+
+    #region Per-Monitor Settings Methods
+
+    /// <summary>
+    /// Loads monitor information and populates the monitor list
+    /// </summary>
+    private void LoadMonitorList()
+    {
+        if (_monitorManager == null)
+        {
+            monitorListBox.Items.Clear();
+            monitorListBox.Items.Add("Monitor Manager not available");
+            monitorListBox.Enabled = false;
+            perMonitorSettingsPanel.Enabled = false;
+            return;
+        }
+
+        try
+        {
+            var monitors = _monitorManager.GetAllMonitors();
+            monitorListBox.Items.Clear();
+
+            foreach (var monitor in monitors)
+            {
+                var displayName = $"{monitor.deviceName} ({monitor.width}x{monitor.height})";
+                if (monitor.isPrimary)
+                    displayName += " [Primary]";
+
+                monitorListBox.Items.Add(new MonitorListItem(monitor, displayName));
+            }
+
+            if (monitors.Count > 0)
+            {
+                monitorListBox.SelectedIndex = 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError($"Failed to load monitor list: {ex.Message}");
+            monitorListBox.Items.Clear();
+            monitorListBox.Items.Add("Error loading monitors");
+            monitorListBox.Enabled = false;
+        }
+    }
+
+    /// <summary>
+    /// Handles monitor selection changes in the list box
+    /// </summary>
+    private void OnMonitorSelectionChanged(object? sender, EventArgs e)
+    {
+        if (monitorListBox.SelectedItem is not MonitorListItem selectedItem)
+        {
+            selectedMonitorLabel.Text = "No monitor selected";
+            perMonitorSettingsPanel.Enabled = false;
+            return;
+        }
+
+        var monitor = selectedItem.Monitor;
+        selectedMonitorLabel.Text = selectedItem.DisplayName;
+        perMonitorSettingsPanel.Enabled = true;
+
+        // Load per-monitor settings for this monitor
+        LoadPerMonitorSettings(monitor);
+    }
+
+    /// <summary>
+    /// Loads per-monitor settings for the specified monitor
+    /// </summary>
+    private void LoadPerMonitorSettings(MonitorInfo monitor)
+    {
+        _isInitializing = true;
+
+        try
+        {
+            var monitorKey = monitor.GetStableKey();
+            var config = _viewModel.Configuration;
+
+            // Check if per-monitor settings exist
+            if (config.MultiMonitor?.PerMonitorSettings?.TryGetValue(monitorKey, out var perMonitorSettings) == true)
+            {
+                perMonitorEnabledCheckBox.Checked = perMonitorSettings.Enabled;
+                useGlobalSettingsCheckBox.Checked = !perMonitorSettings.CustomProximityThreshold.HasValue && 
+                                                   !perMonitorSettings.CustomPushDistance.HasValue;
+
+                perMonitorProximityThresholdNumeric.Value = perMonitorSettings.CustomProximityThreshold ?? config.ProximityThreshold;
+                perMonitorPushDistanceNumeric.Value = perMonitorSettings.CustomPushDistance ?? config.PushDistance;
+            }
+            else
+            {
+                // Use global settings as defaults
+                perMonitorEnabledCheckBox.Checked = true;
+                useGlobalSettingsCheckBox.Checked = true;
+                perMonitorProximityThresholdNumeric.Value = config.ProximityThreshold;
+                perMonitorPushDistanceNumeric.Value = config.PushDistance;
+            }
+
+            UpdatePerMonitorControlStates();
+        }
+        finally
+        {
+            _isInitializing = false;
+        }
+    }
+
+    /// <summary>
+    /// Updates the enabled state of per-monitor controls based on current settings
+    /// </summary>
+    private void UpdatePerMonitorControlStates()
+    {
+        var enabled = perMonitorEnabledCheckBox.Checked;
+        var useGlobal = useGlobalSettingsCheckBox.Checked;
+
+        useGlobalSettingsCheckBox.Enabled = enabled;
+        perMonitorProximityThresholdNumeric.Enabled = enabled && !useGlobal;
+        perMonitorPushDistanceNumeric.Enabled = enabled && !useGlobal;
+        perMonitorProximityThresholdLabel.Enabled = enabled && !useGlobal;
+        perMonitorPushDistanceLabel.Enabled = enabled && !useGlobal;
+    }
+
+    /// <summary>
+    /// Handles changes to per-monitor settings
+    /// </summary>
+    private void OnPerMonitorSettingChanged(object? sender, EventArgs e)
+    {
+        if (_isInitializing || monitorListBox.SelectedItem is not MonitorListItem selectedItem)
+            return;
+
+        var monitor = selectedItem.Monitor;
+        var monitorKey = monitor.GetStableKey();
+        var config = _viewModel.Configuration;
+
+        // Ensure MultiMonitor configuration exists
+        config.MultiMonitor ??= new MultiMonitorConfiguration();
+        config.MultiMonitor.PerMonitorSettings ??= new Dictionary<string, PerMonitorSettings>();
+
+        // Get or create per-monitor settings
+        if (!config.MultiMonitor.PerMonitorSettings.TryGetValue(monitorKey, out var perMonitorSettings))
+        {
+            perMonitorSettings = new PerMonitorSettings();
+            config.MultiMonitor.PerMonitorSettings[monitorKey] = perMonitorSettings;
+        }
+
+        // Update settings
+        perMonitorSettings.Enabled = perMonitorEnabledCheckBox.Checked;
+
+        if (useGlobalSettingsCheckBox.Checked)
+        {
+            // Clear custom settings to use global values
+            perMonitorSettings.CustomProximityThreshold = null;
+            perMonitorSettings.CustomPushDistance = null;
+        }
+        else
+        {
+            // Set custom values
+            perMonitorSettings.CustomProximityThreshold = (int)perMonitorProximityThresholdNumeric.Value;
+            perMonitorSettings.CustomPushDistance = (int)perMonitorPushDistanceNumeric.Value;
+        }
+
+        UpdatePerMonitorControlStates();
+        _viewModel.HasUnsavedChanges = true;
+    }
+
+    /// <summary>
+    /// Helper class for monitor list items
+    /// </summary>
+    private class MonitorListItem
+    {
+        public MonitorInfo Monitor { get; }
+        public string DisplayName { get; }
+
+        public MonitorListItem(MonitorInfo monitor, string displayName)
+        {
+            Monitor = monitor;
+            DisplayName = displayName;
+        }
+
+        public override string ToString() => DisplayName;
+    }
+
+    #endregion
 }

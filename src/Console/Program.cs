@@ -248,6 +248,7 @@ class Program
             _serviceProvider.GetRequiredService<IWindowDetectionService>(),
             _serviceProvider.GetRequiredService<IWindowPusher>(),
             _serviceProvider.GetRequiredService<ISafetyManager>(),
+            _serviceProvider.GetRequiredService<IMonitorManager>(),
             config);
         
         // Subscribe to events for live feedback
@@ -324,6 +325,7 @@ class Program
                 _serviceProvider.GetRequiredService<IWindowDetectionService>(),
                 _serviceProvider.GetRequiredService<IWindowPusher>(),
                 _serviceProvider.GetRequiredService<ISafetyManager>(),
+                _serviceProvider.GetRequiredService<IMonitorManager>(),
                 test.Config);
             
             try

@@ -18,6 +18,7 @@ public class CursorPhobiaEngineTests
     private readonly Mock<IWindowDetectionService> _mockWindowDetectionService;
     private readonly Mock<IWindowPusher> _mockWindowPusher;
     private readonly Mock<ISafetyManager> _mockSafetyManager;
+    private readonly Mock<IMonitorManager> _mockMonitorManager;
     private readonly CursorPhobiaConfiguration _defaultConfig;
 
     public CursorPhobiaEngineTests()
@@ -28,6 +29,7 @@ public class CursorPhobiaEngineTests
         _mockWindowDetectionService = new Mock<IWindowDetectionService>();
         _mockWindowPusher = new Mock<IWindowPusher>();
         _mockSafetyManager = new Mock<ISafetyManager>();
+        _mockMonitorManager = new Mock<IMonitorManager>();
         _defaultConfig = CursorPhobiaConfiguration.CreateDefault();
         
         // Setup default mock behaviors
@@ -51,6 +53,7 @@ public class CursorPhobiaEngineTests
             _mockWindowDetectionService.Object,
             _mockWindowPusher.Object,
             _mockSafetyManager.Object,
+            _mockMonitorManager.Object,
             _defaultConfig);
 
         // Assert
@@ -69,7 +72,8 @@ public class CursorPhobiaEngineTests
             _mockProximityDetector.Object,
             _mockWindowDetectionService.Object,
             _mockWindowPusher.Object,
-            _mockSafetyManager.Object));
+            _mockSafetyManager.Object,
+            _mockMonitorManager.Object));
     }
 
     [Fact]
@@ -82,7 +86,8 @@ public class CursorPhobiaEngineTests
             _mockProximityDetector.Object,
             _mockWindowDetectionService.Object,
             _mockWindowPusher.Object,
-            _mockSafetyManager.Object));
+            _mockSafetyManager.Object,
+            _mockMonitorManager.Object));
     }
 
     [Fact]
@@ -102,6 +107,7 @@ public class CursorPhobiaEngineTests
             _mockWindowDetectionService.Object,
             _mockWindowPusher.Object,
             _mockSafetyManager.Object,
+            _mockMonitorManager.Object,
             invalidConfig));
     }
 
@@ -533,6 +539,7 @@ public class CursorPhobiaEngineTests
             _mockWindowDetectionService.Object,
             _mockWindowPusher.Object,
             _mockSafetyManager.Object,
+            _mockMonitorManager.Object,
             config ?? _defaultConfig);
     }
 }

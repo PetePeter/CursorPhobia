@@ -356,6 +356,16 @@ public class PerMonitorSettings
     public int? CustomPushDistance { get; set; }
     
     /// <summary>
+    /// Custom edge wrapping behavior for this monitor (overrides global setting if set)
+    /// </summary>
+    public bool? CustomEnableWrapping { get; set; }
+    
+    /// <summary>
+    /// Custom wrap preference for this monitor (overrides global setting if set)
+    /// </summary>
+    public WrapPreference? CustomWrapPreference { get; set; }
+    
+    /// <summary>
     /// Validates the per-monitor settings
     /// </summary>
     /// <returns>List of validation error messages, empty if valid</returns>

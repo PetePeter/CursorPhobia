@@ -4,6 +4,7 @@ using CursorPhobia.Core.UI.Models;
 using CursorPhobia.Core.Models;
 using CursorPhobia.Core.Services;
 using CursorPhobia.Core.Utilities;
+using System.Drawing;
 using System.Threading.Tasks;
 
 namespace CursorPhobia.Tests.UI;
@@ -204,5 +205,14 @@ public class MockCursorPhobiaEngine : ICursorPhobiaEngine
     public Task StopAsync()
     {
         return Task.CompletedTask;
+    }
+
+    public WrapBehavior GetEffectiveWrapBehavior(Rectangle windowBounds)
+    {
+        return new WrapBehavior
+        {
+            EnableWrapping = true,
+            PreferredBehavior = WrapPreference.Adjacent
+        };
     }
 }

@@ -1,4 +1,6 @@
 using System.Drawing;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace CursorPhobia.Core.Models;
 
@@ -34,6 +36,27 @@ public class MonitorInfo
     public string deviceName { get; set; } = string.Empty;
     
     /// <summary>
+    /// Stable identifier for this monitor that persists across hotplug events
+    /// Based on device name, size, and other persistent characteristics
+    /// </summary>
+    public string stableID { get; private set; } = string.Empty;
+    
+    /// <summary>
+    /// Manufacturer ID (parsed from device name if available)
+    /// </summary>
+    public string manufacturerID { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Product ID (parsed from device name if available)
+    /// </summary>
+    public string productID { get; set; } = string.Empty;
+    
+    /// <summary>
+    /// Serial number if available
+    /// </summary>
+    public string serialNumber { get; set; } = string.Empty;
+    
+    /// <summary>
     /// Monitor width in pixels
     /// </summary>
     public int width => monitorBounds.Width;
@@ -58,6 +81,7 @@ public class MonitorInfo
     /// </summary>
     public MonitorInfo()
     {
+        GenerateStableID();
     }
     
     /// <summary>
@@ -75,6 +99,35 @@ public class MonitorInfo
         workAreaBounds = workRect;
         isPrimary = primary;
         deviceName = name;
+        
+        ParseDeviceIdentifiers();
+        GenerateStableID();
+    }
+    
+    /// <summary>
+    /// Creates a new MonitorInfo instance with full identification details
+    /// </summary>
+    /// <param name="handle">Monitor handle</param>
+    /// <param name="monitorRect">Monitor bounds</param>
+    /// <param name="workRect">Work area bounds</param>
+    /// <param name="primary">Whether this is the primary monitor</param>
+    /// <param name="name">Device name</param>
+    /// <param name="manufacturerID">Manufacturer identifier</param>
+    /// <param name="productID">Product identifier</param>
+    /// <param name="serialNumber">Serial number</param>
+    public MonitorInfo(IntPtr handle, Rectangle monitorRect, Rectangle workRect, bool primary, 
+        string name, string manufacturerID, string productID, string serialNumber)
+    {
+        monitorHandle = handle;
+        monitorBounds = monitorRect;
+        workAreaBounds = workRect;
+        isPrimary = primary;
+        deviceName = name;
+        this.manufacturerID = manufacturerID;
+        this.productID = productID;
+        this.serialNumber = serialNumber;
+        
+        GenerateStableID();
     }
     
     /// <summary>
@@ -102,6 +155,76 @@ public class MonitorInfo
     /// </summary>
     public override string ToString()
     {
-        return $"Monitor [{deviceName}]: {monitorBounds} (Primary: {isPrimary})";
+        return $"Monitor [{deviceName}]: {monitorBounds} (Primary: {isPrimary}, ID: {stableID})";
     }
+    
+    /// <summary>
+    /// Parses device identifiers from the device name
+    /// </summary>
+    private void ParseDeviceIdentifiers()
+    {
+        if (string.IsNullOrEmpty(deviceName))
+            return;
+            
+        // Try to parse EDID-style device names like "\\.\DISPLAY1" or hardware IDs
+        // This is a simplified parser - real implementations might use WMI or registry
+        
+        // For now, use device name as basis for identification
+        // In a full implementation, this would extract manufacturer/product codes from EDID
+        if (deviceName.StartsWith(@"\\.\"))
+        {
+            // Extract display number
+            var displayPart = deviceName.Substring(4); // Remove "\\." prefix
+            manufacturerID = "GENERIC";
+            productID = displayPart;
+        }
+        else
+        {
+            // Use device name directly
+            manufacturerID = "UNKNOWN";
+            productID = deviceName;
+        }
+    }
+    
+    /// <summary>
+    /// Generates a stable identifier for this monitor
+    /// </summary>
+    private void GenerateStableID()
+    {
+        // Create a stable ID based on persistent characteristics
+        var identifierData = new StringBuilder();
+        
+        // Include manufacturer and product IDs if available
+        if (!string.IsNullOrEmpty(manufacturerID))
+            identifierData.Append(manufacturerID);
+        if (!string.IsNullOrEmpty(productID))
+            identifierData.Append("|").Append(productID);
+        if (!string.IsNullOrEmpty(serialNumber))
+            identifierData.Append("|").Append(serialNumber);
+            
+        // Include monitor size as fallback identifier
+        identifierData.Append("|").Append(width).Append("x").Append(height);
+        
+        // Include device name as additional distinguisher
+        if (!string.IsNullOrEmpty(deviceName))
+            identifierData.Append("|").Append(deviceName);
+        
+        // Generate SHA256 hash for consistent, short identifier
+        var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(identifierData.ToString()));
+        stableID = Convert.ToHexString(hashBytes)[..12]; // Use first 12 characters
+    }
+    
+    /// <summary>
+    /// Updates the stable ID after property changes
+    /// </summary>
+    public void RefreshStableID()
+    {
+        ParseDeviceIdentifiers();
+        GenerateStableID();
+    }
+    
+    /// <summary>
+    /// Gets the stable ID for use as a dictionary key in per-monitor settings
+    /// </summary>
+    public string GetStableKey() => stableID;
 }

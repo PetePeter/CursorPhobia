@@ -18,6 +18,7 @@ public class ConfigurationHotSwapTests : IDisposable
     private readonly Mock<IWindowDetectionService> _mockWindowDetectionService;
     private readonly Mock<IWindowPusher> _mockWindowPusher;
     private readonly Mock<ISafetyManager> _mockSafetyManager;
+    private readonly Mock<IMonitorManager> _mockMonitorManager;
     private readonly CursorPhobiaEngine _engine;
     private readonly CursorPhobiaConfiguration _baseConfiguration;
 
@@ -29,6 +30,7 @@ public class ConfigurationHotSwapTests : IDisposable
         _mockWindowDetectionService = new Mock<IWindowDetectionService>();
         _mockWindowPusher = new Mock<IWindowPusher>();
         _mockSafetyManager = new Mock<ISafetyManager>();
+        _mockMonitorManager = new Mock<IMonitorManager>();
 
         _baseConfiguration = new CursorPhobiaConfiguration
         {
@@ -53,6 +55,7 @@ public class ConfigurationHotSwapTests : IDisposable
             _mockWindowDetectionService.Object,
             _mockWindowPusher.Object,
             _mockSafetyManager.Object,
+            _mockMonitorManager.Object,
             _baseConfiguration);
     }
 

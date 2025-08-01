@@ -80,4 +80,11 @@ public interface ICursorPhobiaEngine
     /// </summary>
     /// <returns>Performance statistics object</returns>
     EnginePerformanceStats GetPerformanceStats();
+    
+    /// <summary>
+    /// Gets the effective wrap behavior for a window on a specific monitor
+    /// </summary>
+    /// <param name="windowBounds">Window bounds to determine monitor</param>
+    /// <returns>Wrap behavior configuration for the monitor</returns>
+    WrapBehavior GetEffectiveWrapBehavior(Rectangle windowBounds);
 }

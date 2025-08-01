@@ -18,6 +18,7 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
     private readonly IWindowDetectionService _windowDetectionService;
     private readonly IWindowPusher _windowPusher;
     private readonly ISafetyManager _safetyManager;
+    private readonly IMonitorManager _monitorManager;
     private volatile CursorPhobiaConfiguration _config;
     private readonly object _configurationLock = new();
     
@@ -95,6 +96,7 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
     /// <param name="windowDetectionService">Service for finding and monitoring windows</param>
     /// <param name="windowPusher">Service for moving windows with animation</param>
     /// <param name="safetyManager">Service for validating window positions</param>
+    /// <param name="monitorManager">Monitor manager for multi-monitor support</param>
     /// <param name="config">Configuration for engine behavior</param>
     public CursorPhobiaEngine(
         ILogger logger,
@@ -103,6 +105,7 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
         IWindowDetectionService windowDetectionService,
         IWindowPusher windowPusher,
         ISafetyManager safetyManager,
+        IMonitorManager monitorManager,
         CursorPhobiaConfiguration? config = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -111,6 +114,7 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
         _windowDetectionService = windowDetectionService ?? throw new ArgumentNullException(nameof(windowDetectionService));
         _windowPusher = windowPusher ?? throw new ArgumentNullException(nameof(windowPusher));
         _safetyManager = safetyManager ?? throw new ArgumentNullException(nameof(safetyManager));
+        _monitorManager = monitorManager ?? throw new ArgumentNullException(nameof(monitorManager));
         _config = config ?? CursorPhobiaConfiguration.CreateDefault();
         
         var validationErrors = _config.Validate();
@@ -472,16 +476,25 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
             return;
         }
 
-        // Get configuration values in a thread-safe manner
-        int proximityThreshold, pushDistance, hoverTimeoutMs;
-        bool enableHoverTimeout;
-        lock (_configurationLock)
+        // Get per-monitor configuration values
+        var monitorSettings = GetEffectiveMonitorSettings(trackingInfo.WindowInfo.Bounds);
+        
+        // Skip processing if per-monitor CursorPhobia is disabled for this monitor
+        if (!monitorSettings.enabled)
         {
-            proximityThreshold = _config.ProximityThreshold;
-            pushDistance = _config.PushDistance;
-            hoverTimeoutMs = _config.HoverTimeoutMs;
-            enableHoverTimeout = _config.EnableHoverTimeout;
+            // Reset proximity state when disabled
+            trackingInfo.IsInProximity = false;
+            trackingInfo.HoverStartTime = null;
+            trackingInfo.IsHoveringTimeout = false;
+            return;
         }
+        
+        int proximityThreshold = monitorSettings.proximityThreshold;
+        int pushDistance = monitorSettings.pushDistance;
+        int hoverTimeoutMs = monitorSettings.hoverTimeoutMs;
+        bool enableHoverTimeout = monitorSettings.enableHoverTimeout;
+        bool enableWrapping = monitorSettings.enableWrapping;
+        WrapPreference wrapPreference = monitorSettings.wrapPreference;
         
         // Check proximity
         var windowBounds = trackingInfo.WindowInfo.Bounds;
@@ -822,6 +835,86 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
             ConfiguredUpdateIntervalMs = currentConfig.UpdateIntervalMs,
             SuccessfulUpdates = _successfulUpdates,
             FailedUpdates = _failedUpdates
+        };
+    }
+    
+    /// <summary>
+    /// Gets the effective monitor settings for a given window bounds
+    /// Combines global settings with per-monitor overrides
+    /// </summary>
+    /// <param name="windowBounds">Window bounds to find the monitor for</param>
+    /// <returns>Effective settings for the monitor containing the window</returns>
+    private (int proximityThreshold, int pushDistance, int hoverTimeoutMs, bool enableHoverTimeout, bool enabled, bool enableWrapping, WrapPreference wrapPreference) GetEffectiveMonitorSettings(Rectangle windowBounds)
+    {
+        CursorPhobiaConfiguration currentConfig;
+        lock (_configurationLock)
+        {
+            currentConfig = _config;
+        }
+        
+        // Get the monitor containing this window
+        var monitor = _monitorManager.GetMonitorContaining(windowBounds);
+        if (monitor == null)
+        {
+            // Fallback to global settings if monitor not found
+            return (
+                currentConfig.ProximityThreshold,
+                currentConfig.PushDistance,
+                currentConfig.HoverTimeoutMs,
+                currentConfig.EnableHoverTimeout,
+                true,
+                currentConfig.MultiMonitor?.EnableWrapping ?? true,
+                currentConfig.MultiMonitor?.PreferredWrapBehavior ?? WrapPreference.Smart
+            );
+        }
+        
+        // Check for per-monitor settings
+        var monitorKey = monitor.GetStableKey();
+        if (currentConfig.MultiMonitor?.PerMonitorSettings?.TryGetValue(monitorKey, out var perMonitorSettings) == true)
+        {
+            // Apply per-monitor overrides
+            var proximityThreshold = perMonitorSettings.CustomProximityThreshold ?? currentConfig.ProximityThreshold;
+            var pushDistance = perMonitorSettings.CustomPushDistance ?? currentConfig.PushDistance;
+            var enableWrapping = perMonitorSettings.CustomEnableWrapping ?? currentConfig.MultiMonitor?.EnableWrapping ?? true;
+            var wrapPreference = perMonitorSettings.CustomWrapPreference ?? currentConfig.MultiMonitor?.PreferredWrapBehavior ?? WrapPreference.Smart;
+            
+            return (
+                proximityThreshold,
+                pushDistance,
+                currentConfig.HoverTimeoutMs, // No per-monitor override for hover timeout yet
+                currentConfig.EnableHoverTimeout, // No per-monitor override for hover timeout yet
+                perMonitorSettings.Enabled,
+                enableWrapping,
+                wrapPreference
+            );
+        }
+        
+        // Return global settings as fallback
+        return (
+            currentConfig.ProximityThreshold,
+            currentConfig.PushDistance,
+            currentConfig.HoverTimeoutMs,
+            currentConfig.EnableHoverTimeout,
+            true,
+            currentConfig.MultiMonitor?.EnableWrapping ?? true,
+            currentConfig.MultiMonitor?.PreferredWrapBehavior ?? WrapPreference.Smart
+        );
+    }
+    
+    /// <summary>
+    /// Gets the effective wrap behavior for a window on a specific monitor
+    /// </summary>
+    /// <param name="windowBounds">Window bounds to determine monitor</param>
+    /// <returns>Wrap behavior configuration for the monitor</returns>
+    public WrapBehavior GetEffectiveWrapBehavior(Rectangle windowBounds)
+    {
+        var settings = GetEffectiveMonitorSettings(windowBounds);
+        
+        return new WrapBehavior
+        {
+            EnableWrapping = settings.enableWrapping,
+            PreferredBehavior = settings.wrapPreference,
+            RespectTaskbarAreas = true // Always respect taskbar areas for safety
         };
     }
     

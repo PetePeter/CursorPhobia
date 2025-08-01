@@ -11,16 +11,19 @@ public class ProximityDetector : IProximityDetector
 {
     private readonly ILogger _logger;
     private readonly ProximityConfiguration _config;
+    private readonly IMonitorManager? _monitorManager;
 
     /// <summary>
     /// Creates a new ProximityDetector instance
     /// </summary>
     /// <param name="logger">Logger for diagnostic output</param>
     /// <param name="config">Configuration for proximity detection algorithms</param>
-    public ProximityDetector(ILogger logger, ProximityConfiguration? config = null)
+    /// <param name="monitorManager">Monitor manager for DPI-aware calculations (optional)</param>
+    public ProximityDetector(ILogger logger, ProximityConfiguration? config = null, IMonitorManager? monitorManager = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _config = config ?? new ProximityConfiguration();
+        _monitorManager = monitorManager;
         
         var validationErrors = _config.Validate();
         if (validationErrors.Count > 0)
@@ -28,7 +31,8 @@ public class ProximityDetector : IProximityDetector
             throw new ArgumentException($"Invalid proximity configuration: {string.Join(", ", validationErrors)}");
         }
         
-        _logger.LogDebug("ProximityDetector initialized with algorithm: {Algorithm}", _config.Algorithm);
+        _logger.LogDebug("ProximityDetector initialized with algorithm: {Algorithm}, DPI-aware: {DpiAware}", 
+            _config.Algorithm, _monitorManager != null);
     }
 
     /// <summary>
@@ -82,11 +86,14 @@ public class ProximityDetector : IProximityDetector
 
         try
         {
-            var distance = CalculateProximity(cursorPosition, windowBounds);
-            var isWithin = distance <= proximityThreshold;
+            // Convert threshold to physical pixels if DPI-aware mode is enabled
+            var effectiveThreshold = GetDpiAwareThreshold(proximityThreshold, cursorPosition, windowBounds);
             
-            _logger.LogDebug("Proximity check: distance={Distance:F2}, threshold={Threshold}, within={IsWithin}", 
-                distance, proximityThreshold, isWithin);
+            var distance = CalculateProximity(cursorPosition, windowBounds);
+            var isWithin = distance <= effectiveThreshold;
+            
+            _logger.LogDebug("Proximity check: distance={Distance:F2}, threshold={Threshold} (effective: {EffectiveThreshold}), within={IsWithin}", 
+                distance, proximityThreshold, effectiveThreshold, isWithin);
                 
             return isWithin;
         }
@@ -115,6 +122,9 @@ public class ProximityDetector : IProximityDetector
 
         try
         {
+            // Convert push distance to physical pixels if DPI-aware
+            var effectivePushDistance = GetDpiAwarePushDistance(pushDistance, cursorPosition, windowBounds);
+            
             // Find the closest point on the window to the cursor
             var closestPoint = GetClosestPointOnRectangle(cursorPosition, windowBounds);
             
@@ -142,15 +152,15 @@ public class ProximityDetector : IProximityDetector
             {
                 // If cursor is exactly at the closest point, push right by default
                 _logger.LogDebug("Zero magnitude vector, defaulting to rightward push");
-                return new Point(pushDistance, 0);
+                return new Point(effectivePushDistance, 0);
             }
             
             var normalizedX = directionX / magnitude;
             var normalizedY = directionY / magnitude;
             
-            // Scale by push distance
-            var pushX = (int)Math.Round(normalizedX * pushDistance);
-            var pushY = (int)Math.Round(normalizedY * pushDistance);
+            // Scale by effective push distance (DPI-aware)
+            var pushX = (int)Math.Round(normalizedX * effectivePushDistance);
+            var pushY = (int)Math.Round(normalizedY * effectivePushDistance);
             
             var pushVector = new Point(pushX, pushY);
             
@@ -168,6 +178,76 @@ public class ProximityDetector : IProximityDetector
     }
 
     #region Private Helper Methods
+
+    /// <summary>
+    /// Converts a logical proximity threshold to physical pixels based on monitor DPI
+    /// </summary>
+    /// <param name="logicalThreshold">Threshold in logical pixels</param>
+    /// <param name="cursorPosition">Cursor position to determine monitor</param>
+    /// <param name="windowBounds">Window bounds to determine monitor</param>
+    /// <returns>Threshold in physical pixels</returns>
+    private double GetDpiAwareThreshold(int logicalThreshold, Point cursorPosition, Rectangle windowBounds)
+    {
+        if (_monitorManager == null)
+        {
+            // No DPI conversion if monitor manager is not available
+            return logicalThreshold;
+        }
+        
+        try
+        {
+            // Use cursor position to determine DPI (more responsive to user's current monitor)
+            var dpiInfo = _monitorManager.GetDpiForPoint(cursorPosition);
+            
+            // Convert logical threshold to physical pixels
+            var physicalThreshold = (int)Math.Round(logicalThreshold * dpiInfo.ScaleFactorX);
+            
+            _logger.LogDebug("DPI-aware threshold conversion: {LogicalThreshold} -> {PhysicalThreshold} (scale: {ScaleFactor})",
+                logicalThreshold, physicalThreshold, dpiInfo.ScaleFactorX);
+                
+            return physicalThreshold;
+        }
+        catch (Exception)
+        {
+            _logger.LogWarning("Failed to get DPI-aware threshold, using logical threshold: {Threshold}", logicalThreshold);
+            return logicalThreshold;
+        }
+    }
+    
+    /// <summary>
+    /// Converts a logical push distance to physical pixels based on monitor DPI
+    /// </summary>
+    /// <param name="logicalDistance">Distance in logical pixels</param>
+    /// <param name="cursorPosition">Cursor position to determine monitor</param>
+    /// <param name="windowBounds">Window bounds to determine monitor</param>
+    /// <returns>Distance in physical pixels</returns>
+    private int GetDpiAwarePushDistance(int logicalDistance, Point cursorPosition, Rectangle windowBounds)
+    {
+        if (_monitorManager == null)
+        {
+            // No DPI conversion if monitor manager is not available
+            return logicalDistance;
+        }
+        
+        try
+        {
+            // Use cursor position to determine DPI
+            var dpiInfo = _monitorManager.GetDpiForPoint(cursorPosition);
+            
+            // Convert logical distance to physical pixels
+            var physicalDistance = (int)Math.Round(logicalDistance * dpiInfo.ScaleFactorX);
+            
+            _logger.LogDebug("DPI-aware distance conversion: {LogicalDistance} -> {PhysicalDistance} (scale: {ScaleFactor})",
+                logicalDistance, physicalDistance, dpiInfo.ScaleFactorX);
+                
+            return physicalDistance;
+        }
+        catch (Exception)
+        {
+            _logger.LogWarning("Failed to get DPI-aware distance, using logical distance: {Distance}", logicalDistance);
+            return logicalDistance;
+        }
+    }
 
     /// <summary>
     /// Calculates Euclidean distance between cursor and nearest point on window

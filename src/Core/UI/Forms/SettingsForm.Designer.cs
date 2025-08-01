@@ -40,6 +40,19 @@ namespace CursorPhobia.Core.UI.Forms
         private Label wrapPreferenceLabel;
         private CheckBox respectTaskbarAreasCheckBox;
         
+        // Per-Monitor Settings Controls
+        private Panel monitorLayoutPanel;
+        private ListBox monitorListBox;
+        private Label monitorListLabel;
+        private Panel perMonitorSettingsPanel;
+        private Label selectedMonitorLabel;
+        private CheckBox perMonitorEnabledCheckBox;
+        private NumericUpDown perMonitorProximityThresholdNumeric;
+        private Label perMonitorProximityThresholdLabel;
+        private NumericUpDown perMonitorPushDistanceNumeric;
+        private Label perMonitorPushDistanceLabel;
+        private CheckBox useGlobalSettingsCheckBox;
+        
         // Advanced Tab Controls
         private NumericUpDown updateIntervalNumeric;
         private Label updateIntervalLabel;
@@ -394,18 +407,121 @@ namespace CursorPhobia.Core.UI.Forms
                 UseVisualStyleBackColor = true
             };
 
-            yPos += 40;
+            yPos += 50;
+
+            // Per-Monitor Settings Section
+            var perMonitorLabel = new Label
+            {
+                Text = "Per-Monitor Settings:",
+                Location = new Point(12, yPos),
+                Size = new Size(200, 20),
+                Font = new Font(SystemFonts.DefaultFont, FontStyle.Bold)
+            };
+
+            yPos += 30;
+
+            // Monitor List
+            monitorListLabel = new Label
+            {
+                Text = "Select Monitor:",
+                Location = new Point(12, yPos),
+                Size = new Size(100, 20)
+            };
+
+            monitorListBox = new ListBox
+            {
+                Location = new Point(12, yPos + 25),
+                Size = new Size(250, 120),
+                SelectionMode = SelectionMode.One
+            };
+
+            // Per-Monitor Settings Panel
+            perMonitorSettingsPanel = new Panel
+            {
+                Location = new Point(280, yPos),
+                Size = new Size(300, 200),
+                BorderStyle = BorderStyle.FixedSingle
+            };
+
+            selectedMonitorLabel = new Label
+            {
+                Text = "No monitor selected",
+                Location = new Point(8, 8),
+                Size = new Size(280, 20),
+                Font = new Font(SystemFonts.DefaultFont, FontStyle.Bold)
+            };
+
+            perMonitorEnabledCheckBox = new CheckBox
+            {
+                Text = "Enable CursorPhobia for this monitor",
+                Location = new Point(8, 35),
+                Size = new Size(250, 20),
+                UseVisualStyleBackColor = true
+            };
+
+            useGlobalSettingsCheckBox = new CheckBox
+            {
+                Text = "Use global settings",
+                Location = new Point(8, 60),
+                Size = new Size(150, 20),
+                UseVisualStyleBackColor = true,
+                Checked = true
+            };
+
+            perMonitorProximityThresholdLabel = new Label
+            {
+                Text = "Proximity Threshold:",
+                Location = new Point(8, 90),
+                Size = new Size(120, 20)
+            };
+
+            perMonitorProximityThresholdNumeric = new NumericUpDown
+            {
+                Location = new Point(140, 87),
+                Size = new Size(80, 23),
+                Minimum = 10,
+                Maximum = 500,
+                Value = 50,
+                Enabled = false
+            };
+
+            perMonitorPushDistanceLabel = new Label
+            {
+                Text = "Push Distance:",
+                Location = new Point(8, 120),
+                Size = new Size(120, 20)
+            };
+
+            perMonitorPushDistanceNumeric = new NumericUpDown
+            {
+                Location = new Point(140, 117),
+                Size = new Size(80, 23),
+                Minimum = 10,
+                Maximum = 1000,
+                Value = 100,
+                Enabled = false
+            };
+
+            // Add controls to per-monitor settings panel
+            perMonitorSettingsPanel.Controls.AddRange(new Control[] {
+                selectedMonitorLabel,
+                perMonitorEnabledCheckBox,
+                useGlobalSettingsCheckBox,
+                perMonitorProximityThresholdLabel, perMonitorProximityThresholdNumeric,
+                perMonitorPushDistanceLabel, perMonitorPushDistanceNumeric
+            });
+
+            yPos += 220;
 
             // Help text
             var multiMonitorHelpLabel = new Label
             {
                 Text = "Multi-monitor settings control how windows behave across multiple displays.\n\n" +
                        "• Edge Wrapping: Windows pushed to screen edges wrap to adjacent monitors\n" +
-                       "• Smart: Use adjacent monitor if available, otherwise opposite edge\n" +
-                       "• Adjacent: Always wrap to neighboring monitor\n" +
-                       "• Opposite: Always wrap to opposite edge of same monitor",
+                       "• Per-Monitor: Configure different behavior for each display\n" +
+                       "• DPI-Aware: Settings automatically scale with monitor DPI",
                 Location = new Point(12, yPos),
-                Size = new Size(550, 80),
+                Size = new Size(550, 60),
                 ForeColor = SystemColors.GrayText
             };
 
@@ -413,6 +529,9 @@ namespace CursorPhobia.Core.UI.Forms
                 enableWrappingCheckBox,
                 wrapPreferenceLabel, wrapPreferenceComboBox,
                 respectTaskbarAreasCheckBox,
+                perMonitorLabel,
+                monitorListLabel, monitorListBox,
+                perMonitorSettingsPanel,
                 multiMonitorHelpLabel
             });
         }
