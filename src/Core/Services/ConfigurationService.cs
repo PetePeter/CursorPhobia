@@ -21,14 +21,25 @@ public class ConfigurationService : IConfigurationService
     private static readonly char[] InvalidFileNameChars = Path.GetInvalidFileNameChars();
     private readonly ILogger _logger;
     private readonly JsonSerializerOptions _jsonOptions;
+    private readonly IConfigurationBackupService? _backupService;
     
     /// <summary>
     /// Creates a new ConfigurationService instance
     /// </summary>
     /// <param name="logger">Logger for diagnostic output</param>
-    public ConfigurationService(ILogger logger)
+    public ConfigurationService(ILogger logger) : this(logger, null)
+    {
+    }
+    
+    /// <summary>
+    /// Creates a new ConfigurationService instance with backup support
+    /// </summary>
+    /// <param name="logger">Logger for diagnostic output</param>
+    /// <param name="backupService">Optional backup service for automatic backup creation</param>
+    public ConfigurationService(ILogger logger, IConfigurationBackupService? backupService)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _backupService = backupService;
         
         // Configure JSON serialization options for human-readable output
         _jsonOptions = new JsonSerializerOptions
@@ -169,6 +180,25 @@ public class ConfigurationService : IConfigurationService
             
             // Validate the file path to prevent directory traversal attacks
             ValidateConfigurationPath(filePath);
+            
+            // Create backup if backup service is available and the file already exists
+            if (_backupService != null && File.Exists(filePath))
+            {
+                try
+                {
+                    var backupDirectory = directory ?? Path.GetDirectoryName(Path.GetFullPath(filePath));
+                    if (!string.IsNullOrEmpty(backupDirectory))
+                    {
+                        await _backupService.CreateBackupAsync(filePath, backupDirectory);
+                        _logger.LogDebug("Created backup before saving configuration");
+                    }
+                }
+                catch (Exception backupEx)
+                {
+                    // Backup failure should not prevent config save
+                    _logger.LogWarning("Failed to create backup before saving configuration, continuing with save operation. Exception: {Exception}", backupEx.Message);
+                }
+            }
             
             // Use atomic write: write to temp file first, then rename
             var tempFilePath = filePath + TempFileExtension;
