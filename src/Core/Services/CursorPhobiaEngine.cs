@@ -18,7 +18,8 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
     private readonly IWindowDetectionService _windowDetectionService;
     private readonly IWindowPusher _windowPusher;
     private readonly ISafetyManager _safetyManager;
-    private readonly CursorPhobiaConfiguration _config;
+    private volatile CursorPhobiaConfiguration _config;
+    private readonly object _configurationLock = new();
     
     // Engine state
     private volatile bool _isRunning = false;
@@ -79,6 +80,11 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
     /// Event raised when performance issues are detected (for tray warnings)
     /// </summary>
     public event EventHandler<EnginePerformanceEventArgs>? PerformanceIssueDetected;
+    
+    /// <summary>
+    /// Event raised when configuration is updated (for UI updates and logging)
+    /// </summary>
+    public event EventHandler<ConfigurationUpdatedEventArgs>? ConfigurationUpdated;
     
     /// <summary>
     /// Creates a new CursorPhobiaEngine instance
@@ -246,7 +252,13 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
         {
             _logger.LogDebug("Refreshing tracked windows...");
             
-            var discoveredWindows = _config.ApplyToAllWindows 
+            bool applyToAllWindows;
+            lock (_configurationLock)
+            {
+                applyToAllWindows = _config.ApplyToAllWindows;
+            }
+            
+            var discoveredWindows = applyToAllWindows 
                 ? _windowDetectionService.EnumerateVisibleWindows()
                 : _windowDetectionService.GetAllTopMostWindows();
             
@@ -351,15 +363,21 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
                 _failedUpdates++;
             
             // Log performance warnings if updates are taking too long
-            if (updateStartTime.ElapsedMilliseconds > _config.MaxUpdateIntervalMs)
+            int maxUpdateIntervalMs;
+            lock (_configurationLock)
+            {
+                maxUpdateIntervalMs = _config.MaxUpdateIntervalMs;
+            }
+            
+            if (updateStartTime.ElapsedMilliseconds > maxUpdateIntervalMs)
             {
                 _logger.LogWarning("Update cycle took {Duration}ms, exceeding max interval of {MaxInterval}ms", 
-                    updateStartTime.ElapsedMilliseconds, _config.MaxUpdateIntervalMs);
+                    updateStartTime.ElapsedMilliseconds, maxUpdateIntervalMs);
                 
                 // Raise performance issue event for tray notification
                 PerformanceIssueDetected?.Invoke(this, new EnginePerformanceEventArgs(
                     "Slow Update Cycle", 
-                    $"Update cycle took {updateStartTime.ElapsedMilliseconds}ms (max: {_config.MaxUpdateIntervalMs}ms)",
+                    $"Update cycle took {updateStartTime.ElapsedMilliseconds}ms (max: {maxUpdateIntervalMs}ms)",
                     updateStartTime.ElapsedMilliseconds));
             }
         }
@@ -370,8 +388,15 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
     /// </summary>
     private async Task ProcessUpdateCycleAsync()
     {
+        // Get configuration values in a thread-safe manner
+        bool enableCtrlOverride;
+        lock (_configurationLock)
+        {
+            enableCtrlOverride = _config.EnableCtrlOverride;
+        }
+        
         // Check if CTRL override is active
-        if (_config.EnableCtrlOverride && _cursorTracker.IsCtrlKeyPressed())
+        if (enableCtrlOverride && _cursorTracker.IsCtrlKeyPressed())
         {
             // CTRL is pressed - cancel all animations and skip processing
             _windowPusher.CancelAllAnimations();
@@ -446,13 +471,24 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
             trackingInfo.IsHoveringTimeout = false;
             return;
         }
+
+        // Get configuration values in a thread-safe manner
+        int proximityThreshold, pushDistance, hoverTimeoutMs;
+        bool enableHoverTimeout;
+        lock (_configurationLock)
+        {
+            proximityThreshold = _config.ProximityThreshold;
+            pushDistance = _config.PushDistance;
+            hoverTimeoutMs = _config.HoverTimeoutMs;
+            enableHoverTimeout = _config.EnableHoverTimeout;
+        }
         
         // Check proximity
         var windowBounds = trackingInfo.WindowInfo.Bounds;
         var isInProximity = _proximityDetector.IsWithinProximity(
             cursorPosition, 
             windowBounds, 
-            _config.ProximityThreshold);
+            proximityThreshold);
         
         trackingInfo.LastProximityCheckTime = currentTime;
         
@@ -461,7 +497,7 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
         {
             // Cursor entered proximity
             trackingInfo.IsInProximity = true;
-            trackingInfo.HoverStartTime = _config.EnableHoverTimeout ? currentTime : null;
+            trackingInfo.HoverStartTime = enableHoverTimeout ? currentTime : null;
             trackingInfo.IsHoveringTimeout = false;
             
             _logger.LogDebug("Cursor entered proximity of window: {Title} ({Handle:X})", 
@@ -480,12 +516,12 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
         else if (isInProximity && trackingInfo.IsInProximity)
         {
             // Check hover timeout
-            if (_config.EnableHoverTimeout && 
+            if (enableHoverTimeout && 
                 trackingInfo.HoverStartTime.HasValue && 
                 !trackingInfo.IsHoveringTimeout)
             {
                 var hoverDuration = currentTime - trackingInfo.HoverStartTime.Value;
-                if (hoverDuration.TotalMilliseconds >= _config.HoverTimeoutMs)
+                if (hoverDuration.TotalMilliseconds >= hoverTimeoutMs)
                 {
                     trackingInfo.IsHoveringTimeout = true;
                     _logger.LogDebug("Hover timeout reached for window: {Title} ({Handle:X})", 
@@ -501,7 +537,7 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
             var pushSuccess = await _windowPusher.PushWindowAsync(
                 windowHandle, 
                 cursorPosition, 
-                _config.PushDistance);
+                pushDistance);
             
             if (pushSuccess)
             {
@@ -512,9 +548,256 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
                 WindowPushed?.Invoke(this, new WindowPushEventArgs(
                     trackingInfo.WindowInfo,
                     cursorPosition,
-                    _config.PushDistance));
+                    pushDistance));
             }
         }
+    }
+    
+    /// <summary>
+    /// Updates the engine configuration with hot-swapping support
+    /// </summary>
+    /// <param name="newConfiguration">The new configuration to apply</param>
+    /// <returns>Result of the configuration update operation</returns>
+    public async Task<ConfigurationUpdateResult> UpdateConfigurationAsync(CursorPhobiaConfiguration newConfiguration)
+    {
+        if (newConfiguration == null)
+            throw new ArgumentNullException(nameof(newConfiguration));
+            
+        if (_disposed)
+        {
+            return ConfigurationUpdateResult.CreateFailure(
+                "Cannot update configuration on disposed engine",
+                new ConfigurationChangeAnalysis(_config, newConfiguration));
+        }
+        
+        // Validate the new configuration
+        var validationErrors = newConfiguration.Validate();
+        if (validationErrors.Count > 0)
+        {
+            _logger.LogWarning("Configuration validation failed: {Errors}", string.Join(", ", validationErrors));
+            return ConfigurationUpdateResult.CreateValidationFailure(
+                new ConfigurationChangeAnalysis(_config, newConfiguration),
+                validationErrors);
+        }
+        
+        CursorPhobiaConfiguration oldConfiguration;
+        ConfigurationChangeAnalysis changeAnalysis;
+        
+        // Analyze changes while holding the configuration lock
+        lock (_configurationLock)
+        {
+            oldConfiguration = _config;
+            changeAnalysis = new ConfigurationChangeAnalysis(_config, newConfiguration);
+        }
+        
+        try
+        {
+            _logger.LogInformation("Processing configuration update: {Summary}", changeAnalysis.GetSummary());
+            
+            // If no changes detected, return success immediately
+            if (!changeAnalysis.HasChanges)
+            {
+                _logger.LogDebug("No configuration changes detected");
+                var noChangeResult = ConfigurationUpdateResult.CreateSuccess(changeAnalysis);
+                
+                // Still fire the event for consistency
+                ConfigurationUpdated?.Invoke(this, new ConfigurationUpdatedEventArgs(
+                    noChangeResult, newConfiguration, oldConfiguration));
+                    
+                return noChangeResult;
+            }
+            
+            // Apply hot-swappable changes immediately
+            var appliedChanges = new List<string>();
+            var queuedForRestart = new List<string>();
+            
+            lock (_configurationLock)
+            {
+                // Create a copy of the current configuration to modify
+                var updatedConfig = CloneConfiguration(_config);
+                
+                // Apply hot-swappable changes
+                if (changeAnalysis.HotSwappableChanges.Contains(nameof(CursorPhobiaConfiguration.ProximityThreshold)))
+                {
+                    updatedConfig.ProximityThreshold = newConfiguration.ProximityThreshold;
+                    appliedChanges.Add(nameof(CursorPhobiaConfiguration.ProximityThreshold));
+                    _logger.LogDebug("Updated ProximityThreshold from {Old} to {New}", 
+                        oldConfiguration.ProximityThreshold, newConfiguration.ProximityThreshold);
+                }
+                
+                if (changeAnalysis.HotSwappableChanges.Contains(nameof(CursorPhobiaConfiguration.PushDistance)))
+                {
+                    updatedConfig.PushDistance = newConfiguration.PushDistance;
+                    appliedChanges.Add(nameof(CursorPhobiaConfiguration.PushDistance));
+                    _logger.LogDebug("Updated PushDistance from {Old} to {New}", 
+                        oldConfiguration.PushDistance, newConfiguration.PushDistance);
+                }
+                
+                if (changeAnalysis.HotSwappableChanges.Contains(nameof(CursorPhobiaConfiguration.EnableCtrlOverride)))
+                {
+                    updatedConfig.EnableCtrlOverride = newConfiguration.EnableCtrlOverride;
+                    appliedChanges.Add(nameof(CursorPhobiaConfiguration.EnableCtrlOverride));
+                    _logger.LogDebug("Updated EnableCtrlOverride from {Old} to {New}", 
+                        oldConfiguration.EnableCtrlOverride, newConfiguration.EnableCtrlOverride);
+                }
+                
+                if (changeAnalysis.HotSwappableChanges.Contains(nameof(CursorPhobiaConfiguration.ScreenEdgeBuffer)))
+                {
+                    updatedConfig.ScreenEdgeBuffer = newConfiguration.ScreenEdgeBuffer;
+                    appliedChanges.Add(nameof(CursorPhobiaConfiguration.ScreenEdgeBuffer));
+                    _logger.LogDebug("Updated ScreenEdgeBuffer from {Old} to {New}", 
+                        oldConfiguration.ScreenEdgeBuffer, newConfiguration.ScreenEdgeBuffer);
+                }
+                
+                if (changeAnalysis.HotSwappableChanges.Contains(nameof(CursorPhobiaConfiguration.AnimationDurationMs)))
+                {
+                    updatedConfig.AnimationDurationMs = newConfiguration.AnimationDurationMs;
+                    appliedChanges.Add(nameof(CursorPhobiaConfiguration.AnimationDurationMs));
+                    _logger.LogDebug("Updated AnimationDurationMs from {Old} to {New}", 
+                        oldConfiguration.AnimationDurationMs, newConfiguration.AnimationDurationMs);
+                }
+                
+                if (changeAnalysis.HotSwappableChanges.Contains(nameof(CursorPhobiaConfiguration.EnableAnimations)))
+                {
+                    updatedConfig.EnableAnimations = newConfiguration.EnableAnimations;
+                    appliedChanges.Add(nameof(CursorPhobiaConfiguration.EnableAnimations));
+                    _logger.LogDebug("Updated EnableAnimations from {Old} to {New}", 
+                        oldConfiguration.EnableAnimations, newConfiguration.EnableAnimations);
+                }
+                
+                if (changeAnalysis.HotSwappableChanges.Contains(nameof(CursorPhobiaConfiguration.AnimationEasing)))
+                {
+                    updatedConfig.AnimationEasing = newConfiguration.AnimationEasing;
+                    appliedChanges.Add(nameof(CursorPhobiaConfiguration.AnimationEasing));
+                    _logger.LogDebug("Updated AnimationEasing from {Old} to {New}", 
+                        oldConfiguration.AnimationEasing, newConfiguration.AnimationEasing);
+                }
+                
+                if (changeAnalysis.HotSwappableChanges.Contains(nameof(CursorPhobiaConfiguration.HoverTimeoutMs)))
+                {
+                    updatedConfig.HoverTimeoutMs = newConfiguration.HoverTimeoutMs;
+                    appliedChanges.Add(nameof(CursorPhobiaConfiguration.HoverTimeoutMs));
+                    _logger.LogDebug("Updated HoverTimeoutMs from {Old} to {New}", 
+                        oldConfiguration.HoverTimeoutMs, newConfiguration.HoverTimeoutMs);
+                }
+                
+                if (changeAnalysis.HotSwappableChanges.Contains(nameof(CursorPhobiaConfiguration.EnableHoverTimeout)))
+                {
+                    updatedConfig.EnableHoverTimeout = newConfiguration.EnableHoverTimeout;
+                    appliedChanges.Add(nameof(CursorPhobiaConfiguration.EnableHoverTimeout));
+                    _logger.LogDebug("Updated EnableHoverTimeout from {Old} to {New}", 
+                        oldConfiguration.EnableHoverTimeout, newConfiguration.EnableHoverTimeout);
+                        
+                    // Reset hover states for all windows if hover timeout was disabled
+                    if (!newConfiguration.EnableHoverTimeout)
+                    {
+                        lock (_windowTrackingLock)
+                        {
+                            foreach (var trackingInfo in _trackedWindows.Values)
+                            {
+                                trackingInfo.HoverStartTime = null;
+                                trackingInfo.IsHoveringTimeout = false;
+                            }
+                        }
+                        _logger.LogDebug("Reset hover states for all windows due to hover timeout being disabled");
+                    }
+                }
+                
+                // Apply the updated configuration
+                _config = updatedConfig;
+            }
+            
+            // Log restart-required changes
+            queuedForRestart.AddRange(changeAnalysis.RestartRequiredChanges);
+            if (queuedForRestart.Count > 0)
+            {
+                _logger.LogInformation("Configuration changes require engine restart: {Changes}", 
+                    string.Join(", ", queuedForRestart));
+            }
+            
+            var result = ConfigurationUpdateResult.CreateSuccess(changeAnalysis, appliedChanges, queuedForRestart);
+            
+            _logger.LogInformation("Configuration update completed: {Summary}", result.GetSummary());
+            
+            // Fire configuration updated event
+            ConfigurationUpdated?.Invoke(this, new ConfigurationUpdatedEventArgs(
+                result, newConfiguration, oldConfiguration));
+            
+            return result;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during configuration update");
+            var errorResult = ConfigurationUpdateResult.CreateFailure(
+                $"Configuration update failed: {ex.Message}",
+                changeAnalysis);
+            
+            // Fire configuration updated event even for failures
+            ConfigurationUpdated?.Invoke(this, new ConfigurationUpdatedEventArgs(
+                errorResult, newConfiguration, oldConfiguration));
+            
+            return errorResult;
+        }
+    }
+    
+    /// <summary>
+    /// Creates a deep copy of the configuration for thread-safe updates
+    /// </summary>
+    /// <param name="original">Configuration to clone</param>
+    /// <returns>Cloned configuration</returns>
+    private CursorPhobiaConfiguration CloneConfiguration(CursorPhobiaConfiguration original)
+    {
+        var cloned = new CursorPhobiaConfiguration
+        {
+            ProximityThreshold = original.ProximityThreshold,
+            PushDistance = original.PushDistance,
+            UpdateIntervalMs = original.UpdateIntervalMs,
+            MaxUpdateIntervalMs = original.MaxUpdateIntervalMs,
+            EnableCtrlOverride = original.EnableCtrlOverride,
+            ScreenEdgeBuffer = original.ScreenEdgeBuffer,
+            ApplyToAllWindows = original.ApplyToAllWindows,
+            AnimationDurationMs = original.AnimationDurationMs,
+            EnableAnimations = original.EnableAnimations,
+            AnimationEasing = original.AnimationEasing,
+            HoverTimeoutMs = original.HoverTimeoutMs,
+            EnableHoverTimeout = original.EnableHoverTimeout,
+            MultiMonitor = CloneMultiMonitorConfiguration(original.MultiMonitor)
+        };
+        
+        return cloned;
+    }
+    
+    /// <summary>
+    /// Creates a deep copy of multi-monitor configuration
+    /// </summary>
+    /// <param name="original">Original multi-monitor configuration</param>
+    /// <returns>Cloned multi-monitor configuration</returns>
+    private MultiMonitorConfiguration? CloneMultiMonitorConfiguration(MultiMonitorConfiguration? original)
+    {
+        if (original == null) return null;
+        
+        var cloned = new MultiMonitorConfiguration
+        {
+            EnableWrapping = original.EnableWrapping,
+            PreferredWrapBehavior = original.PreferredWrapBehavior,
+            RespectTaskbarAreas = original.RespectTaskbarAreas,
+            PerMonitorSettings = new Dictionary<string, PerMonitorSettings>()
+        };
+        
+        foreach (var kvp in original.PerMonitorSettings)
+        {
+            if (kvp.Value != null)
+            {
+                cloned.PerMonitorSettings[kvp.Key] = new PerMonitorSettings
+                {
+                    Enabled = kvp.Value.Enabled,
+                    CustomProximityThreshold = kvp.Value.CustomProximityThreshold,
+                    CustomPushDistance = kvp.Value.CustomPushDistance
+                };
+            }
+        }
+        
+        return cloned;
     }
     
     /// <summary>
@@ -523,6 +806,12 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
     /// <returns>Performance statistics object</returns>
     public EnginePerformanceStats GetPerformanceStats()
     {
+        CursorPhobiaConfiguration currentConfig;
+        lock (_configurationLock)
+        {
+            currentConfig = _config;
+        }
+        
         return new EnginePerformanceStats
         {
             IsRunning = IsRunning,
@@ -530,7 +819,7 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
             UpdateCount = _updateCount,
             AverageUpdateTimeMs = AverageUpdateTimeMs,
             TrackedWindowCount = TrackedWindowCount,
-            ConfiguredUpdateIntervalMs = _config.UpdateIntervalMs,
+            ConfiguredUpdateIntervalMs = currentConfig.UpdateIntervalMs,
             SuccessfulUpdates = _successfulUpdates,
             FailedUpdates = _failedUpdates
         };
@@ -568,73 +857,6 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
     }
 }
 
-/// <summary>
-/// Interface for the main CursorPhobia engine
-/// </summary>
-public interface ICursorPhobiaEngine
-{
-    /// <summary>
-    /// Gets whether the engine is currently running
-    /// </summary>
-    bool IsRunning { get; }
-    
-    /// <summary>
-    /// Gets the number of windows currently being tracked
-    /// </summary>
-    int TrackedWindowCount { get; }
-    
-    /// <summary>
-    /// Gets the average update cycle time in milliseconds
-    /// </summary>
-    double AverageUpdateTimeMs { get; }
-    
-    /// <summary>
-    /// Event raised when the engine starts
-    /// </summary>
-    event EventHandler? EngineStarted;
-    
-    /// <summary>
-    /// Event raised when the engine stops
-    /// </summary>
-    event EventHandler? EngineStopped;
-    
-    /// <summary>
-    /// Event raised when a window push operation occurs
-    /// </summary>
-    event EventHandler<WindowPushEventArgs>? WindowPushed;
-    
-    /// <summary>
-    /// Event raised when the engine state changes (for tray notifications)
-    /// </summary>
-    event EventHandler<EngineStateChangedEventArgs>? EngineStateChanged;
-    
-    /// <summary>
-    /// Event raised when performance issues are detected (for tray warnings)
-    /// </summary>
-    event EventHandler<EnginePerformanceEventArgs>? PerformanceIssueDetected;
-    
-    /// <summary>
-    /// Starts the cursor phobia engine
-    /// </summary>
-    /// <returns>True if started successfully, false otherwise</returns>
-    Task<bool> StartAsync();
-    
-    /// <summary>
-    /// Stops the cursor phobia engine
-    /// </summary>
-    Task StopAsync();
-    
-    /// <summary>
-    /// Forces a refresh of the tracked windows list
-    /// </summary>
-    Task RefreshTrackedWindowsAsync();
-    
-    /// <summary>
-    /// Gets current performance statistics
-    /// </summary>
-    /// <returns>Performance statistics object</returns>
-    EnginePerformanceStats GetPerformanceStats();
-}
 
 /// <summary>
 /// Tracking information for a window managed by the engine

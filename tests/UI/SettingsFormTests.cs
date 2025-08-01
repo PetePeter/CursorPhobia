@@ -167,6 +167,7 @@ public class MockCursorPhobiaEngine : ICursorPhobiaEngine
     public event EventHandler<EngineStateChangedEventArgs>? EngineStateChanged;
     public event EventHandler<EnginePerformanceEventArgs>? PerformanceIssueDetected;
     public event EventHandler<WindowPushEventArgs>? WindowPushed;
+    public event EventHandler<ConfigurationUpdatedEventArgs>? ConfigurationUpdated;
 
     public void Dispose() { }
 
@@ -186,6 +187,13 @@ public class MockCursorPhobiaEngine : ICursorPhobiaEngine
     public Task RefreshTrackedWindowsAsync()
     {
         return Task.CompletedTask;
+    }
+
+    public Task<ConfigurationUpdateResult> UpdateConfigurationAsync(CursorPhobiaConfiguration newConfiguration)
+    {
+        var analysis = new ConfigurationChangeAnalysis(CursorPhobiaConfiguration.CreateDefault(), newConfiguration);
+        var result = ConfigurationUpdateResult.CreateSuccess(analysis);
+        return Task.FromResult(result);
     }
 
     public Task<bool> StartAsync()

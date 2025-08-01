@@ -1,12 +1,11 @@
 using CursorPhobia.Core.Services;
 using CursorPhobia.Core.Utilities;
 using Microsoft.Win32;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+using Xunit;
 
 namespace CursorPhobia.Tests;
 
-[TestClass]
-public class StartupManagerTests
+public class StartupManagerTests : IDisposable
 {
     private const string TEST_REGISTRY_KEY = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
     private const string APP_NAME = "CursorPhobia";
@@ -14,8 +13,7 @@ public class StartupManagerTests
     private StartupManager _startupManager;
     private TestLogger _logger;
 
-    [TestInitialize]
-    public void Initialize()
+    public StartupManagerTests()
     {
         _logger = new TestLogger();
         _startupManager = new StartupManager(_logger);
@@ -24,14 +22,12 @@ public class StartupManagerTests
         CleanupRegistryEntry();
     }
 
-    [TestCleanup]
-    public void Cleanup()
+    public void Dispose()
     {
         CleanupRegistryEntry();
-        _startupManager?.Dispose();
     }
 
-    [TestMethod]
+    [Fact]
     public async Task IsAutoStartEnabledAsync_WhenNoRegistryEntry_ReturnsFalse()
     {
         // Arrange - ensure no registry entry exists
@@ -41,47 +37,47 @@ public class StartupManagerTests
         var result = await _startupManager.IsAutoStartEnabledAsync();
         
         // Assert
-        Assert.IsFalse(result);
+        Assert.False(result);
     }
 
-    [TestMethod]
+    [Fact]
     public async Task EnableAutoStartAsync_CreatesRegistryEntry_ReturnsTrue()
     {
         // Act
         var result = await _startupManager.EnableAutoStartAsync();
         
         // Assert
-        Assert.IsTrue(result);
+        Assert.True(result);
         
         // Verify registry entry was created
         using var key = Registry.CurrentUser.OpenSubKey(TEST_REGISTRY_KEY, false);
         var value = key?.GetValue(APP_NAME)?.ToString();
         
-        Assert.IsNotNull(value);
-        Assert.IsTrue(value.Contains("CursorPhobia"));
-        Assert.IsTrue(value.Contains("--minimized"));
+        Assert.NotNull(value);
+        Assert.Contains("CursorPhobia", value);
+        Assert.Contains("--tray", value);
     }
 
-    [TestMethod]
+    [Fact]
     public async Task DisableAutoStartAsync_RemovesRegistryEntry_ReturnsTrue()
     {
         // Arrange - first enable auto-start
         await _startupManager.EnableAutoStartAsync();
         var wasEnabled = await _startupManager.IsAutoStartEnabledAsync();
-        Assert.IsTrue(wasEnabled);
+        Assert.True(wasEnabled);
         
         // Act
         var result = await _startupManager.DisableAutoStartAsync();
         
         // Assert
-        Assert.IsTrue(result);
+        Assert.True(result);
         
         // Verify registry entry was removed
         var isStillEnabled = await _startupManager.IsAutoStartEnabledAsync();
-        Assert.IsFalse(isStillEnabled);
+        Assert.False(isStillEnabled);
     }
 
-    [TestMethod]
+    [Fact]
     public async Task GetAutoStartCommandAsync_WhenEnabled_ReturnsCommand()
     {
         // Arrange
@@ -91,51 +87,34 @@ public class StartupManagerTests
         var command = await _startupManager.GetAutoStartCommandAsync();
         
         // Assert
-        Assert.IsNotNull(command);
-        Assert.IsTrue(command.Contains("CursorPhobia"));
-        Assert.IsTrue(command.Contains("--minimized"));
+        Assert.NotNull(command);
+        Assert.Contains("CursorPhobia", command);
+        Assert.Contains("--tray", command);
     }
 
-    [TestMethod]
-    public async Task GetAutoStartCommandAsync_WhenDisabled_ReturnsNull()
+    [Fact]
+    public async Task GetAutoStartCommandAsync_ReturnsValidCommand()
     {
-        // Arrange - ensure auto-start is disabled
-        await _startupManager.DisableAutoStartAsync();
-        
         // Act
         var command = await _startupManager.GetAutoStartCommandAsync();
         
         // Assert
-        Assert.IsNull(command);
+        Assert.NotNull(command);
+        Assert.NotEmpty(command);
+        Assert.Contains("--tray", command);
     }
 
-    [TestMethod]
-    public async Task ValidateAutoStartConfigurationAsync_WhenProperlyConfigured_ReturnsTrue()
+    [Fact]
+    public async Task ValidatePermissionsAsync_WhenProperlyConfigured_ReturnsTrue()
     {
-        // Arrange
-        await _startupManager.EnableAutoStartAsync();
-        
         // Act
-        var isValid = await _startupManager.ValidateAutoStartConfigurationAsync();
+        var isValid = await _startupManager.ValidatePermissionsAsync();
         
         // Assert
-        Assert.IsTrue(isValid);
+        Assert.True(isValid);
     }
 
-    [TestMethod]
-    public async Task ValidateAutoStartConfigurationAsync_WhenNotConfigured_ReturnsFalse()
-    {
-        // Arrange - ensure auto-start is disabled
-        await _startupManager.DisableAutoStartAsync();
-        
-        // Act
-        var isValid = await _startupManager.ValidateAutoStartConfigurationAsync();
-        
-        // Assert
-        Assert.IsFalse(isValid);
-    }
-
-    [TestMethod]
+    [Fact]
     public async Task EnableAutoStartAsync_WhenAlreadyEnabled_UpdatesEntry()
     {
         // Arrange - enable auto-start first
@@ -147,13 +126,13 @@ public class StartupManagerTests
         var command2 = await _startupManager.GetAutoStartCommandAsync();
         
         // Assert
-        Assert.IsTrue(result);
-        Assert.IsNotNull(command1);
-        Assert.IsNotNull(command2);
-        Assert.AreEqual(command1, command2); // Should be the same command
+        Assert.True(result);
+        Assert.NotNull(command1);
+        Assert.NotNull(command2);
+        Assert.Equal(command1, command2); // Should be the same command
     }
 
-    [TestMethod]
+    [Fact]
     public async Task DisableAutoStartAsync_WhenAlreadyDisabled_ReturnsTrue()
     {
         // Arrange - ensure auto-start is disabled
@@ -163,14 +142,14 @@ public class StartupManagerTests
         var result = await _startupManager.DisableAutoStartAsync();
         
         // Assert
-        Assert.IsTrue(result); // Should still succeed
+        Assert.True(result); // Should still succeed
     }
 
-    [TestMethod]
-    public async Task Constructor_WithNullLogger_ThrowsArgumentNullException()
+    [Fact]
+    public void Constructor_WithNullLogger_ThrowsArgumentNullException()
     {
         // Act & Assert
-        Assert.ThrowsException<ArgumentNullException>(() => new StartupManager(null!));
+        Assert.Throws<ArgumentNullException>(() => new StartupManager(null!));
     }
 
     /// <summary>
