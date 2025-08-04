@@ -566,9 +566,81 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
         }
         else
         {
-            // Normal proximity detection
-            isInProximity = _proximityDetector.IsWithinProximity(
-                cursorPosition, windowBounds, proximityThreshold);
+            // Enhanced logic for always-on-top windows
+            if (trackingInfo.WindowInfo.IsTopmost)
+            {
+                bool isCursorInsideWindow = windowBounds.Contains(cursorPosition);
+                bool wasCursorInsideLastUpdate = trackingInfo.WasCursorInsideLastUpdate;
+                
+                if (isCursorInsideWindow)
+                {
+                    // Cursor is inside the always-on-top window - suppress push
+                    isInProximity = false;
+                    trackingInfo.WasCursorInsideLastUpdate = true;
+                    trackingInfo.CursorLeftWindowTime = null; // Clear any previous leave time
+                    _logger.LogDebug("Cursor inside always-on-top window {Title} - suppressing push", 
+                        trackingInfo.WindowInfo.Title);
+                }
+                else if (wasCursorInsideLastUpdate && !isCursorInsideWindow)
+                {
+                    // Cursor just left the window - start repel border tolerance
+                    trackingInfo.WasCursorInsideLastUpdate = false;
+                    trackingInfo.CursorLeftWindowTime = currentTime;
+                    _logger.LogDebug("Cursor left always-on-top window {Title} - starting repel border tolerance", 
+                        trackingInfo.WindowInfo.Title);
+                    
+                    // Check if cursor is within repel border distance
+                    var repelBorderDistance = _config.AlwaysOnTopRepelBorderDistance;
+                    var distanceFromWindow = CalculateDistanceFromWindow(cursorPosition, windowBounds);
+                    
+                    if (distanceFromWindow <= repelBorderDistance)
+                    {
+                        isInProximity = false; // Still within repel border - suppress push
+                        _logger.LogDebug("Cursor within repel border ({Distance:F1}px <= {Border}px) for window {Title}", 
+                            distanceFromWindow, repelBorderDistance, trackingInfo.WindowInfo.Title);
+                    }
+                    else
+                    {
+                        // Beyond repel border - resume normal detection
+                        isInProximity = _proximityDetector.IsWithinProximity(
+                            cursorPosition, windowBounds, proximityThreshold);
+                    }
+                }
+                else if (trackingInfo.CursorLeftWindowTime.HasValue)
+                {
+                    // Cursor was outside and might still be in repel border tolerance
+                    var repelBorderDistance = _config.AlwaysOnTopRepelBorderDistance;
+                    var distanceFromWindow = CalculateDistanceFromWindow(cursorPosition, windowBounds);
+                    
+                    if (distanceFromWindow <= repelBorderDistance)
+                    {
+                        isInProximity = false; // Still within repel border - suppress push
+                        _logger.LogDebug("Cursor within repel border ({Distance:F1}px <= {Border}px) for window {Title}", 
+                            distanceFromWindow, repelBorderDistance, trackingInfo.WindowInfo.Title);
+                    }
+                    else
+                    {
+                        // Beyond repel border - clear tolerance and resume normal detection
+                        trackingInfo.CursorLeftWindowTime = null;
+                        isInProximity = _proximityDetector.IsWithinProximity(
+                            cursorPosition, windowBounds, proximityThreshold);
+                        _logger.LogDebug("Repel border tolerance cleared for window {Title}", trackingInfo.WindowInfo.Title);
+                    }
+                }
+                else
+                {
+                    // Normal proximity detection for always-on-top windows
+                    trackingInfo.WasCursorInsideLastUpdate = false;
+                    isInProximity = _proximityDetector.IsWithinProximity(
+                        cursorPosition, windowBounds, proximityThreshold);
+                }
+            }
+            else
+            {
+                // Normal proximity detection for regular windows
+                isInProximity = _proximityDetector.IsWithinProximity(
+                    cursorPosition, windowBounds, proximityThreshold);
+            }
         }
         
         trackingInfo.LastProximityCheckTime = currentTime;
@@ -988,6 +1060,40 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
     }
     
     /// <summary>
+    /// Calculates the minimum distance from a cursor position to the edges of a window
+    /// </summary>
+    /// <param name="cursorPosition">Current cursor position</param>
+    /// <param name="windowBounds">Window bounds rectangle</param>
+    /// <returns>Distance in pixels from cursor to nearest window edge</returns>
+    private static double CalculateDistanceFromWindow(Point cursorPosition, Rectangle windowBounds)
+    {
+        // If cursor is inside the window, distance is 0
+        if (windowBounds.Contains(cursorPosition))
+            return 0;
+        
+        // Calculate distance to each edge and return the minimum
+        double distanceToLeft = Math.Max(0, windowBounds.Left - cursorPosition.X);
+        double distanceToRight = Math.Max(0, cursorPosition.X - windowBounds.Right);
+        double distanceToTop = Math.Max(0, windowBounds.Top - cursorPosition.Y);
+        double distanceToBottom = Math.Max(0, cursorPosition.Y - windowBounds.Bottom);
+        
+        double horizontalDistance = Math.Max(distanceToLeft, distanceToRight);
+        double verticalDistance = Math.Max(distanceToTop, distanceToBottom);
+        
+        // Return Euclidean distance to the nearest corner/edge
+        if (horizontalDistance > 0 && verticalDistance > 0)
+        {
+            // Cursor is diagonal to window - distance to nearest corner
+            return Math.Sqrt(horizontalDistance * horizontalDistance + verticalDistance * verticalDistance);
+        }
+        else
+        {
+            // Cursor is aligned with window - distance to nearest edge
+            return Math.Max(horizontalDistance, verticalDistance);
+        }
+    }
+    
+    /// <summary>
     /// Disposes the engine and releases all resources
     /// </summary>
     public void Dispose()
@@ -1066,6 +1172,18 @@ internal class WindowTrackingInfo
     /// Used to calculate tolerance distance
     /// </summary>
     public Point? CtrlReleaseCursorPosition { get; set; }
+    
+    /// <summary>
+    /// Whether cursor was inside this always-on-top window in the previous update
+    /// Used to detect when cursor is leaving the window
+    /// </summary>
+    public bool WasCursorInsideLastUpdate { get; set; }
+    
+    /// <summary>
+    /// Time when cursor left this always-on-top window
+    /// Used for implementing repel border tolerance
+    /// </summary>
+    public DateTime? CursorLeftWindowTime { get; set; }
 }
 
 /// <summary>

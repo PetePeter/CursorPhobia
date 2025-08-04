@@ -55,6 +55,7 @@ public class WindowPusher : IWindowPusher, IDisposable
     private readonly IWindowManipulationService _windowService;
     private readonly ISafetyManager _safetyManager;
     private readonly IProximityDetector _proximityDetector;
+    private readonly IWindowDetectionService _windowDetectionService;
     private readonly CursorPhobiaConfiguration _config;
     private readonly MonitorManager _monitorManager;
     private readonly EdgeWrapHandler _edgeWrapHandler;
@@ -72,6 +73,7 @@ public class WindowPusher : IWindowPusher, IDisposable
     /// <param name="windowService">Service for window manipulation</param>
     /// <param name="safetyManager">Safety manager for boundary validation</param>
     /// <param name="proximityDetector">Proximity detector for push calculations</param>
+    /// <param name="windowDetectionService">Service for detecting window properties</param>
     /// <param name="monitorManager">Monitor manager for multi-monitor support</param>
     /// <param name="edgeWrapHandler">Edge wrap handler for screen boundary wrapping</param>
     /// <param name="config">Configuration for animation and behavior settings</param>
@@ -80,6 +82,7 @@ public class WindowPusher : IWindowPusher, IDisposable
         IWindowManipulationService windowService,
         ISafetyManager safetyManager,
         IProximityDetector proximityDetector,
+        IWindowDetectionService windowDetectionService,
         MonitorManager monitorManager,
         EdgeWrapHandler edgeWrapHandler,
         CursorPhobiaConfiguration? config = null)
@@ -88,6 +91,7 @@ public class WindowPusher : IWindowPusher, IDisposable
         _windowService = windowService ?? throw new ArgumentNullException(nameof(windowService));
         _safetyManager = safetyManager ?? throw new ArgumentNullException(nameof(safetyManager));
         _proximityDetector = proximityDetector ?? throw new ArgumentNullException(nameof(proximityDetector));
+        _windowDetectionService = windowDetectionService ?? throw new ArgumentNullException(nameof(windowDetectionService));
         _monitorManager = monitorManager ?? throw new ArgumentNullException(nameof(monitorManager));
         _edgeWrapHandler = edgeWrapHandler ?? throw new ArgumentNullException(nameof(edgeWrapHandler));
         _config = config ?? CursorPhobiaConfiguration.CreateDefault();
@@ -150,13 +154,21 @@ public class WindowPusher : IWindowPusher, IDisposable
                 currentBounds.Y + pushVector.Y
             );
             
+            // Check if this is an always-on-top window
+            bool isTopmost = _windowDetectionService.IsWindowAlwaysOnTop(windowHandle);
+            
             // Check for edge wrapping
             var wrapBehavior = new WrapBehavior
             {
-                EnableWrapping = _config.MultiMonitor?.EnableWrapping ?? true,
-                PreferredBehavior = _config.MultiMonitor?.PreferredWrapBehavior ?? WrapPreference.Smart,
+                EnableWrapping = isTopmost ? true : (_config.MultiMonitor?.EnableWrapping ?? true),
+                PreferredBehavior = isTopmost ? WrapPreference.Opposite : (_config.MultiMonitor?.PreferredWrapBehavior ?? WrapPreference.Smart),
                 RespectTaskbarAreas = _config.MultiMonitor?.RespectTaskbarAreas ?? true
             };
+            
+            if (isTopmost)
+            {
+                _logger.LogDebug("Always-on-top window {Handle:X} - enabling opposite edge teleportation", windowHandle.ToInt64());
+            }
             
             var wrapDestination = _edgeWrapHandler.CalculateWrapDestination(currentBounds, pushVector, wrapBehavior);
             if (wrapDestination.HasValue && _edgeWrapHandler.IsWrapSafe(currentBounds.Location, wrapDestination.Value, currentBounds.Size))

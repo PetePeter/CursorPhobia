@@ -46,6 +46,14 @@ public class CursorPhobiaConfiguration
     public int CtrlReleaseToleranceDistance { get; set; } = 50;
     
     /// <summary>
+    /// Repel border distance in pixels for always-on-top windows
+    /// When cursor leaves an always-on-top window, cursor phobia won't activate
+    /// until the cursor moves this distance away from the window bounds
+    /// Default: 30 pixels
+    /// </summary>
+    public int AlwaysOnTopRepelBorderDistance { get; set; } = 30;
+    
+    /// <summary>
     /// Minimum distance in pixels from screen edges that windows must maintain
     /// Default: 20 pixels
     /// </summary>
@@ -135,6 +143,12 @@ public class CursorPhobiaConfiguration
             
         if (CtrlReleaseToleranceDistance > 200)
             errors.Add("CtrlReleaseToleranceDistance should not exceed 200 pixels for usability");
+            
+        if (AlwaysOnTopRepelBorderDistance < 0)
+            errors.Add("AlwaysOnTopRepelBorderDistance cannot be negative");
+            
+        if (AlwaysOnTopRepelBorderDistance > 100)
+            errors.Add("AlwaysOnTopRepelBorderDistance should not exceed 100 pixels for usability");
             
         if (AnimationDurationMs < 0)
             errors.Add("AnimationDurationMs cannot be negative");
