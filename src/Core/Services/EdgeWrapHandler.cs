@@ -198,6 +198,29 @@ public class EdgeWrapHandler
     }
     
     /// <summary>
+    /// Calculates wrap destination for a window that has been constrained at a monitor edge
+    /// </summary>
+    /// <param name="windowRect">Current window rectangle</param>
+    /// <param name="constrainedEdge">The edge where the window was constrained</param>
+    /// <param name="wrapBehavior">Wrapping behavior configuration</param>
+    /// <returns>New position for the window, or null if no wrapping should occur</returns>
+    public Point? CalculateWrapDestinationForConstrainedWindow(Rectangle windowRect, EdgeType constrainedEdge, WrapBehavior wrapBehavior)
+    {
+        if (!wrapBehavior.EnableWrapping || constrainedEdge == EdgeType.None) return null;
+        
+        var currentMonitor = _monitorManager.GetMonitorContaining(windowRect);
+        if (currentMonitor == null) return null;
+        
+        return wrapBehavior.PreferredBehavior switch
+        {
+            WrapPreference.Adjacent => CalculateAdjacentWrap(windowRect, constrainedEdge, currentMonitor),
+            WrapPreference.Opposite => CalculateOppositeWrap(windowRect, constrainedEdge, currentMonitor),
+            WrapPreference.Smart => CalculateSmartWrap(windowRect, constrainedEdge, currentMonitor),
+            _ => null
+        };
+    }
+    
+    /// <summary>
     /// Validates that a wrap destination is safe and doesn't cause infinite loops
     /// </summary>
     /// <param name="originalPosition">Original window position</param>

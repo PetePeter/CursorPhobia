@@ -181,6 +181,38 @@ public class WindowPusher : IWindowPusher, IDisposable
             // Validate the target position with safety manager
             var safePosition = _safetyManager.ValidateWindowPosition(currentBounds, targetPosition);
             
+            // Check if the window was constrained by safety manager (hit an edge and can't move further)
+            if (!targetPosition.Equals(safePosition))
+            {
+                // Detect which edge the window hit
+                var constrainedEdge = DetectConstrainedEdge(currentBounds, targetPosition, safePosition);
+                if (constrainedEdge != EdgeType.None)
+                {
+                    _logger.LogDebug("Window {Handle:X} constrained at {Edge} edge, attempting wrap", 
+                        windowHandle.ToInt64(), constrainedEdge);
+                    
+                    // Try to wrap to opposite edge
+                    var constrainedWrapBehavior = new WrapBehavior
+                    {
+                        EnableWrapping = true,
+                        PreferredBehavior = WrapPreference.Opposite, // Force opposite edge wrap
+                        RespectTaskbarAreas = _config.MultiMonitor?.RespectTaskbarAreas ?? true
+                    };
+                    
+                    var constrainedWrapDestination = _edgeWrapHandler.CalculateWrapDestinationForConstrainedWindow(
+                        currentBounds, constrainedEdge, constrainedWrapBehavior);
+                    
+                    if (constrainedWrapDestination.HasValue && 
+                        _edgeWrapHandler.IsWrapSafe(currentBounds.Location, constrainedWrapDestination.Value, currentBounds.Size))
+                    {
+                        _logger.LogDebug("Edge constraint wrap detected for window {Handle:X} from ({CurrentX},{CurrentY}) to ({WrapX},{WrapY})",
+                            windowHandle.ToInt64(), currentBounds.X, currentBounds.Y, 
+                            constrainedWrapDestination.Value.X, constrainedWrapDestination.Value.Y);
+                        safePosition = constrainedWrapDestination.Value;
+                    }
+                }
+            }
+            
             _logger.LogDebug("Pushing window {Handle:X} from ({CurrentX},{CurrentY}) to ({TargetX},{TargetY}) -> ({SafeX},{SafeY})",
                 windowHandle.ToInt64(), currentBounds.X, currentBounds.Y, 
                 targetPosition.X, targetPosition.Y, safePosition.X, safePosition.Y);
@@ -382,6 +414,50 @@ public class WindowPusher : IWindowPusher, IDisposable
             _logger.LogError(ex, "Error during animation for window {Handle:X}", animation.WindowHandle.ToInt64());
             return false;
         }
+    }
+    
+    /// <summary>
+    /// Detects which edge a window was constrained against by comparing target vs safe positions
+    /// </summary>
+    /// <param name="currentBounds">Current window bounds</param>
+    /// <param name="targetPosition">Intended target position</param>
+    /// <param name="safePosition">Actual safe position returned by safety manager</param>
+    /// <returns>The edge type that caused the constraint</returns>
+    private EdgeType DetectConstrainedEdge(Rectangle currentBounds, Point targetPosition, Point safePosition)
+    {
+        var tolerance = 5; // Small tolerance for floating point comparison
+        
+        // Check horizontal constraint
+        if (Math.Abs(targetPosition.X - safePosition.X) > tolerance)
+        {
+            if (targetPosition.X < safePosition.X)
+            {
+                // Window was trying to move left but got constrained - hit left edge
+                return EdgeType.Left;
+            }
+            else
+            {
+                // Window was trying to move right but got constrained - hit right edge
+                return EdgeType.Right;
+            }
+        }
+        
+        // Check vertical constraint
+        if (Math.Abs(targetPosition.Y - safePosition.Y) > tolerance)
+        {
+            if (targetPosition.Y < safePosition.Y)
+            {
+                // Window was trying to move up but got constrained - hit top edge
+                return EdgeType.Top;
+            }
+            else
+            {
+                // Window was trying to move down but got constrained - hit bottom edge
+                return EdgeType.Bottom;
+            }
+        }
+        
+        return EdgeType.None;
     }
     
     /// <summary>

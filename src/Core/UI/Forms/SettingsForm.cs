@@ -145,21 +145,31 @@ public partial class SettingsForm : Form
     /// </summary>
     public bool ValidateCurrentSettings()
     {
-        var errors = _viewModel.ValidateConfiguration();
-        
-        if (errors.Any())
+        try
         {
-            // Clear previous error highlighting
+            var errors = _viewModel.ValidateConfiguration();
+            
+            if (errors.Any())
+            {
+                // Clear previous error highlighting
+                ClearValidationErrors();
+                
+                // Highlight controls with errors and show tooltip
+                HighlightValidationErrors(errors);
+                
+                return false;
+            }
+            
             ClearValidationErrors();
-            
-            // Highlight controls with errors and show tooltip
-            HighlightValidationErrors(errors);
-            
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during configuration validation");
+            MessageBox.Show($"An error occurred during validation:\n{ex.Message}", 
+                "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             return false;
         }
-        
-        ClearValidationErrors();
-        return true;
     }
 
     /// <summary>
@@ -719,28 +729,55 @@ public partial class SettingsForm : Form
     // Event handlers for UI controls will be implemented in Designer.cs
     private async void OnOkButtonClick(object sender, EventArgs e)
     {
-        if (ValidateCurrentSettings())
+        try
         {
-            if (await SaveConfigurationAsync())
+            if (ValidateCurrentSettings())
             {
-                DialogResult = DialogResult.OK;
-                Close();
+                if (await SaveConfigurationAsync())
+                {
+                    DialogResult = DialogResult.OK;
+                    Close();
+                }
             }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in OK button click handler");
+            MessageBox.Show($"An error occurred while saving settings:\n{ex.Message}", 
+                "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
     private async void OnApplyButtonClick(object sender, EventArgs e)
     {
-        if (ValidateCurrentSettings())
+        try
         {
-            await SaveConfigurationAsync();
+            if (ValidateCurrentSettings())
+            {
+                await SaveConfigurationAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in Apply button click handler");
+            MessageBox.Show($"An error occurred while applying settings:\n{ex.Message}", 
+                "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
 
     private void OnCancelButtonClick(object sender, EventArgs e)
     {
-        DialogResult = DialogResult.Cancel;
-        Close();
+        try
+        {
+            DialogResult = DialogResult.Cancel;
+            Close();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error in Cancel button click handler");
+            MessageBox.Show($"An error occurred:\n{ex.Message}", 
+                "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+        }
     }
 
     private void OnResetButtonClick(object sender, EventArgs e)

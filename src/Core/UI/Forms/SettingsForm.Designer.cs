@@ -192,7 +192,7 @@ namespace CursorPhobia.Core.UI.Forms
             {
                 Location = new Point(170, yPos),
                 Size = new Size(200, 45),
-                Minimum = 10,
+                Minimum = 1,
                 Maximum = 500,
                 TickFrequency = 50,
                 SmallChange = 5,
@@ -203,7 +203,7 @@ namespace CursorPhobia.Core.UI.Forms
             {
                 Location = new Point(380, yPos),
                 Size = new Size(70, 20),
-                Minimum = 10,
+                Minimum = 1,
                 Maximum = 500,
                 DecimalPlaces = 0
             };
@@ -222,7 +222,7 @@ namespace CursorPhobia.Core.UI.Forms
             {
                 Location = new Point(170, yPos),
                 Size = new Size(200, 45),
-                Minimum = 50,
+                Minimum = 1,
                 Maximum = 1000,
                 TickFrequency = 100,
                 SmallChange = 10,
@@ -233,7 +233,7 @@ namespace CursorPhobia.Core.UI.Forms
             {
                 Location = new Point(380, yPos),
                 Size = new Size(70, 20),
-                Minimum = 50,
+                Minimum = 1,
                 Maximum = 1000,
                 DecimalPlaces = 0
             };
