@@ -141,6 +141,9 @@ class Program
             return new ProximityDetector(logger);
         });
         services.AddTransient<ISafetyManager, SafetyManager>();
+        services.AddSingleton<IMonitorManager, MonitorManager>();
+        services.AddSingleton<MonitorManager>();
+        services.AddSingleton<EdgeWrapHandler>();
         services.AddTransient<IWindowPusher, WindowPusher>();
         
         // Engine
@@ -242,13 +245,13 @@ class Program
         
         // Create engine with demo configuration
         var demoEngine = new CursorPhobiaEngine(
-            _serviceProvider.GetRequiredService<Logger>(),
-            _serviceProvider.GetRequiredService<ICursorTracker>(),
-            _serviceProvider.GetRequiredService<IProximityDetector>(),
-            _serviceProvider.GetRequiredService<IWindowDetectionService>(),
-            _serviceProvider.GetRequiredService<IWindowPusher>(),
-            _serviceProvider.GetRequiredService<ISafetyManager>(),
-            _serviceProvider.GetRequiredService<IMonitorManager>(),
+            _serviceProvider!.GetRequiredService<Logger>(),
+            _serviceProvider!.GetRequiredService<ICursorTracker>(),
+            _serviceProvider!.GetRequiredService<IProximityDetector>(),
+            _serviceProvider!.GetRequiredService<IWindowDetectionService>(),
+            _serviceProvider!.GetRequiredService<IWindowPusher>(),
+            _serviceProvider!.GetRequiredService<ISafetyManager>(),
+            _serviceProvider!.GetRequiredService<IMonitorManager>(),
             config);
         
         // Subscribe to events for live feedback
@@ -319,13 +322,13 @@ class Program
             System.Console.WriteLine($"Testing: {test.Name}");
             
             var testEngine = new CursorPhobiaEngine(
-                _serviceProvider.GetRequiredService<Logger>(),
-                _serviceProvider.GetRequiredService<ICursorTracker>(),
-                _serviceProvider.GetRequiredService<IProximityDetector>(),
-                _serviceProvider.GetRequiredService<IWindowDetectionService>(),
-                _serviceProvider.GetRequiredService<IWindowPusher>(),
-                _serviceProvider.GetRequiredService<ISafetyManager>(),
-                _serviceProvider.GetRequiredService<IMonitorManager>(),
+                _serviceProvider!.GetRequiredService<Logger>(),
+                _serviceProvider!.GetRequiredService<ICursorTracker>(),
+                _serviceProvider!.GetRequiredService<IProximityDetector>(),
+                _serviceProvider!.GetRequiredService<IWindowDetectionService>(),
+                _serviceProvider!.GetRequiredService<IWindowPusher>(),
+                _serviceProvider!.GetRequiredService<ISafetyManager>(),
+                _serviceProvider!.GetRequiredService<IMonitorManager>(),
                 test.Config);
             
             try
@@ -768,7 +771,7 @@ class Program
                 }
                 else
                 {
-                    _logger?.LogWarning("Configuration hot-swap failed: {Error}", updateResult.ErrorMessage);
+                    _logger?.LogWarning("Configuration hot-swap failed: {Error}", updateResult.ErrorMessage ?? "Unknown error");
                     
                     // Show failure notification
                     await _trayManager?.ShowNotificationAsync("CursorPhobia Configuration",
@@ -791,6 +794,8 @@ class Program
         
         // The ConfigurationWatcherService already shows tray notifications for failures,
         // but we can add additional logging or handling here if needed
+        
+        await Task.CompletedTask;
     }
     
     // Tray event handlers
@@ -976,7 +981,7 @@ class Program
             var tooltip = e.Message ?? $"CursorPhobia - {e.State}";
             await _trayManager!.UpdateStateAsync(trayState, tooltip);
             
-            _logger?.LogDebug("Tray state updated: {State} - {Message}", e.State, e.Message);
+            _logger?.LogDebug("Tray state updated: {State} - {Message}", e.State, e.Message ?? "No message");
         }
         catch (Exception ex)
         {

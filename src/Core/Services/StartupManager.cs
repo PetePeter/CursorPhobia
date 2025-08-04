@@ -43,7 +43,7 @@ public class StartupManager : IStartupManager
             var value = key.GetValue(APP_NAME) as string;
             var isEnabled = !string.IsNullOrEmpty(value);
             
-            _logger.LogDebug("Auto-start status: {IsEnabled}, Value: {Value}", isEnabled, value);
+            _logger.LogDebug("Auto-start status: {IsEnabled}, Value: {Value}", isEnabled, value ?? "null");
             return isEnabled;
         }
         catch (SecurityException ex)

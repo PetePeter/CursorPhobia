@@ -35,6 +35,9 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
     private readonly ConcurrentDictionary<IntPtr, WindowTrackingInfo> _trackedWindows = new();
     private readonly object _windowTrackingLock = new();
     
+    // CTRL key state tracking for tolerance implementation
+    private bool _wasCtrlPressedLastUpdate = false;
+    
     // Performance monitoring
     private readonly Stopwatch _performanceStopwatch = Stopwatch.StartNew();
     private long _updateCount = 0;
@@ -399,8 +402,19 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
             enableCtrlOverride = _config.EnableCtrlOverride;
         }
         
-        // Check if CTRL override is active
-        if (enableCtrlOverride && _cursorTracker.IsCtrlKeyPressed())
+        // Get current cursor position (needed for CTRL tolerance logic)
+        var cursorPosition = _cursorTracker.GetCurrentCursorPosition();
+        if (cursorPosition.IsEmpty)
+        {
+            _logger.LogWarning("Failed to get cursor position during update cycle");
+            return;
+        }
+
+        // Check CTRL key state and handle tolerance logic
+        bool isCtrlPressed = enableCtrlOverride && _cursorTracker.IsCtrlKeyPressed();
+        bool wasCtrlJustReleased = _wasCtrlPressedLastUpdate && !isCtrlPressed;
+        
+        if (isCtrlPressed)
         {
             // CTRL is pressed - cancel all animations and skip processing
             _windowPusher.CancelAllAnimations();
@@ -413,19 +427,39 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
                     trackingInfo.IsInProximity = false;
                     trackingInfo.HoverStartTime = null;
                     trackingInfo.IsHoveringTimeout = false;
+                    // Clear any existing tolerance state
+                    trackingInfo.CtrlReleaseTime = null;
+                    trackingInfo.CtrlReleaseCursorPosition = null;
                 }
             }
             
+            _wasCtrlPressedLastUpdate = true;
             return;
         }
         
-        // Get current cursor position
-        var cursorPosition = _cursorTracker.GetCurrentCursorPosition();
-        if (cursorPosition.IsEmpty)
+        // Handle CTRL release - set tolerance state for windows under cursor
+        if (wasCtrlJustReleased)
         {
-            _logger.LogWarning("Failed to get cursor position during update cycle");
-            return;
+            var ctrlReleaseTime = DateTime.UtcNow;
+            lock (_windowTrackingLock)
+            {
+                foreach (var kvp in _trackedWindows)
+                {
+                    var trackingInfo = kvp.Value;
+                    var windowBounds = trackingInfo.WindowInfo.Bounds;
+                    
+                    // Check if cursor is over this window
+                    if (windowBounds.Contains(cursorPosition))
+                    {
+                        trackingInfo.CtrlReleaseTime = ctrlReleaseTime;
+                        trackingInfo.CtrlReleaseCursorPosition = cursorPosition;
+                        _logger.LogDebug("CTRL tolerance activated for window: {Title}", trackingInfo.WindowInfo.Title);
+                    }
+                }
+            }
         }
+        
+        _wasCtrlPressedLastUpdate = isCtrlPressed;
         
         var currentTime = DateTime.UtcNow;
         var windowsToProcess = new List<(IntPtr Handle, WindowTrackingInfo Info)>();
@@ -496,12 +530,46 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
         bool enableWrapping = monitorSettings.enableWrapping;
         WrapPreference wrapPreference = monitorSettings.wrapPreference;
         
-        // Check proximity
+        // Check proximity (with CTRL tolerance if active)
         var windowBounds = trackingInfo.WindowInfo.Bounds;
-        var isInProximity = _proximityDetector.IsWithinProximity(
-            cursorPosition, 
-            windowBounds, 
-            proximityThreshold);
+        bool isInProximity = false;
+        
+        // Check if window is in CTRL tolerance mode
+        bool isInToleranceMode = trackingInfo.CtrlReleaseTime.HasValue && 
+                                trackingInfo.CtrlReleaseCursorPosition.HasValue;
+        
+        if (isInToleranceMode)
+        {
+            // Calculate distance from the CTRL release position
+            var toleranceDistance = _config.CtrlReleaseToleranceDistance;
+            var releasePos = trackingInfo.CtrlReleaseCursorPosition!.Value;
+            var currentDistance = Math.Sqrt(
+                Math.Pow(cursorPosition.X - releasePos.X, 2) + 
+                Math.Pow(cursorPosition.Y - releasePos.Y, 2));
+            
+            if (currentDistance <= toleranceDistance)
+            {
+                // Still within tolerance - suppress cursor phobia
+                isInProximity = false;
+                _logger.LogDebug("Window {Title} in CTRL tolerance mode - distance: {Distance:F1}px", 
+                    trackingInfo.WindowInfo.Title, currentDistance);
+            }
+            else
+            {
+                // Moved beyond tolerance - clear tolerance and resume normal detection
+                trackingInfo.CtrlReleaseTime = null;
+                trackingInfo.CtrlReleaseCursorPosition = null;
+                isInProximity = _proximityDetector.IsWithinProximity(
+                    cursorPosition, windowBounds, proximityThreshold);
+                _logger.LogDebug("CTRL tolerance cleared for window: {Title}", trackingInfo.WindowInfo.Title);
+            }
+        }
+        else
+        {
+            // Normal proximity detection
+            isInProximity = _proximityDetector.IsWithinProximity(
+                cursorPosition, windowBounds, proximityThreshold);
+        }
         
         trackingInfo.LastProximityCheckTime = currentTime;
         
@@ -736,6 +804,7 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
             ConfigurationUpdated?.Invoke(this, new ConfigurationUpdatedEventArgs(
                 result, newConfiguration, oldConfiguration));
             
+            await Task.CompletedTask;
             return result;
         }
         catch (Exception ex)
@@ -985,6 +1054,18 @@ internal class WindowTrackingInfo
     /// Whether hover timeout has been reached for this window
     /// </summary>
     public bool IsHoveringTimeout { get; set; }
+    
+    /// <summary>
+    /// Time when CTRL was released while cursor was over this window
+    /// Used for implementing tolerance period after CTRL release
+    /// </summary>
+    public DateTime? CtrlReleaseTime { get; set; }
+    
+    /// <summary>
+    /// Cursor position when CTRL was released over this window
+    /// Used to calculate tolerance distance
+    /// </summary>
+    public Point? CtrlReleaseCursorPosition { get; set; }
 }
 
 /// <summary>

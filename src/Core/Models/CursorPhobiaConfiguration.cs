@@ -38,6 +38,14 @@ public class CursorPhobiaConfiguration
     public bool EnableCtrlOverride { get; set; } = true;
     
     /// <summary>
+    /// Tolerance distance in pixels around windows after releasing CTRL key
+    /// When CTRL is released while hovering over a window, cursor phobia won't activate
+    /// until the cursor moves this distance away from the window
+    /// Default: 50 pixels
+    /// </summary>
+    public int CtrlReleaseToleranceDistance { get; set; } = 50;
+    
+    /// <summary>
     /// Minimum distance in pixels from screen edges that windows must maintain
     /// Default: 20 pixels
     /// </summary>
@@ -121,6 +129,12 @@ public class CursorPhobiaConfiguration
             
         if (ScreenEdgeBuffer > 100)
             errors.Add("ScreenEdgeBuffer should not exceed 100 pixels for usability");
+            
+        if (CtrlReleaseToleranceDistance < 0)
+            errors.Add("CtrlReleaseToleranceDistance cannot be negative");
+            
+        if (CtrlReleaseToleranceDistance > 200)
+            errors.Add("CtrlReleaseToleranceDistance should not exceed 200 pixels for usability");
             
         if (AnimationDurationMs < 0)
             errors.Add("AnimationDurationMs cannot be negative");

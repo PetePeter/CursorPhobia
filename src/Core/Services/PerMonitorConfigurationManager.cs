@@ -138,7 +138,7 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
     /// </summary>
     /// <param name="configuration">Configuration to migrate</param>
     /// <returns>Migrated configuration</returns>
-    public async Task<CursorPhobiaConfiguration> MigrateCurrentConfigurationAsync(CursorPhobiaConfiguration configuration)
+    public Task<CursorPhobiaConfiguration> MigrateCurrentConfigurationAsync(CursorPhobiaConfiguration configuration)
     {
         List<MonitorInfo> lastKnownMonitors;
         
@@ -177,12 +177,12 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
             }
             
             _logger.LogInformation("Manual per-monitor configuration migration completed");
-            return migratedConfiguration;
+            return Task.FromResult(migratedConfiguration);
         }
         catch (Exception ex)
         {
             _logger.LogError($"Error during manual configuration migration: {ex.Message}");
-            return configuration; // Return original on error
+            return Task.FromResult(configuration); // Return original on error
         }
     }
 
@@ -191,7 +191,7 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
     /// </summary>
     /// <param name="configuration">Configuration to clean up</param>
     /// <returns>Cleaned configuration</returns>
-    public async Task<CursorPhobiaConfiguration> CleanupCurrentConfigurationAsync(CursorPhobiaConfiguration configuration)
+    public Task<CursorPhobiaConfiguration> CleanupCurrentConfigurationAsync(CursorPhobiaConfiguration configuration)
     {
         try
         {
@@ -199,12 +199,12 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
             var cleanedConfiguration = _settingsMigrator.CleanupOrphanedSettings(configuration, currentMonitors);
             
             _logger.LogInformation("Per-monitor configuration cleanup completed");
-            return cleanedConfiguration;
+            return Task.FromResult(cleanedConfiguration);
         }
         catch (Exception ex)
         {
             _logger.LogError($"Error during configuration cleanup: {ex.Message}");
-            return configuration; // Return original on error
+            return Task.FromResult(configuration); // Return original on error
         }
     }
 

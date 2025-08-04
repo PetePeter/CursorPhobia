@@ -43,18 +43,18 @@ public class ApplicationLifecycleManager : IApplicationLifecycleManager
     /// Initializes the application lifecycle manager
     /// </summary>
     /// <returns>True if initialization was successful, false otherwise</returns>
-    public async Task<bool> InitializeAsync()
+    public Task<bool> InitializeAsync()
     {
         if (_disposed)
         {
             _logger.LogWarning("Cannot initialize disposed ApplicationLifecycleManager");
-            return false;
+            return Task.FromResult(false);
         }
         
         if (_initialized)
         {
             _logger.LogDebug("ApplicationLifecycleManager is already initialized");
-            return true;
+            return Task.FromResult(true);
         }
         
         try
@@ -73,15 +73,13 @@ public class ApplicationLifecycleManager : IApplicationLifecycleManager
             _initialized = true;
             _logger.LogInformation("Application lifecycle manager initialized successfully");
             
-            return true;
+            return Task.FromResult(true);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to initialize application lifecycle manager");
-            return false;
+            return Task.FromResult(false);
         }
-        
-        await Task.CompletedTask;
     }
     
     /// <summary>
@@ -149,6 +147,8 @@ public class ApplicationLifecycleManager : IApplicationLifecycleManager
             _logger.LogError(ex, "Error during application shutdown");
             Environment.ExitCode = 1;
         }
+        
+        await Task.CompletedTask;
     }
     
     /// <summary>
@@ -226,7 +226,15 @@ public class ApplicationLifecycleManager : IApplicationLifecycleManager
     private async void OnUnhandledException(object sender, UnhandledExceptionEventArgs e)
     {
         var exception = e.ExceptionObject as Exception;
-        _logger.LogCritical(exception, "Unhandled exception in application domain. Terminating: {IsTerminating}", e.IsTerminating);
+        if (exception != null)
+        {
+            _logger.LogCritical(exception, "Unhandled exception in application domain. Terminating: {IsTerminating}", e.IsTerminating);
+        }
+        else
+        {
+            _logger.LogError("Unhandled non-exception object in application domain: {ExceptionObject}. Terminating: {IsTerminating}", 
+                e.ExceptionObject?.ToString() ?? "null", e.IsTerminating);
+        }
         
         if (e.IsTerminating && !_isShuttingDown)
         {

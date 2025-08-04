@@ -4,7 +4,6 @@ namespace CursorPhobia.Core.UI.Forms
 {
     partial class SettingsForm
     {
-        private System.ComponentModel.IContainer components = null;
         private TabControl tabControl;
         private TabPage generalTabPage;
         private TabPage behaviorTabPage;
@@ -41,7 +40,6 @@ namespace CursorPhobia.Core.UI.Forms
         private CheckBox respectTaskbarAreasCheckBox;
         
         // Per-Monitor Settings Controls
-        private Panel monitorLayoutPanel;
         private ListBox monitorListBox;
         private Label monitorListLabel;
         private Panel perMonitorSettingsPanel;
@@ -740,6 +738,10 @@ namespace CursorPhobia.Core.UI.Forms
             });
 
             Controls.Add(buttonPanel);
+
+            // Set dialog buttons
+            AcceptButton = okButton;
+            CancelButton = cancelButton;
 
             // Set up event handlers
             okButton.Click += OnOkButtonClick;
