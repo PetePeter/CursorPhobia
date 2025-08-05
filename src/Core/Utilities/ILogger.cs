@@ -50,4 +50,16 @@ public interface ILogger
     /// <param name="message">The message to log</param>
     /// <param name="args">Arguments for the message</param>
     void LogCritical(Exception ex, string message, params object[] args);
+    
+    /// <summary>
+    /// Logs window-related operations with structured properties
+    /// </summary>
+    /// <param name="logLevel">The log level</param>
+    /// <param name="operation">The window operation being performed</param>
+    /// <param name="windowHandle">Window handle</param>
+    /// <param name="windowTitle">Window title</param>
+    /// <param name="message">Additional message</param>
+    /// <param name="additionalProperties">Additional contextual properties</param>
+    void LogWindowOperation(Microsoft.Extensions.Logging.LogLevel logLevel, string operation, IntPtr windowHandle, 
+        string? windowTitle = null, string? message = null, params (string Key, object Value)[] additionalProperties);
 }

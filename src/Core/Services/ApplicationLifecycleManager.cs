@@ -554,18 +554,14 @@ public class ApplicationLifecycleManager : IApplicationLifecycleManager
     /// </summary>
     private void OnSystemHealthChanged(object? sender, SystemHealthChangedEventArgs e)
     {
-        _logger.LogInformation("System health changed from {PreviousStatus} to {NewStatus}: {Summary}",
-            e.PreviousStatus, e.NewStatus, e.Summary);
+        _logger.LogInformation("System health changed from {PreviousStatus} to {CurrentStatus}: {Description}",
+            e.PreviousStatus, e.CurrentStatus, e.Description);
         
         // Take action based on system health
-        switch (e.NewStatus)
+        switch (e.CurrentStatus)
         {
-            case SystemHealthStatus.Critical:
-                _logger.LogWarning("System health is critical - considering emergency shutdown if condition persists");
-                break;
-                
             case SystemHealthStatus.Unhealthy:
-                _logger.LogWarning("System health is unhealthy - monitoring for improvement");
+                _logger.LogWarning("System health is unhealthy - monitoring for improvement and considering recovery actions");
                 break;
                 
             case SystemHealthStatus.Degraded:

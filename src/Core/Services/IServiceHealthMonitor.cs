@@ -132,41 +132,6 @@ public interface IServiceHealthMonitor : IDisposable
     Task<bool> UpdateServiceMonitoringAsync(string serviceName, ServiceMonitoringOptions options);
 }
 
-/// <summary>
-/// System health status levels
-/// </summary>
-public enum SystemHealthStatus
-{
-    /// <summary>
-    /// All services are healthy
-    /// </summary>
-    Healthy,
-    
-    /// <summary>
-    /// Some non-critical services have issues
-    /// </summary>
-    Warning,
-    
-    /// <summary>
-    /// Critical services have issues but system is functional
-    /// </summary>
-    Degraded,
-    
-    /// <summary>
-    /// Critical services are failing, system may not function properly
-    /// </summary>
-    Unhealthy,
-    
-    /// <summary>
-    /// System is in critical failure state
-    /// </summary>
-    Critical,
-    
-    /// <summary>
-    /// Health status is unknown or monitoring is not running
-    /// </summary>
-    Unknown
-}
 
 /// <summary>
 /// Individual service health status
@@ -541,31 +506,6 @@ public class CriticalServiceUnhealthyEventArgs : EventArgs
     public bool RestartRecommended { get; set; }
 }
 
-/// <summary>
-/// Event arguments for system health changes
-/// </summary>
-public class SystemHealthChangedEventArgs : EventArgs
-{
-    /// <summary>
-    /// Previous system health status
-    /// </summary>
-    public SystemHealthStatus PreviousStatus { get; set; }
-    
-    /// <summary>
-    /// New system health status
-    /// </summary>
-    public SystemHealthStatus NewStatus { get; set; }
-    
-    /// <summary>
-    /// Services that contributed to the health change
-    /// </summary>
-    public List<string> AffectedServices { get; set; } = new();
-    
-    /// <summary>
-    /// Summary of the health change
-    /// </summary>
-    public string Summary { get; set; } = string.Empty;
-}
 
 /// <summary>
 /// Event arguments for service restart recommendations

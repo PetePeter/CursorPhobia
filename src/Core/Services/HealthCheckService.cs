@@ -17,7 +17,7 @@ namespace CursorPhobia.Core.Services
     {
         private readonly ILogger _logger;
         private readonly ConcurrentDictionary<string, ComponentHealthInfo> _components;
-        private readonly Timer _healthCheckTimer;
+        private readonly System.Threading.Timer _healthCheckTimer;
         private readonly object _lockObject = new object();
         private readonly DateTime _startTime;
         
@@ -41,7 +41,7 @@ namespace CursorPhobia.Core.Services
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
             _components = new ConcurrentDictionary<string, ComponentHealthInfo>();
-            _healthCheckTimer = new Timer(PerformScheduledHealthCheck, null, Timeout.Infinite, Timeout.Infinite);
+            _healthCheckTimer = new System.Threading.Timer(PerformScheduledHealthCheck, null, Timeout.Infinite, Timeout.Infinite);
             _startTime = DateTime.UtcNow;
             _currentSystemHealth = SystemHealthStatus.Unknown;
             _healthChanges = new List<DateTime>();
@@ -328,7 +328,7 @@ namespace CursorPhobia.Core.Services
         private async Task CheckComponentHealthAsync(string componentName, ComponentHealthInfo componentInfo)
         {
             var checkStartTime = DateTime.UtcNow;
-            var stopwatch = Stopwatch.StartTime();
+            var stopwatch = Stopwatch.StartNew();
 
             try
             {

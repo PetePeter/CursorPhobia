@@ -303,7 +303,7 @@ public class ServiceHealthMonitorTests : IDisposable
         var result = await _healthMonitor.CheckAllServicesHealthAsync();
         
         // Assert
-        Assert.Equal(SystemHealthStatus.Critical, result.SystemStatus);
+        Assert.Equal(SystemHealthStatus.Unhealthy, result.SystemStatus);
         Assert.Equal(1, result.CriticalServices);
     }
     
@@ -537,7 +537,7 @@ public class ServiceHealthMonitorTests : IDisposable
         // Assert
         Assert.True(eventFired);
         Assert.NotNull(eventArgs);
-        Assert.Equal(SystemHealthStatus.Critical, eventArgs.NewStatus);
+        Assert.Equal(SystemHealthStatus.Unhealthy, eventArgs.CurrentStatus);
     }
     
     [Fact]

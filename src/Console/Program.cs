@@ -39,9 +39,9 @@ class Program
         
         try
         {
-            // Phase 2 WI#8: Initialize production logging early
+            // Phase 2 WI#8: Initialize production logging early with log4net
             var isDebugMode = args.Contains("--debug") || System.Diagnostics.Debugger.IsAttached;
-            if (!LoggingConfiguration.InitializeLogging(isDebugMode))
+            if (!LoggingConfiguration.InitializeLogging(LoggingProvider.Log4Net, isDebugMode))
             {
                 System.Console.WriteLine("Warning: Failed to initialize production logging. Using fallback logging.");
             }
@@ -58,6 +58,9 @@ class Program
             // Get logger after services are set up
             _logger = _serviceProvider!.GetRequiredService<Logger>();
             _logger.LogInformation("Starting CursorPhobia application");
+            
+            // Initialize ApplicationLifecycleManager for all modes
+            await InitializeApplicationLifecycleAsync();
             
             if (isAutomatedMode)
             {
@@ -130,8 +133,8 @@ class Program
     {
         var services = new ServiceCollection();
         
-        // Phase 2 WI#8: Configure production logging services
-        LoggingConfiguration.ConfigureLoggingServices(services, isDebugMode);
+        // Phase 2 WI#8: Configure production logging services with log4net
+        LoggingConfiguration.ConfigureLoggingServices(services, LoggingProvider.Log4Net, isDebugMode);
         
         // Legacy logging setup for backward compatibility
         services.AddLogging(builder =>
@@ -238,6 +241,86 @@ class Program
         });
         
         _serviceProvider = services.BuildServiceProvider();
+    }
+    
+    /// <summary>
+    /// Initializes the ApplicationLifecycleManager and registers core services for lifecycle management
+    /// </summary>
+    private static async Task InitializeApplicationLifecycleAsync()
+    {
+        try
+        {
+            // Get the lifecycle manager from DI
+            _lifecycleManager = _serviceProvider!.GetRequiredService<IApplicationLifecycleManager>();
+            
+            // Initialize the lifecycle manager
+            if (!await _lifecycleManager.InitializeAsync())
+            {
+                throw new Exception("Failed to initialize ApplicationLifecycleManager");
+            }
+            
+            _logger!.LogInformation("ApplicationLifecycleManager initialized successfully");
+            
+            // Register core services for lifecycle management
+            RegisterServicesForLifecycleManagement();
+            
+            // Register single instance manager with lifecycle manager if available
+            if (_singleInstanceManager != null)
+            {
+                _lifecycleManager.RegisterService(_singleInstanceManager, "Single Instance Manager");
+            }
+            
+            // Setup lifecycle event handlers
+            _lifecycleManager.ApplicationExitRequested += OnApplicationExitRequested;
+            
+            _logger.LogDebug("ApplicationLifecycleManager integration completed");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Failed to initialize ApplicationLifecycleManager");
+            System.Console.WriteLine($"Warning: Failed to initialize application lifecycle management: {ex.Message}");
+            // Continue without proper lifecycle management rather than failing completely
+        }
+    }
+    
+    /// <summary>
+    /// Registers key services with the ApplicationLifecycleManager for proper disposal order
+    /// </summary>
+    private static void RegisterServicesForLifecycleManagement()
+    {
+        if (_lifecycleManager == null || _serviceProvider == null)
+            return;
+        
+        try
+        {
+            // Register services in the order they should be disposed (reverse order will be used)
+            // Global exception handler should be disposed last
+            var globalExceptionHandler = _serviceProvider.GetService<IGlobalExceptionHandler>();
+            if (globalExceptionHandler != null)
+            {
+                _lifecycleManager.RegisterService(globalExceptionHandler, "Global Exception Handler");
+            }
+            
+            // Service health monitor
+            var healthMonitor = _serviceProvider.GetService<IServiceHealthMonitor>();
+            if (healthMonitor != null)
+            {
+                _lifecycleManager.RegisterService(healthMonitor, "Service Health Monitor");
+            }
+            
+            // Error recovery manager
+            var errorRecoveryManager = _serviceProvider.GetService<IErrorRecoveryManager>();
+            if (errorRecoveryManager != null)
+            {
+                _lifecycleManager.RegisterService(errorRecoveryManager, "Error Recovery Manager");
+            }
+            
+            _logger?.LogDebug("Core services registered with ApplicationLifecycleManager");
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogWarning(ex, "Error registering services with ApplicationLifecycleManager");
+        }
     }
     
     private static void ShowMenu()
@@ -688,13 +771,14 @@ class Program
     
     private static async Task SetupTrayIntegration()
     {
-        // Initialize lifecycle manager
-        if (!await _lifecycleManager!.InitializeAsync())
+        // Lifecycle manager is already initialized in main startup flow
+        // Just register additional tray-specific services
+        if (_lifecycleManager == null)
         {
-            throw new Exception("Failed to initialize lifecycle manager");
+            throw new Exception("ApplicationLifecycleManager not initialized - should be initialized during startup");
         }
         
-        // Register services for lifecycle management
+        // Register additional services for lifecycle management
         if (_engine is IDisposable disposableEngine)
         {
             _lifecycleManager.RegisterService(disposableEngine, "CursorPhobia Engine");
@@ -722,8 +806,7 @@ class Program
         _engine.PerformanceIssueDetected += OnEnginePerformanceIssue;
         _engine.WindowPushed += OnEngineWindowPushed;
         
-        // Setup lifecycle event handlers
-        _lifecycleManager.ApplicationExitRequested += OnApplicationExitRequested;
+        // Lifecycle event handlers are already setup in main initialization
         
         // Setup configuration file watcher for live reloading (Phase 3 WI#4)
         await SetupConfigurationWatcher();
@@ -771,11 +854,8 @@ class Program
                 await _trayManager.HideAsync();
             }
             
-            if (_lifecycleManager != null)
-            {
-                _lifecycleManager.ApplicationExitRequested -= OnApplicationExitRequested;
-                await _lifecycleManager.ShutdownAsync();
-            }
+            // Lifecycle manager cleanup is handled globally in CleanupAsync()
+            // Don't cleanup lifecycle manager here to avoid double cleanup
         }
         catch (Exception ex)
         {
@@ -1189,30 +1269,54 @@ class Program
     }
     
     /// <summary>
-    /// Cleanup method for Phase 1 WI#8 services
+    /// Cleanup method using ApplicationLifecycleManager for proper service disposal
     /// </summary>
     private static async Task CleanupAsync()
     {
         try
         {
+            // Remove single instance manager event handler before lifecycle cleanup
             if (_singleInstanceManager != null)
             {
                 _singleInstanceManager.InstanceActivationRequested -= OnInstanceActivationRequested;
-                await _singleInstanceManager.ShutdownAsync();
-                _singleInstanceManager.Dispose();
-                _singleInstanceManager = null;
             }
             
-            if (_globalExceptionHandler != null)
+            // Use ApplicationLifecycleManager for graceful shutdown if available
+            if (_lifecycleManager != null)
             {
-                await _globalExceptionHandler.ShutdownAsync();
-                _globalExceptionHandler.Dispose();
-                _globalExceptionHandler = null;
+                _logger?.LogInformation("Initiating graceful shutdown through ApplicationLifecycleManager");
+                
+                // Remove lifecycle event handler to prevent recursion
+                _lifecycleManager.ApplicationExitRequested -= OnApplicationExitRequested;
+                
+                // Shutdown all registered services through lifecycle manager
+                await _lifecycleManager.ShutdownAsync(0);
+                
+                _logger?.LogInformation("ApplicationLifecycleManager shutdown completed");
+            }
+            else
+            {
+                // Fallback to manual cleanup if lifecycle manager isn't available
+                _logger?.LogWarning("ApplicationLifecycleManager not available, performing manual cleanup");
+                
+                if (_singleInstanceManager != null)
+                {
+                    await _singleInstanceManager.ShutdownAsync();
+                    _singleInstanceManager.Dispose();
+                    _singleInstanceManager = null;
+                }
+                
+                if (_globalExceptionHandler != null)
+                {
+                    await _globalExceptionHandler.ShutdownAsync();
+                    _globalExceptionHandler.Dispose();
+                    _globalExceptionHandler = null;
+                }
             }
         }
         catch (Exception ex)
         {
-            _logger?.LogError(ex, "Error during Phase 1 WI#8 cleanup");
+            _logger?.LogError(ex, "Error during application cleanup");
         }
     }
 }

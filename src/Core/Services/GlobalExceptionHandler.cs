@@ -87,6 +87,9 @@ public class GlobalExceptionHandler : IGlobalExceptionHandler
             // Hook into task scheduler unobserved task exceptions
             TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
             
+            // Hook into WPF DispatcherUnhandledException if available (future compatibility)
+            await InitializeWpfExceptionHandlingAsync();
+            
             _isActive = true;
             _logger.LogInformation("Global exception handler initialized successfully");
             
@@ -171,12 +174,17 @@ public class GlobalExceptionHandler : IGlobalExceptionHandler
                         false);
                 }
             }
+            else
+            {
+                // If we can't recover, don't attempt recovery
+                recoverySuccessful = false;
+            }
             
             // Raise handled exception event
             var handledArgs = new ExceptionHandledEventArgs(exception, context, recoverySuccessful);
             ExceptionHandled?.Invoke(this, handledArgs);
             
-            return canRecover;
+            return recoverySuccessful;
         }
         catch (Exception handlerException)
         {
@@ -302,6 +310,9 @@ public class GlobalExceptionHandler : IGlobalExceptionHandler
             Application.ThreadException -= OnApplicationThreadException;
             AppDomain.CurrentDomain.UnhandledException -= OnAppDomainUnhandledException;
             TaskScheduler.UnobservedTaskException -= OnUnobservedTaskException;
+            
+            // Unhook from WPF exception events if they were hooked
+            await ShutdownWpfExceptionHandlingAsync();
             
             _isActive = false;
             
@@ -449,5 +460,122 @@ public class GlobalExceptionHandler : IGlobalExceptionHandler
         }
         
         GC.SuppressFinalize(this);
+    }
+    
+    /// <summary>
+    /// Attempts to initialize WPF exception handling if WPF is available (future compatibility)
+    /// </summary>
+    private async Task InitializeWpfExceptionHandlingAsync()
+    {
+        try
+        {
+            // Use reflection to check if System.Windows.Application is available and has current instance
+            var wpfApplicationType = Type.GetType("System.Windows.Application, PresentationFramework");
+            if (wpfApplicationType != null)
+            {
+                var currentProperty = wpfApplicationType.GetProperty("Current", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                var currentApp = currentProperty?.GetValue(null);
+                
+                if (currentApp != null)
+                {
+                    // Get the DispatcherUnhandledException event
+                    var dispatcherUnhandledExceptionEvent = wpfApplicationType.GetEvent("DispatcherUnhandledException");
+                    if (dispatcherUnhandledExceptionEvent != null)
+                    {
+                        // Create delegate for WPF exception handler
+                        var handlerMethod = typeof(GlobalExceptionHandler).GetMethod(nameof(OnWpfDispatcherUnhandledException), 
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                        
+                        if (handlerMethod != null)
+                        {
+                            var handler = Delegate.CreateDelegate(dispatcherUnhandledExceptionEvent.EventHandlerType!, this, handlerMethod);
+                            dispatcherUnhandledExceptionEvent.AddEventHandler(currentApp, handler);
+                            
+                            _logger.LogDebug("WPF DispatcherUnhandledException handler registered successfully");
+                        }
+                    }
+                }
+            }
+            else
+            {
+                _logger.LogDebug("WPF not available - skipping WPF exception handling initialization");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to initialize WPF exception handling - continuing without WPF support");
+        }
+        
+        await Task.CompletedTask;
+    }
+    
+    /// <summary>
+    /// Shuts down WPF exception handling if it was initialized
+    /// </summary>
+    private async Task ShutdownWpfExceptionHandlingAsync()
+    {
+        try
+        {
+            // Use reflection to unhook WPF exception handling if it was hooked
+            var wpfApplicationType = Type.GetType("System.Windows.Application, PresentationFramework");
+            if (wpfApplicationType != null)
+            {
+                var currentProperty = wpfApplicationType.GetProperty("Current", System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.Static);
+                var currentApp = currentProperty?.GetValue(null);
+                
+                if (currentApp != null)
+                {
+                    var dispatcherUnhandledExceptionEvent = wpfApplicationType.GetEvent("DispatcherUnhandledException");
+                    if (dispatcherUnhandledExceptionEvent != null)
+                    {
+                        var handlerMethod = typeof(GlobalExceptionHandler).GetMethod(nameof(OnWpfDispatcherUnhandledException), 
+                            System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+                        
+                        if (handlerMethod != null)
+                        {
+                            var handler = Delegate.CreateDelegate(dispatcherUnhandledExceptionEvent.EventHandlerType!, this, handlerMethod);
+                            dispatcherUnhandledExceptionEvent.RemoveEventHandler(currentApp, handler);
+                            
+                            _logger.LogDebug("WPF DispatcherUnhandledException handler unregistered successfully");
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during WPF exception handling shutdown");
+        }
+        
+        await Task.CompletedTask;
+    }
+    
+    /// <summary>
+    /// Handles WPF DispatcherUnhandledException events
+    /// </summary>
+    private async void OnWpfDispatcherUnhandledException(object sender, object e)
+    {
+        try
+        {
+            // Use reflection to get exception and handled properties from WPF DispatcherUnhandledExceptionEventArgs
+            var eventArgsType = e.GetType();
+            var exceptionProperty = eventArgsType.GetProperty("Exception");
+            var handledProperty = eventArgsType.GetProperty("Handled");
+            
+            if (exceptionProperty?.GetValue(e) is Exception exception)
+            {
+                var handled = await HandleExceptionAsync(exception, "WPF Dispatcher", true);
+                
+                // Mark as handled if we successfully handled it
+                if (handled && handledProperty != null)
+                {
+                    handledProperty.SetValue(e, true);
+                }
+            }
+        }
+        catch (Exception handlerException)
+        {
+            _logger.LogError(handlerException, "Error in WPF dispatcher exception handler");
+        }
     }
 }

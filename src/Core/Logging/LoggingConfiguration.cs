@@ -8,8 +8,25 @@ using CursorPhobia.Core.Services;
 namespace CursorPhobia.Core.Logging;
 
 /// <summary>
-/// Configuration management for production logging with NLog integration
+/// Logging provider type enumeration
+/// </summary>
+public enum LoggingProvider
+{
+    /// <summary>
+    /// Use log4net as the logging provider (recommended for production)
+    /// </summary>
+    Log4Net,
+    
+    /// <summary>
+    /// Use NLog as the logging provider (legacy support)
+    /// </summary>
+    NLog
+}
+
+/// <summary>
+/// Configuration management for production logging with multiple provider support
 /// Handles initialization, configuration, and service registration for the logging infrastructure
+/// Supports both log4net (recommended) and NLog (legacy) providers
 /// </summary>
 public static class LoggingConfiguration
 {
@@ -17,13 +34,14 @@ public static class LoggingConfiguration
     private static readonly object _initializationLock = new();
 
     /// <summary>
-    /// Initializes the production logging system with NLog
-    /// Creates log directories, configures NLog, and sets up error handling
+    /// Initializes the production logging system with the specified provider
+    /// Creates log directories, configures logging, and sets up error handling
     /// </summary>
+    /// <param name="provider">The logging provider to use (defaults to log4net)</param>
     /// <param name="isDebugMode">Whether to enable debug-level logging</param>
-    /// <param name="configFilePath">Optional path to NLog config file (defaults to NLog.config in app directory)</param>
+    /// <param name="configFilePath">Optional path to config file</param>
     /// <returns>True if initialization was successful, false otherwise</returns>
-    public static bool InitializeLogging(bool isDebugMode = false, string? configFilePath = null)
+    public static bool InitializeLogging(LoggingProvider provider = LoggingProvider.Log4Net, bool isDebugMode = false, string? configFilePath = null)
     {
         lock (_initializationLock)
         {
@@ -32,33 +50,13 @@ public static class LoggingConfiguration
 
             try
             {
-                // Ensure log directories exist
-                EnsureLogDirectoriesExist();
-
-                // Configure NLog
-                ConfigureNLog(configFilePath, isDebugMode);
-
-                // Set NLog as the default logger factory
-                var nlogLoggerFactory = LoggerFactory.Create(builder =>
+                // Delegate to appropriate provider
+                return provider switch
                 {
-                    builder.ClearProviders();
-                    builder.AddNLog();
-                    builder.SetMinimumLevel(isDebugMode ? Microsoft.Extensions.Logging.LogLevel.Debug : Microsoft.Extensions.Logging.LogLevel.Information);
-                });
-
-                // Initialize the legacy logger factory for backward compatibility
-                CursorPhobia.Core.Utilities.LoggerFactory.Initialize(nlogLoggerFactory);
-
-                _initialized = true;
-                
-                // Log successful initialization
-                var logger = LogManager.GetCurrentClassLogger();
-                logger.Info("Production logging system initialized successfully");
-                logger.Info("Log directory: {LogDirectory}", GetLogDirectory());
-                logger.Info("Debug mode: {DebugMode}", isDebugMode);
-                logger.Info("Config file: {ConfigFile}", configFilePath ?? "NLog.config (default)");
-
-                return true;
+                    LoggingProvider.Log4Net => Log4NetConfiguration.InitializeLogging(isDebugMode, configFilePath),
+                    LoggingProvider.NLog => InitializeNLogLogging(isDebugMode, configFilePath),
+                    _ => throw new ArgumentOutOfRangeException(nameof(provider), provider, "Unsupported logging provider")
+                };
             }
             catch (Exception ex)
             {
@@ -75,45 +73,28 @@ public static class LoggingConfiguration
     /// Registers both legacy and new logging interfaces
     /// </summary>
     /// <param name="services">Service collection to configure</param>
+    /// <param name="provider">The logging provider to use (defaults to log4net)</param>
     /// <param name="isDebugMode">Whether debug mode is enabled</param>
-    public static void ConfigureLoggingServices(IServiceCollection services, bool isDebugMode = false)
+    public static void ConfigureLoggingServices(IServiceCollection services, LoggingProvider provider = LoggingProvider.Log4Net, bool isDebugMode = false)
     {
         // Ensure logging is initialized
         if (!_initialized)
         {
-            InitializeLogging(isDebugMode);
+            InitializeLogging(provider, isDebugMode);
         }
 
-        // Register Microsoft Extensions Logging
-        services.AddLogging(builder =>
+        // Delegate to appropriate provider configuration
+        switch (provider)
         {
-            builder.ClearProviders();
-            builder.AddNLog();
-            builder.SetMinimumLevel(isDebugMode ? Microsoft.Extensions.Logging.LogLevel.Debug : Microsoft.Extensions.Logging.LogLevel.Information);
-        });
-
-        // Register legacy Logger for backward compatibility
-        services.AddSingleton<CursorPhobia.Core.Utilities.Logger>(provider =>
-        {
-            var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
-            return CursorPhobia.Core.Utilities.LoggerFactory.CreateLogger("CursorPhobia");
-        });
-
-        // Register legacy ILogger interface
-        services.AddSingleton<CursorPhobia.Core.Utilities.ILogger>(provider =>
-        {
-            return provider.GetRequiredService<CursorPhobia.Core.Utilities.Logger>();
-        });
-
-        // Register production logger factory
-        services.AddSingleton<IProductionLoggerFactory, ProductionLoggerFactory>();
-
-        // Register default production logger
-        services.AddSingleton<IProductionLogger>(provider =>
-        {
-            var factory = provider.GetRequiredService<IProductionLoggerFactory>();
-            return factory.CreateLogger("CursorPhobia");
-        });
+            case LoggingProvider.Log4Net:
+                Log4NetConfiguration.ConfigureLoggingServices(services, isDebugMode);
+                break;
+            case LoggingProvider.NLog:
+                ConfigureNLogServices(services, isDebugMode);
+                break;
+            default:
+                throw new ArgumentOutOfRangeException(nameof(provider), provider, "Unsupported logging provider");
+        }
     }
 
     /// <summary>
@@ -277,10 +258,13 @@ public static class LoggingConfiguration
             {
                 try
                 {
+                    // Shutdown both providers
+                    Log4NetConfiguration.ShutdownLogging();
+                    
                     var logger = LogManager.GetCurrentClassLogger();
                     logger.Info("Shutting down production logging system");
-                    
                     LogManager.Shutdown();
+                    
                     _initialized = false;
                 }
                 catch (Exception ex)
@@ -290,6 +274,89 @@ public static class LoggingConfiguration
             }
         }
     }
+
+    #region NLog Support (Legacy)
+
+    /// <summary>
+    /// Initializes NLog logging (legacy support)
+    /// </summary>
+    private static bool InitializeNLogLogging(bool isDebugMode, string? configFilePath)
+    {
+        try
+        {
+            // Ensure log directories exist
+            EnsureLogDirectoriesExist();
+
+            // Configure NLog
+            ConfigureNLog(configFilePath, isDebugMode);
+
+            // Set NLog as the default logger factory
+            var nlogLoggerFactory = LoggerFactory.Create(builder =>
+            {
+                builder.ClearProviders();
+                builder.AddNLog();
+                builder.SetMinimumLevel(isDebugMode ? Microsoft.Extensions.Logging.LogLevel.Debug : Microsoft.Extensions.Logging.LogLevel.Information);
+            });
+
+            // Initialize the legacy logger factory for backward compatibility
+            CursorPhobia.Core.Utilities.LoggerFactory.Initialize(nlogLoggerFactory);
+
+            _initialized = true;
+            
+            // Log successful initialization
+            var logger = LogManager.GetCurrentClassLogger();
+            logger.Info("NLog production logging system initialized successfully");
+            logger.Info("Log directory: {LogDirectory}", GetLogDirectory());
+            logger.Info("Debug mode: {DebugMode}", isDebugMode);
+            logger.Info("Config file: {ConfigFile}", configFilePath ?? "NLog.config (default)");
+
+            return true;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Failed to initialize NLog: {ex.Message}");
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Configures NLog services (legacy support)
+    /// </summary>
+    private static void ConfigureNLogServices(IServiceCollection services, bool isDebugMode)
+    {
+        // Register Microsoft Extensions Logging
+        services.AddLogging(builder =>
+        {
+            builder.ClearProviders();
+            builder.AddNLog();
+            builder.SetMinimumLevel(isDebugMode ? Microsoft.Extensions.Logging.LogLevel.Debug : Microsoft.Extensions.Logging.LogLevel.Information);
+        });
+
+        // Register legacy Logger for backward compatibility
+        services.AddSingleton<CursorPhobia.Core.Utilities.Logger>(provider =>
+        {
+            var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
+            return CursorPhobia.Core.Utilities.LoggerFactory.CreateLogger("CursorPhobia");
+        });
+
+        // Register legacy ILogger interface
+        services.AddSingleton<CursorPhobia.Core.Utilities.ILogger>(provider =>
+        {
+            return provider.GetRequiredService<CursorPhobia.Core.Utilities.Logger>();
+        });
+
+        // Register production logger factory
+        services.AddSingleton<IProductionLoggerFactory, ProductionLoggerFactory>();
+
+        // Register default production logger
+        services.AddSingleton<IProductionLogger>(provider =>
+        {
+            var factory = provider.GetRequiredService<IProductionLoggerFactory>();
+            return factory.CreateLogger("CursorPhobia");
+        });
+    }
+
+    #endregion
 }
 
 /// <summary>

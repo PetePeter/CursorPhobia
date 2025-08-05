@@ -377,7 +377,7 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during system health check");
-            result.SystemStatus = SystemHealthStatus.Critical;
+            result.SystemStatus = SystemHealthStatus.Unhealthy;
             result.CheckDuration = stopwatch.Elapsed;
             result.Summary = $"Health check failed: {ex.Message}";
             return result;
@@ -702,7 +702,7 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
         // Determine system health based on service distribution
         if (criticalCount > 0)
         {
-            return SystemHealthStatus.Critical;
+            return SystemHealthStatus.Unhealthy;
         }
         
         if (unhealthyCount > 0)
@@ -712,7 +712,7 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
         
         if (warningCount > 0)
         {
-            return SystemHealthStatus.Warning;
+            return SystemHealthStatus.Degraded;
         }
         
         if (healthyCount == results.Count)
@@ -762,9 +762,9 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
             SystemHealthChanged?.Invoke(this, new SystemHealthChangedEventArgs
             {
                 PreviousStatus = previousHealth,
-                NewStatus = systemHealth,
-                AffectedServices = _services.Keys.ToList(),
-                Summary = $"System health changed to {systemHealth}"
+                CurrentStatus = systemHealth,
+                TriggeringComponent = _services.Keys.FirstOrDefault() ?? "System",
+                Description = $"System health changed to {systemHealth}"
             });
         }
         

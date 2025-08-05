@@ -98,6 +98,25 @@ public class TestLogger : CursorPhobia.Core.Utilities.ILogger
         }
     }
 
+    public void LogWindowOperation(LogLevel logLevel, string operation, IntPtr windowHandle, string? windowTitle = null, string? message = null, params (string Key, object Value)[] additionalProperties)
+    {
+        var logEntry = $"{logLevel.ToString().ToUpper()}: WindowOperation - {operation} on 0x{windowHandle:X}";
+        if (!string.IsNullOrEmpty(windowTitle))
+        {
+            logEntry += $" ({windowTitle})";
+        }
+        if (!string.IsNullOrEmpty(message))
+        {
+            logEntry += $" - {message}";
+        }
+        if (additionalProperties?.Length > 0)
+        {
+            var props = string.Join(", ", additionalProperties.Select(p => $"{p.Key}={p.Value}"));
+            logEntry += $" [{props}]";
+        }
+        _logs.Add(logEntry);
+    }
+
     public void ClearLogs()
     {
         _logs.Clear();

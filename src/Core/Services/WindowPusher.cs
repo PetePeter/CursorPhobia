@@ -370,15 +370,12 @@ public class WindowPusher : IWindowPusher, IDisposable
                 windowHandle.ToInt64(), currentPosition.X, currentPosition.Y, 
                 targetPosition.X, targetPosition.Y, _config.AnimationDurationMs);
             
-            // Phase 2 WI#8: Window operation logging
-            if (_logger is Logger windowLogger)
-            {
-                windowLogger.LogWindowOperation(Microsoft.Extensions.Logging.LogLevel.Information, 
-                    "StartAnimation", windowHandle, null, 
-                    $"Starting animated push from ({currentPosition.X},{currentPosition.Y}) to ({targetPosition.X},{targetPosition.Y})",
-                    ("AnimationDuration", _config.AnimationDurationMs),
-                    ("AnimationEasing", _config.AnimationEasing.ToString()));
-            }
+            // Phase 2 WI#8: Window operation logging with log4net
+            _logger.LogWindowOperation(Microsoft.Extensions.Logging.LogLevel.Information, 
+                "StartAnimation", windowHandle, null, 
+                $"Starting animated push from ({currentPosition.X},{currentPosition.Y}) to ({targetPosition.X},{targetPosition.Y})",
+                ("AnimationDuration", _config.AnimationDurationMs),
+                ("AnimationEasing", _config.AnimationEasing.ToString()));
             
             (perfScope as IPerformanceScope)?.AddContext("AnimationType", "Animated");
             (perfScope as IPerformanceScope)?.AddContext("AnimationDuration", _config.AnimationDurationMs);
@@ -509,19 +506,16 @@ public class WindowPusher : IWindowPusher, IDisposable
                 success ? "completed" : "cancelled",
                 stopwatch.ElapsedMilliseconds);
             
-            // Phase 2 WI#8: Window operation logging for animation completion
-            if (_logger is Logger windowLogger)
-            {
-                var logLevel = success ? Microsoft.Extensions.Logging.LogLevel.Information : Microsoft.Extensions.Logging.LogLevel.Warning;
-                windowLogger.LogWindowOperation(logLevel, 
-                    success ? "CompleteAnimation" : "CancelAnimation", 
-                    animation.WindowHandle, null, 
-                    $"Animation {(success ? "completed" : "cancelled")} after {stopwatch.ElapsedMilliseconds}ms",
-                    ("ElapsedMs", stopwatch.ElapsedMilliseconds),
-                    ("Success", success),
-                    ("FinalX", animation.EndPosition.X),
-                    ("FinalY", animation.EndPosition.Y));
-            }
+            // Phase 2 WI#8: Window operation logging for animation completion with log4net
+            var logLevel = success ? Microsoft.Extensions.Logging.LogLevel.Information : Microsoft.Extensions.Logging.LogLevel.Warning;
+            _logger.LogWindowOperation(logLevel, 
+                success ? "CompleteAnimation" : "CancelAnimation", 
+                animation.WindowHandle, null, 
+                $"Animation {(success ? "completed" : "cancelled")} after {stopwatch.ElapsedMilliseconds}ms",
+                ("ElapsedMs", stopwatch.ElapsedMilliseconds),
+                ("Success", success),
+                ("FinalX", animation.EndPosition.X),
+                ("FinalY", animation.EndPosition.Y));
             
             return success;
         }
