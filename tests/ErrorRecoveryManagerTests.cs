@@ -1,45 +1,42 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using CursorPhobia.Core.Services;
 using CursorPhobia.Core.Utilities;
 using System;
 using System.Threading.Tasks;
+using Xunit;
 
 namespace CursorPhobia.Tests;
 
 /// <summary>
 /// Tests for ErrorRecoveryManager - Phase 3 WI#8: Build Automation & Error Recovery
 /// </summary>
-[TestClass]
-public class ErrorRecoveryManagerTests
+public class ErrorRecoveryManagerTests : IDisposable
 {
-    private TestLogger _logger = null!;
-    private ErrorRecoveryManager _errorRecoveryManager = null!;
+    private readonly TestLogger _logger;
+    private readonly ErrorRecoveryManager _errorRecoveryManager;
     
-    [TestInitialize]
-    public void TestInitialize()
+    public ErrorRecoveryManagerTests()
     {
         _logger = new TestLogger();
         _errorRecoveryManager = new ErrorRecoveryManager(_logger);
     }
     
-    [TestCleanup]
-    public void TestCleanup()
+    public void Dispose()
     {
         _errorRecoveryManager?.Dispose();
     }
     
-    [TestMethod]
+    [Fact]
     public async Task InitializeAsync_ShouldReturnTrue_WhenCalledFirstTime()
     {
         // Act
         var result = await _errorRecoveryManager.InitializeAsync();
         
         // Assert
-        Assert.IsTrue(result);
-        Assert.IsTrue(_errorRecoveryManager.IsInitialized);
+        Assert.True(result);
+        Assert.True(_errorRecoveryManager.IsInitialized);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task InitializeAsync_ShouldReturnTrue_WhenCalledMultipleTimes()
     {
         // Arrange
@@ -49,11 +46,11 @@ public class ErrorRecoveryManagerTests
         var result = await _errorRecoveryManager.InitializeAsync();
         
         // Assert
-        Assert.IsTrue(result);
-        Assert.IsTrue(_errorRecoveryManager.IsInitialized);
+        Assert.True(result);
+        Assert.True(_errorRecoveryManager.IsInitialized);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task RegisterComponentAsync_ShouldReturnTrue_WithValidParameters()
     {
         // Arrange
@@ -64,12 +61,12 @@ public class ErrorRecoveryManagerTests
         var result = await _errorRecoveryManager.RegisterComponentAsync("TestComponent", recoveryAction);
         
         // Assert
-        Assert.IsTrue(result);
+        Assert.True(result);
         var components = _errorRecoveryManager.GetRegisteredComponents();
-        Assert.IsTrue(components.Contains("TestComponent"));
+        Assert.True(components.Contains("TestComponent"));
     }
     
-    [TestMethod]
+    [Fact]
     public async Task RegisterComponentAsync_ShouldReturnFalse_WithNullComponentName()
     {
         // Arrange
@@ -80,10 +77,10 @@ public class ErrorRecoveryManagerTests
         var result = await _errorRecoveryManager.RegisterComponentAsync(null!, recoveryAction);
         
         // Assert
-        Assert.IsFalse(result);
+        Assert.False(result);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task RegisterComponentAsync_ShouldReturnFalse_WithNullRecoveryAction()
     {
         // Arrange
@@ -93,10 +90,10 @@ public class ErrorRecoveryManagerTests
         var result = await _errorRecoveryManager.RegisterComponentAsync("TestComponent", null!);
         
         // Assert
-        Assert.IsFalse(result);
+        Assert.False(result);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task UnregisterComponentAsync_ShouldReturnTrue_WithRegisteredComponent()
     {
         // Arrange
@@ -108,12 +105,12 @@ public class ErrorRecoveryManagerTests
         var result = await _errorRecoveryManager.UnregisterComponentAsync("TestComponent");
         
         // Assert
-        Assert.IsTrue(result);
+        Assert.True(result);
         var components = _errorRecoveryManager.GetRegisteredComponents();
-        Assert.IsFalse(components.Contains("TestComponent"));
+        Assert.False(components.Contains("TestComponent"));
     }
     
-    [TestMethod]
+    [Fact]
     public async Task UnregisterComponentAsync_ShouldReturnFalse_WithUnregisteredComponent()
     {
         // Arrange
@@ -123,10 +120,10 @@ public class ErrorRecoveryManagerTests
         var result = await _errorRecoveryManager.UnregisterComponentAsync("NonExistentComponent");
         
         // Assert
-        Assert.IsFalse(result);
+        Assert.False(result);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task ReportFailureAsync_ShouldTriggerRecovery_WithRegisteredComponent()
     {
         // Arrange
@@ -145,12 +142,12 @@ public class ErrorRecoveryManagerTests
         var result = await _errorRecoveryManager.ReportFailureAsync("TestComponent", exception);
         
         // Assert
-        Assert.IsTrue(result.Success);
-        Assert.IsTrue(recoveryTriggered);
-        Assert.AreEqual(1, result.AttemptsCount);
+        Assert.True(result.Success);
+        Assert.True(recoveryTriggered);
+        Assert.Equal(1, result.AttemptsCount);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task ReportFailureAsync_ShouldReturnFailure_WithUnregisteredComponent()
     {
         // Arrange
@@ -161,11 +158,11 @@ public class ErrorRecoveryManagerTests
         var result = await _errorRecoveryManager.ReportFailureAsync("NonExistentComponent", exception);
         
         // Assert
-        Assert.IsFalse(result.Success);
-        Assert.IsTrue(result.ErrorMessage?.Contains("not found") == true);
+        Assert.False(result.Success);
+        Assert.True(result.ErrorMessage?.Contains("not found") == true);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task ReportFailureAsync_ShouldRetryOnFailure()
     {
         // Arrange
@@ -185,12 +182,12 @@ public class ErrorRecoveryManagerTests
         var result = await _errorRecoveryManager.ReportFailureAsync("TestComponent", exception);
         
         // Assert
-        Assert.IsTrue(result.Success);
-        Assert.AreEqual(2, result.AttemptsCount);
-        Assert.AreEqual(2, attemptCount);
+        Assert.True(result.Success);
+        Assert.Equal(2, result.AttemptsCount);
+        Assert.Equal(2, attemptCount);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task ReportFailureAsync_ShouldFailAfterMaxAttempts()
     {
         // Arrange
@@ -210,12 +207,12 @@ public class ErrorRecoveryManagerTests
         var result = await _errorRecoveryManager.ReportFailureAsync("TestComponent", exception);
         
         // Assert
-        Assert.IsFalse(result.Success);
-        Assert.AreEqual(2, result.AttemptsCount);
-        Assert.AreEqual(2, attemptCount);
+        Assert.False(result.Success);
+        Assert.Equal(2, result.AttemptsCount);
+        Assert.Equal(2, attemptCount);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task ReportSuccessAsync_ShouldReturnTrue_WithRegisteredComponent()
     {
         // Arrange
@@ -227,10 +224,10 @@ public class ErrorRecoveryManagerTests
         var result = await _errorRecoveryManager.ReportSuccessAsync("TestComponent");
         
         // Assert
-        Assert.IsTrue(result);
+        Assert.True(result);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task ReportSuccessAsync_ShouldReturnFalse_WithUnregisteredComponent()
     {
         // Arrange
@@ -240,10 +237,10 @@ public class ErrorRecoveryManagerTests
         var result = await _errorRecoveryManager.ReportSuccessAsync("NonExistentComponent");
         
         // Assert
-        Assert.IsFalse(result);
+        Assert.False(result);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task GetCircuitBreakerState_ShouldReturnClosed_ForNewComponent()
     {
         // Arrange
@@ -255,10 +252,10 @@ public class ErrorRecoveryManagerTests
         var state = _errorRecoveryManager.GetCircuitBreakerState("TestComponent");
         
         // Assert
-        Assert.AreEqual(CircuitBreakerState.Closed, state);
+        Assert.Equal(CircuitBreakerState.Closed, state);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task GetCircuitBreakerState_ShouldReturnDisabled_ForUnregisteredComponent()
     {
         // Arrange
@@ -268,10 +265,10 @@ public class ErrorRecoveryManagerTests
         var state = _errorRecoveryManager.GetCircuitBreakerState("NonExistentComponent");
         
         // Assert
-        Assert.AreEqual(CircuitBreakerState.Disabled, state);
+        Assert.Equal(CircuitBreakerState.Disabled, state);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task GetRecoveryStatistics_ShouldReturnNull_ForUnregisteredComponent()
     {
         // Arrange
@@ -281,10 +278,10 @@ public class ErrorRecoveryManagerTests
         var stats = _errorRecoveryManager.GetRecoveryStatistics("NonExistentComponent");
         
         // Assert
-        Assert.IsNull(stats);
+        Assert.Null(stats);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task GetRecoveryStatistics_ShouldReturnValidStats_ForRegisteredComponent()
     {
         // Arrange
@@ -301,14 +298,14 @@ public class ErrorRecoveryManagerTests
         var stats = _errorRecoveryManager.GetRecoveryStatistics("TestComponent");
         
         // Assert
-        Assert.IsNotNull(stats);
-        Assert.AreEqual("TestComponent", stats.ComponentName);
-        Assert.AreEqual(2, stats.TotalFailures);
-        Assert.AreEqual(2, stats.SuccessfulRecoveries);
-        Assert.AreEqual(0, stats.FailedRecoveries);
+        Assert.NotNull(stats);
+        Assert.Equal("TestComponent", stats.ComponentName);
+        Assert.Equal(2, stats.TotalFailures);
+        Assert.Equal(2, stats.SuccessfulRecoveries);
+        Assert.Equal(0, stats.FailedRecoveries);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task TriggerRecoveryAsync_ShouldReturnSuccess_WithRegisteredComponent()
     {
         // Arrange
@@ -326,12 +323,12 @@ public class ErrorRecoveryManagerTests
         var result = await _errorRecoveryManager.TriggerRecoveryAsync("TestComponent", "Manual test");
         
         // Assert
-        Assert.IsTrue(result.Success);
-        Assert.IsTrue(recoveryTriggered);
-        Assert.AreEqual("Manual test", result.Context);
+        Assert.True(result.Success);
+        Assert.True(recoveryTriggered);
+        Assert.Equal("Manual test", result.Context);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task ResetCircuitBreakerAsync_ShouldReturnTrue_WithRegisteredComponent()
     {
         // Arrange
@@ -343,10 +340,10 @@ public class ErrorRecoveryManagerTests
         var result = await _errorRecoveryManager.ResetCircuitBreakerAsync("TestComponent");
         
         // Assert
-        Assert.IsTrue(result);
+        Assert.True(result);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task PerformHealthCheckAsync_ShouldReturnHealthyResult_WithNoComponents()
     {
         // Arrange
@@ -356,11 +353,11 @@ public class ErrorRecoveryManagerTests
         var result = await _errorRecoveryManager.PerformHealthCheckAsync();
         
         // Assert
-        Assert.IsTrue(result.IsHealthy);
-        Assert.AreEqual(0, result.TotalComponents);
+        Assert.True(result.IsHealthy);
+        Assert.Equal(0, result.TotalComponents);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task PerformHealthCheckAsync_ShouldReturnHealthyResult_WithHealthyComponents()
     {
         // Arrange
@@ -372,12 +369,12 @@ public class ErrorRecoveryManagerTests
         var result = await _errorRecoveryManager.PerformHealthCheckAsync();
         
         // Assert
-        Assert.IsTrue(result.IsHealthy);
-        Assert.AreEqual(1, result.TotalComponents);
-        Assert.AreEqual(1, result.HealthyComponents);
+        Assert.True(result.IsHealthy);
+        Assert.Equal(1, result.TotalComponents);
+        Assert.Equal(1, result.HealthyComponents);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task GetRegisteredComponents_ShouldReturnEmptyList_Initially()
     {
         // Arrange
@@ -387,11 +384,11 @@ public class ErrorRecoveryManagerTests
         var components = _errorRecoveryManager.GetRegisteredComponents();
         
         // Assert
-        Assert.IsNotNull(components);
-        Assert.AreEqual(0, components.Count);
+        Assert.NotNull(components);
+        Assert.Equal(0, components.Count);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task GetRegisteredComponents_ShouldReturnRegisteredComponents()
     {
         // Arrange
@@ -404,12 +401,12 @@ public class ErrorRecoveryManagerTests
         var components = _errorRecoveryManager.GetRegisteredComponents();
         
         // Assert
-        Assert.AreEqual(2, components.Count);
-        Assert.IsTrue(components.Contains("Component1"));
-        Assert.IsTrue(components.Contains("Component2"));
+        Assert.Equal(2, components.Count);
+        Assert.True(components.Contains("Component1"));
+        Assert.True(components.Contains("Component2"));
     }
     
-    [TestMethod]
+    [Fact]
     public async Task CircuitBreakerStateChanged_EventShouldFire_WhenStateChanges()
     {
         // Arrange
@@ -433,13 +430,13 @@ public class ErrorRecoveryManagerTests
         await _errorRecoveryManager.ReportFailureAsync("TestComponent", exception);
         
         // Assert
-        Assert.IsTrue(eventFired);
-        Assert.IsNotNull(eventArgs);
-        Assert.AreEqual("TestComponent", eventArgs.ComponentName);
-        Assert.AreEqual(CircuitBreakerState.Open, eventArgs.NewState);
+        Assert.True(eventFired);
+        Assert.NotNull(eventArgs);
+        Assert.Equal("TestComponent", eventArgs.ComponentName);
+        Assert.Equal(CircuitBreakerState.Open, eventArgs.NewState);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task ShutdownAsync_ShouldCompleteSuccessfully()
     {
         // Arrange
@@ -451,21 +448,22 @@ public class ErrorRecoveryManagerTests
         await _errorRecoveryManager.ShutdownAsync();
         
         // Assert
-        Assert.IsFalse(_errorRecoveryManager.IsInitialized);
+        Assert.False(_errorRecoveryManager.IsInitialized);
         var components = _errorRecoveryManager.GetRegisteredComponents();
-        Assert.AreEqual(0, components.Count);
+        Assert.Equal(0, components.Count);
     }
     
-    [TestMethod]
+    [Fact]
     public void Dispose_ShouldNotThrow()
     {
         // Arrange
         var errorRecoveryManager = new ErrorRecoveryManager(_logger);
         
         // Act & Assert
-        Assert.DoesNotThrow(() => errorRecoveryManager.Dispose());
+        // XUnit doesn't have DoesNotThrow - just call the method
+        errorRecoveryManager.Dispose();
         
         // Multiple disposes should not throw
-        Assert.DoesNotThrow(() => errorRecoveryManager.Dispose());
+        errorRecoveryManager.Dispose();
     }
 }

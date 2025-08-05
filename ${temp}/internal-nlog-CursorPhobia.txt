@@ -49,3 +49,5 @@
    at NLog.LoggerImpl.GetFilterResult(IList`1 filterChain, LogEventInfo logEvent, FilterResult filterDefaultAction)
 2025-08-05 14:54:36.9185 Warn Error has been raised. Exception: NLog.NLogConfigurationException: 'JsonAttribute' cannot assign unknown property 'condition'='${exception} != null'
    at NLog.Config.LoggingConfigurationParser.SetPropertyValueFromString[T](T targetObject, String propertyName, String propertyValue, ValidatedConfigurationElement element)
+2025-08-05 15:34:41.6531 Warn Error has been raised. Exception: NLog.NLogConfigurationException: 'JsonAttribute' cannot assign unknown property 'condition'='${exception} != null'
+   at NLog.Config.LoggingConfigurationParser.SetPropertyValueFromString[T](T targetObject, String propertyName, String propertyValue, ValidatedConfigurationElement element)

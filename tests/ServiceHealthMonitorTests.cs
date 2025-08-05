@@ -1,45 +1,42 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
 using CursorPhobia.Core.Services;
 using CursorPhobia.Core.Utilities;
 using System;
 using System.Threading.Tasks;
+using Xunit;
 
 namespace CursorPhobia.Tests;
 
 /// <summary>
 /// Tests for ServiceHealthMonitor - Phase 3 WI#8: Build Automation & Error Recovery
 /// </summary>
-[TestClass]
-public class ServiceHealthMonitorTests
+public class ServiceHealthMonitorTests : IDisposable
 {
-    private TestLogger _logger = null!;
-    private ServiceHealthMonitor _healthMonitor = null!;
+    private readonly TestLogger _logger;
+    private readonly ServiceHealthMonitor _healthMonitor;
     
-    [TestInitialize]
-    public void TestInitialize()
+    public ServiceHealthMonitorTests()
     {
         _logger = new TestLogger();
         _healthMonitor = new ServiceHealthMonitor(_logger);
     }
     
-    [TestCleanup]
-    public void TestCleanup()
+    public void Dispose()
     {
         _healthMonitor?.Dispose();
     }
     
-    [TestMethod]
+    [Fact]
     public async Task StartAsync_ShouldReturnTrue_WhenCallingFirstTime()
     {
         // Act
         var result = await _healthMonitor.StartAsync();
         
         // Assert
-        Assert.IsTrue(result);
-        Assert.IsTrue(_healthMonitor.IsRunning);
+        Assert.True(result);
+        Assert.True(_healthMonitor.IsRunning);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task StartAsync_ShouldReturnTrue_WhenCallingMultipleTimes()
     {
         // Arrange
@@ -49,11 +46,11 @@ public class ServiceHealthMonitorTests
         var result = await _healthMonitor.StartAsync();
         
         // Assert
-        Assert.IsTrue(result);
-        Assert.IsTrue(_healthMonitor.IsRunning);
+        Assert.True(result);
+        Assert.True(_healthMonitor.IsRunning);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task StopAsync_ShouldReturnTrue_WhenRunning()
     {
         // Arrange
@@ -63,22 +60,22 @@ public class ServiceHealthMonitorTests
         var result = await _healthMonitor.StopAsync();
         
         // Assert
-        Assert.IsTrue(result);
-        Assert.IsFalse(_healthMonitor.IsRunning);
+        Assert.True(result);
+        Assert.False(_healthMonitor.IsRunning);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task StopAsync_ShouldReturnTrue_WhenNotRunning()
     {
         // Act
         var result = await _healthMonitor.StopAsync();
         
         // Assert
-        Assert.IsTrue(result);
-        Assert.IsFalse(_healthMonitor.IsRunning);
+        Assert.True(result);
+        Assert.False(_healthMonitor.IsRunning);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task RegisterServiceAsync_ShouldReturnTrue_WithValidParameters()
     {
         // Arrange
@@ -90,12 +87,12 @@ public class ServiceHealthMonitorTests
         var result = await _healthMonitor.RegisterServiceAsync("TestService", healthCheck);
         
         // Assert
-        Assert.IsTrue(result);
+        Assert.True(result);
         var services = _healthMonitor.GetRegisteredServices();
-        Assert.IsTrue(services.Contains("TestService"));
+        Assert.True(services.Contains("TestService"));
     }
     
-    [TestMethod]
+    [Fact]
     public async Task RegisterServiceAsync_ShouldReturnFalse_WithNullServiceName()
     {
         // Arrange
@@ -107,20 +104,20 @@ public class ServiceHealthMonitorTests
         var result = await _healthMonitor.RegisterServiceAsync(null!, healthCheck);
         
         // Assert
-        Assert.IsFalse(result);
+        Assert.False(result);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task RegisterServiceAsync_ShouldReturnFalse_WithNullHealthCheck()
     {
         // Act
         var result = await _healthMonitor.RegisterServiceAsync("TestService", null!);
         
         // Assert
-        Assert.IsFalse(result);
+        Assert.False(result);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task UnregisterServiceAsync_ShouldReturnTrue_WithRegisteredService()
     {
         // Arrange
@@ -133,32 +130,32 @@ public class ServiceHealthMonitorTests
         var result = await _healthMonitor.UnregisterServiceAsync("TestService");
         
         // Assert
-        Assert.IsTrue(result);
+        Assert.True(result);
         var services = _healthMonitor.GetRegisteredServices();
-        Assert.IsFalse(services.Contains("TestService"));
+        Assert.False(services.Contains("TestService"));
     }
     
-    [TestMethod]
+    [Fact]
     public async Task UnregisterServiceAsync_ShouldReturnFalse_WithUnregisteredService()
     {
         // Act
         var result = await _healthMonitor.UnregisterServiceAsync("NonExistentService");
         
         // Assert
-        Assert.IsFalse(result);
+        Assert.False(result);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task GetServiceHealth_ShouldReturnNull_ForUnregisteredService()
     {
         // Act
         var health = _healthMonitor.GetServiceHealth("NonExistentService");
         
         // Assert
-        Assert.IsNull(health);
+        Assert.Null(health);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task GetServiceHealth_ShouldReturnStatus_ForRegisteredService()
     {
         // Arrange
@@ -171,22 +168,22 @@ public class ServiceHealthMonitorTests
         var health = _healthMonitor.GetServiceHealth("TestService");
         
         // Assert
-        Assert.IsNotNull(health);
+        Assert.NotNull(health);
         // Initial status should be Unknown until first health check
-        Assert.AreEqual(ServiceHealthStatus.Unknown, health.Value);
+        Assert.Equal(ServiceHealthStatus.Unknown, health.Value);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task GetServiceHealthInfo_ShouldReturnNull_ForUnregisteredService()
     {
         // Act
         var healthInfo = _healthMonitor.GetServiceHealthInfo("NonExistentService");
         
         // Assert
-        Assert.IsNull(healthInfo);
+        Assert.Null(healthInfo);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task GetServiceHealthInfo_ShouldReturnInfo_ForRegisteredService()
     {
         // Arrange
@@ -199,12 +196,12 @@ public class ServiceHealthMonitorTests
         var healthInfo = _healthMonitor.GetServiceHealthInfo("TestService");
         
         // Assert
-        Assert.IsNotNull(healthInfo);
-        Assert.AreEqual("TestService", healthInfo.ServiceName);
-        Assert.IsNotNull(healthInfo.Options);
+        Assert.NotNull(healthInfo);
+        Assert.Equal("TestService", healthInfo.ServiceName);
+        Assert.NotNull(healthInfo.Options);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task CheckServiceHealthAsync_ShouldReturnHealthyResult_ForHealthyService()
     {
         // Arrange
@@ -222,34 +219,34 @@ public class ServiceHealthMonitorTests
         var result = await _healthMonitor.CheckServiceHealthAsync("TestService");
         
         // Assert
-        Assert.AreEqual(ServiceHealthStatus.Healthy, result.Status);
-        Assert.AreEqual("Service is healthy", result.Description);
-        Assert.IsTrue(result.ResponseTime > TimeSpan.Zero);
+        Assert.Equal(ServiceHealthStatus.Healthy, result.Status);
+        Assert.Equal("Service is healthy", result.Description);
+        Assert.True(result.ResponseTime > TimeSpan.Zero);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task CheckServiceHealthAsync_ShouldReturnUnknownResult_ForUnregisteredService()
     {
         // Act
         var result = await _healthMonitor.CheckServiceHealthAsync("NonExistentService");
         
         // Assert
-        Assert.AreEqual(ServiceHealthStatus.Unknown, result.Status);
-        Assert.IsTrue(result.Description.Contains("not found") || result.Description.Contains("not registered"));
+        Assert.Equal(ServiceHealthStatus.Unknown, result.Status);
+        Assert.True(result.Description.Contains("not found") || result.Description.Contains("not registered"));
     }
     
-    [TestMethod]
+    [Fact]
     public async Task CheckAllServicesHealthAsync_ShouldReturnEmptyResult_WithNoServices()
     {
         // Act
         var result = await _healthMonitor.CheckAllServicesHealthAsync();
         
         // Assert
-        Assert.AreEqual(SystemHealthStatus.Unknown, result.SystemStatus);
-        Assert.AreEqual(0, result.TotalServices);
+        Assert.Equal(SystemHealthStatus.Unknown, result.SystemStatus);
+        Assert.Equal(0, result.TotalServices);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task CheckAllServicesHealthAsync_ShouldReturnHealthyResult_WithHealthyServices()
     {
         // Arrange
@@ -263,13 +260,13 @@ public class ServiceHealthMonitorTests
         var result = await _healthMonitor.CheckAllServicesHealthAsync();
         
         // Assert
-        Assert.AreEqual(SystemHealthStatus.Healthy, result.SystemStatus);
-        Assert.AreEqual(2, result.TotalServices);
-        Assert.AreEqual(2, result.HealthyServices);
-        Assert.AreEqual(0, result.UnhealthyServices);
+        Assert.Equal(SystemHealthStatus.Healthy, result.SystemStatus);
+        Assert.Equal(2, result.TotalServices);
+        Assert.Equal(2, result.HealthyServices);
+        Assert.Equal(0, result.UnhealthyServices);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task CheckAllServicesHealthAsync_ShouldReturnUnhealthyResult_WithUnhealthyServices()
     {
         // Arrange
@@ -287,13 +284,13 @@ public class ServiceHealthMonitorTests
         var result = await _healthMonitor.CheckAllServicesHealthAsync();
         
         // Assert
-        Assert.AreEqual(SystemHealthStatus.Unhealthy, result.SystemStatus);
-        Assert.AreEqual(2, result.TotalServices);
-        Assert.AreEqual(1, result.HealthyServices);
-        Assert.AreEqual(1, result.UnhealthyServices);
+        Assert.Equal(SystemHealthStatus.Unhealthy, result.SystemStatus);
+        Assert.Equal(2, result.TotalServices);
+        Assert.Equal(1, result.HealthyServices);
+        Assert.Equal(1, result.UnhealthyServices);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task CheckAllServicesHealthAsync_ShouldReturnCriticalResult_WithCriticalServices()
     {
         // Arrange
@@ -306,22 +303,22 @@ public class ServiceHealthMonitorTests
         var result = await _healthMonitor.CheckAllServicesHealthAsync();
         
         // Assert
-        Assert.AreEqual(SystemHealthStatus.Critical, result.SystemStatus);
-        Assert.AreEqual(1, result.CriticalServices);
+        Assert.Equal(SystemHealthStatus.Critical, result.SystemStatus);
+        Assert.Equal(1, result.CriticalServices);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task GetAllServiceHealth_ShouldReturnEmptyDictionary_WithNoServices()
     {
         // Act
         var allHealth = _healthMonitor.GetAllServiceHealth();
         
         // Assert
-        Assert.IsNotNull(allHealth);
-        Assert.AreEqual(0, allHealth.Count);
+        Assert.NotNull(allHealth);
+        Assert.Equal(0, allHealth.Count);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task GetAllServiceHealth_ShouldReturnAllServices_WithRegisteredServices()
     {
         // Arrange
@@ -335,23 +332,23 @@ public class ServiceHealthMonitorTests
         var allHealth = _healthMonitor.GetAllServiceHealth();
         
         // Assert
-        Assert.AreEqual(2, allHealth.Count);
-        Assert.IsTrue(allHealth.ContainsKey("Service1"));
-        Assert.IsTrue(allHealth.ContainsKey("Service2"));
+        Assert.Equal(2, allHealth.Count);
+        Assert.True(allHealth.ContainsKey("Service1"));
+        Assert.True(allHealth.ContainsKey("Service2"));
     }
     
-    [TestMethod]
+    [Fact]
     public async Task GetRegisteredServices_ShouldReturnEmptyList_Initially()
     {
         // Act
         var services = _healthMonitor.GetRegisteredServices();
         
         // Assert
-        Assert.IsNotNull(services);
-        Assert.AreEqual(0, services.Count);
+        Assert.NotNull(services);
+        Assert.Equal(0, services.Count);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task GetRegisteredServices_ShouldReturnRegisteredServices()
     {
         // Arrange
@@ -365,12 +362,12 @@ public class ServiceHealthMonitorTests
         var services = _healthMonitor.GetRegisteredServices();
         
         // Assert
-        Assert.AreEqual(2, services.Count);
-        Assert.IsTrue(services.Contains("Service1"));
-        Assert.IsTrue(services.Contains("Service2"));
+        Assert.Equal(2, services.Count);
+        Assert.True(services.Contains("Service1"));
+        Assert.True(services.Contains("Service2"));
     }
     
-    [TestMethod]
+    [Fact]
     public async Task GetStatistics_ShouldReturnValidStatistics()
     {
         // Arrange
@@ -384,12 +381,12 @@ public class ServiceHealthMonitorTests
         var stats = _healthMonitor.GetStatistics();
         
         // Assert
-        Assert.IsNotNull(stats);
-        Assert.AreEqual(1, stats.TotalServices);
-        Assert.IsTrue(stats.MonitoringUptime >= TimeSpan.Zero);
+        Assert.NotNull(stats);
+        Assert.Equal(1, stats.TotalServices);
+        Assert.True(stats.MonitoringUptime >= TimeSpan.Zero);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task ResetServiceStatisticsAsync_ShouldReturnTrue_WithRegisteredService()
     {
         // Arrange
@@ -402,20 +399,20 @@ public class ServiceHealthMonitorTests
         var result = await _healthMonitor.ResetServiceStatisticsAsync("TestService");
         
         // Assert
-        Assert.IsTrue(result);
+        Assert.True(result);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task ResetServiceStatisticsAsync_ShouldReturnFalse_WithUnregisteredService()
     {
         // Act
         var result = await _healthMonitor.ResetServiceStatisticsAsync("NonExistentService");
         
         // Assert
-        Assert.IsFalse(result);
+        Assert.False(result);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task UpdateServiceMonitoringAsync_ShouldReturnTrue_WithRegisteredService()
     {
         // Arrange
@@ -434,10 +431,10 @@ public class ServiceHealthMonitorTests
         var result = await _healthMonitor.UpdateServiceMonitoringAsync("TestService", newOptions);
         
         // Assert
-        Assert.IsTrue(result);
+        Assert.True(result);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task UpdateServiceMonitoringAsync_ShouldReturnFalse_WithUnregisteredService()
     {
         // Arrange
@@ -447,10 +444,10 @@ public class ServiceHealthMonitorTests
         var result = await _healthMonitor.UpdateServiceMonitoringAsync("NonExistentService", newOptions);
         
         // Assert
-        Assert.IsFalse(result);
+        Assert.False(result);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task ServiceHealthChanged_EventShouldFire_WhenHealthChanges()
     {
         // Arrange
@@ -492,12 +489,12 @@ public class ServiceHealthMonitorTests
         await Task.Delay(300);
         
         // Assert
-        Assert.IsTrue(eventFired);
-        Assert.IsNotNull(eventArgs);
-        Assert.AreEqual("TestService", eventArgs.ServiceName);
+        Assert.True(eventFired);
+        Assert.NotNull(eventArgs);
+        Assert.Equal("TestService", eventArgs.ServiceName);
     }
     
-    [TestMethod]
+    [Fact]
     public async Task SystemHealthChanged_EventShouldFire_WhenSystemHealthChanges()
     {
         // Arrange
@@ -538,12 +535,12 @@ public class ServiceHealthMonitorTests
         await Task.Delay(300);
         
         // Assert
-        Assert.IsTrue(eventFired);
-        Assert.IsNotNull(eventArgs);
-        Assert.AreEqual(SystemHealthStatus.Critical, eventArgs.NewStatus);
+        Assert.True(eventFired);
+        Assert.NotNull(eventArgs);
+        Assert.Equal(SystemHealthStatus.Critical, eventArgs.NewStatus);
     }
     
-    [TestMethod]
+    [Fact]
     public void MonitoringInterval_ShouldBeSettable()
     {
         // Arrange
@@ -553,43 +550,45 @@ public class ServiceHealthMonitorTests
         _healthMonitor.MonitoringInterval = newInterval;
         
         // Assert
-        Assert.AreEqual(newInterval, _healthMonitor.MonitoringInterval);
+        Assert.Equal(newInterval, _healthMonitor.MonitoringInterval);
     }
     
-    [TestMethod]
+    [Fact]
     public void SystemHealth_ShouldReturnUnknown_Initially()
     {
         // Act
         var systemHealth = _healthMonitor.SystemHealth;
         
         // Assert
-        Assert.AreEqual(SystemHealthStatus.Unknown, systemHealth);
+        Assert.Equal(SystemHealthStatus.Unknown, systemHealth);
     }
     
-    [TestMethod]
+    [Fact]
     public void Dispose_ShouldNotThrow()
     {
         // Arrange
         var healthMonitor = new ServiceHealthMonitor(_logger);
         
         // Act & Assert
-        Assert.DoesNotThrow(() => healthMonitor.Dispose());
+        // XUnit doesn't have DoesNotThrow - just call the method
+        healthMonitor.Dispose();
         
         // Multiple disposes should not throw
-        Assert.DoesNotThrow(() => healthMonitor.Dispose());
+        // XUnit doesn't have DoesNotThrow - just call the method
+        healthMonitor.Dispose();
     }
     
-    [TestMethod]
+    [Fact]
     public async Task Dispose_ShouldStopMonitoring_WhenRunning()
     {
         // Arrange
         await _healthMonitor.StartAsync();
-        Assert.IsTrue(_healthMonitor.IsRunning);
+        Assert.True(_healthMonitor.IsRunning);
         
         // Act
         _healthMonitor.Dispose();
         
         // Assert
-        Assert.IsFalse(_healthMonitor.IsRunning);
+        Assert.False(_healthMonitor.IsRunning);
     }
 }
