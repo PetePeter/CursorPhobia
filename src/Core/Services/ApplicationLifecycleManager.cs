@@ -61,6 +61,11 @@ public class ApplicationLifecycleManager : IApplicationLifecycleManager
             return true;
         }
         
+        // Phase 2 WI#8: Performance logging for initialization
+        using var perfScope = _logger is Logger loggerWithPerf ? 
+            loggerWithPerf.BeginPerformanceScope("Initialize", ("Component", "ApplicationLifecycleManager")) :
+            null;
+        
         try
         {
             _logger.LogInformation("Initializing application lifecycle manager...");
@@ -103,6 +108,7 @@ public class ApplicationLifecycleManager : IApplicationLifecycleManager
         }
         catch (Exception ex)
         {
+            (perfScope as IPerformanceScope)?.MarkAsFailed(ex.Message);
             _logger.LogError(ex, "Failed to initialize application lifecycle manager");
             return false;
         }
@@ -124,6 +130,11 @@ public class ApplicationLifecycleManager : IApplicationLifecycleManager
             _isShuttingDown = true;
         }
         
+        // Phase 2 WI#8: Performance logging for shutdown
+        using var perfScope = _logger is Logger loggerWithPerf ? 
+            loggerWithPerf.BeginPerformanceScope("Shutdown", ("Component", "ApplicationLifecycleManager"), ("ExitCode", exitCode)) :
+            null;
+        
         try
         {
             _logger.LogInformation("Initiating application shutdown with exit code {ExitCode}...", exitCode);
@@ -138,9 +149,15 @@ public class ApplicationLifecycleManager : IApplicationLifecycleManager
             
             foreach (var (service, name) in servicesToDispose)
             {
+                var serviceName = name ?? service.GetType().Name;
+                
+                // Phase 2 WI#8: Performance logging for individual service disposal
+                using var serviceDisposeScope = _logger is Logger serviceLogger ? 
+                    serviceLogger.BeginPerformanceScope("DisposeService", ("ServiceName", serviceName)) :
+                    null;
+                
                 try
                 {
-                    var serviceName = name ?? service.GetType().Name;
                     _logger.LogDebug("Disposing service: {ServiceName}", serviceName);
                     
                     service.Dispose();
@@ -149,7 +166,7 @@ public class ApplicationLifecycleManager : IApplicationLifecycleManager
                 }
                 catch (Exception ex)
                 {
-                    var serviceName = name ?? service.GetType().Name;
+                    (serviceDisposeScope as IPerformanceScope)?.MarkAsFailed(ex.Message);
                     _logger.LogError(ex, "Error disposing service: {ServiceName}", serviceName);
                 }
             }
@@ -167,9 +184,12 @@ public class ApplicationLifecycleManager : IApplicationLifecycleManager
             
             // Set exit code
             Environment.ExitCode = exitCode;
+            
+            (perfScope as IPerformanceScope)?.AddContext("ServicesDisposed", servicesToDispose.Count);
         }
         catch (Exception ex)
         {
+            (perfScope as IPerformanceScope)?.MarkAsFailed(ex.Message);
             _logger.LogError(ex, "Error during application shutdown");
             Environment.ExitCode = 1;
         }

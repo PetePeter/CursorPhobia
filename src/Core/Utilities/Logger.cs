@@ -1,24 +1,29 @@
 using Microsoft.Extensions.Logging;
+using CursorPhobia.Core.Services;
 
 namespace CursorPhobia.Core.Utilities;
 
 /// <summary>
-/// Basic logging infrastructure for CursorPhobia
+/// Basic logging infrastructure for CursorPhobia with NLog backend integration
+/// Maintains backward compatibility while supporting production logging features
 /// </summary>
 public class Logger : ILogger, Microsoft.Extensions.Logging.ILogger
 {
     private readonly Microsoft.Extensions.Logging.ILogger _innerLogger;
     private readonly string _categoryName;
+    private readonly IProductionLogger? _productionLogger;
     
     /// <summary>
     /// Creates a new Logger instance
     /// </summary>
     /// <param name="innerLogger">The underlying logger implementation</param>
     /// <param name="categoryName">The category name for this logger</param>
-    public Logger(Microsoft.Extensions.Logging.ILogger innerLogger, string categoryName)
+    /// <param name="productionLogger">Optional production logger for enhanced features</param>
+    public Logger(Microsoft.Extensions.Logging.ILogger innerLogger, string categoryName, IProductionLogger? productionLogger = null)
     {
         _innerLogger = innerLogger ?? throw new ArgumentNullException(nameof(innerLogger));
         _categoryName = categoryName ?? throw new ArgumentNullException(nameof(categoryName));
+        _productionLogger = productionLogger;
     }
     
     /// <summary>
@@ -127,6 +132,86 @@ public class Logger : ILogger, Microsoft.Extensions.Logging.ILogger
     {
         _innerLogger.LogCritical(exception, $"[{_categoryName}] {message}", args);
     }
+    
+    /// <summary>
+    /// Gets the underlying production logger if available
+    /// </summary>
+    public IProductionLogger? ProductionLogger => _productionLogger;
+    
+    /// <summary>
+    /// Logs performance metrics if production logger is available
+    /// </summary>
+    /// <param name="operation">The operation name</param>
+    /// <param name="duration">Duration of the operation</param>
+    /// <param name="success">Whether the operation was successful</param>
+    /// <param name="additionalContext">Additional contextual information</param>
+    public void LogPerformance(string operation, TimeSpan duration, bool success = true, 
+        params (string Key, object Value)[] additionalContext)
+    {
+        if (_productionLogger != null)
+        {
+            _productionLogger.LogPerformance(_categoryName, operation, duration, success, additionalContext);
+        }
+        else
+        {
+            // Fallback to regular logging
+            var level = success ? LogLevel.Information : LogLevel.Warning;
+            var message = success 
+                ? $"Operation '{operation}' completed in {duration.TotalMilliseconds:F2}ms"
+                : $"Operation '{operation}' completed with issues in {duration.TotalMilliseconds:F2}ms";
+            
+            _innerLogger.Log(level, $"[{_categoryName}] {message}");
+        }
+    }
+    
+    /// <summary>
+    /// Logs window operations if production logger is available
+    /// </summary>
+    /// <param name="logLevel">The log level</param>
+    /// <param name="operation">The window operation</param>
+    /// <param name="windowHandle">Window handle</param>
+    /// <param name="windowTitle">Window title</param>
+    /// <param name="message">Additional message</param>
+    /// <param name="additionalProperties">Additional properties</param>
+    public void LogWindowOperation(LogLevel logLevel, string operation, IntPtr windowHandle, 
+        string? windowTitle = null, string? message = null, params (string Key, object Value)[] additionalProperties)
+    {
+        if (_productionLogger != null)
+        {
+            _productionLogger.LogWindowOperation(logLevel, operation, windowHandle, windowTitle, message, additionalProperties);
+        }
+        else
+        {
+            // Fallback to regular logging
+            var fullMessage = message ?? $"Window operation: {operation}";
+            if (!string.IsNullOrEmpty(windowTitle))
+            {
+                fullMessage += $" on '{windowTitle}'";
+            }
+            fullMessage += $" (0x{windowHandle:X})";
+            
+            _innerLogger.Log(logLevel, $"[{_categoryName}] {fullMessage}");
+        }
+    }
+    
+    /// <summary>
+    /// Creates a performance timing scope
+    /// </summary>
+    /// <param name="operation">The operation name</param>
+    /// <param name="additionalContext">Additional contextual information</param>
+    /// <returns>A disposable scope that logs performance metrics on disposal</returns>
+    public IDisposable BeginPerformanceScope(string operation, params (string Key, object Value)[] additionalContext)
+    {
+        if (_productionLogger != null)
+        {
+            return _productionLogger.BeginPerformanceScope(_categoryName, operation, additionalContext);
+        }
+        else
+        {
+            // Fallback to a simple timing scope
+            return new SimplePerformanceScope(this, operation, additionalContext);
+        }
+    }
 }
 
 /// <summary>
@@ -173,5 +258,67 @@ public static class LoggerFactory
             
         var innerLogger = _loggerFactory.CreateLogger(categoryName);
         return new Logger(innerLogger, categoryName);
+    }
+}
+
+/// <summary>
+/// Simple performance scope for fallback logging when production logger is not available
+/// </summary>
+internal class SimplePerformanceScope : IDisposable, IPerformanceScope
+{
+    private readonly Logger _logger;
+    private readonly string _operation;
+    private readonly Dictionary<string, object> _context;
+    private readonly System.Diagnostics.Stopwatch _stopwatch;
+    private bool _failed = false;
+    private string? _failureReason;
+    private bool _disposed = false;
+
+    public TimeSpan Elapsed => _stopwatch.Elapsed;
+
+    public SimplePerformanceScope(Logger logger, string operation, params (string Key, object Value)[] additionalContext)
+    {
+        _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _operation = operation ?? throw new ArgumentNullException(nameof(operation));
+        
+        _context = new Dictionary<string, object>();
+        foreach (var (key, value) in additionalContext)
+        {
+            _context[key] = value;
+        }
+
+        _stopwatch = System.Diagnostics.Stopwatch.StartNew();
+    }
+
+    public void MarkAsFailed(string? error = null)
+    {
+        _failed = true;
+        _failureReason = error;
+    }
+
+    public void AddContext(string key, object value)
+    {
+        if (string.IsNullOrEmpty(key))
+            throw new ArgumentException("Context key cannot be null or empty", nameof(key));
+        
+        _context[key] = value;
+    }
+
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        _stopwatch.Stop();
+
+        // Log the performance metrics using the regular logger
+        _logger.LogPerformance(_operation, _stopwatch.Elapsed, !_failed, _context.Select(kvp => (kvp.Key, kvp.Value)).ToArray());
+
+        if (_failed && !string.IsNullOrEmpty(_failureReason))
+        {
+            _logger.LogWarning("Performance scope completed with failure: {FailureReason}", _failureReason);
+        }
+
+        _disposed = true;
     }
 }

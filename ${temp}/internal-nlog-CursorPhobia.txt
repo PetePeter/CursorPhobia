@@ -1,0 +1,51 @@
+2025-08-05 14:54:17.6914 Info Loading assembly name: NLog.Extensions.Logging
+2025-08-05 14:54:17.7038 Info NLog.Extensions.Logging, Version=5.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c. File version: 5.3.8.469. Product version: 5.3.8+ca37e42e725d38c416579e37dbc0826a8179e296. GlobalAssemblyCache: False
+2025-08-05 14:54:17.7365 Info Registered target NLog.Targets.Wrappers.AsyncTargetWrapper(Name=fileTarget)
+2025-08-05 14:54:17.7459 Warn Error has been raised. Exception: NLog.NLogConfigurationException: 'JsonAttribute' cannot assign unknown property 'condition'='${exception} != null'
+   at NLog.Config.LoggingConfigurationParser.SetPropertyValueFromString[T](T targetObject, String propertyName, String propertyValue, ValidatedConfigurationElement element)
+2025-08-05 14:54:17.7629 Info Registered target NLog.Targets.Wrappers.AsyncTargetWrapper(Name=jsonFileTarget)
+2025-08-05 14:54:17.7629 Info Registered target NLog.Targets.Wrappers.AsyncTargetWrapper(Name=consoleTarget)
+2025-08-05 14:54:17.7629 Info Registered target NLog.Targets.Wrappers.AsyncTargetWrapper(Name=performanceTarget)
+2025-08-05 14:54:17.7629 Warn Error has been raised. Exception: NLog.NLogConfigurationException: Failed to create Target with unknown type-alias: 'OutputDebugString' - Extension NLog.OutputDebugString not included?
+   at NLog.Config.FactoryExtensions.CreateInstance[TBaseType](IFactory`1 factory, String typeAlias)
+   at NLog.Config.LoggingConfigurationParser.FactoryCreateInstance[T](String typeName, IFactory`1 factory)
+2025-08-05 14:54:17.7629 Warn Error has been raised. Exception: NLog.NLogConfigurationException: 'ConditionBasedFilter' cannot assign property 'Condition'='${event-properties:LogType} == 'Performance''. Error: Cannot parse ConditionExpression '${event-properties:LogType} == 'Performance''. Error: Invalid punctuation: $
+ ---> NLog.NLogConfigurationException: Cannot parse ConditionExpression '${event-properties:LogType} == 'Performance''. Error: Invalid punctuation: $
+ ---> NLog.Conditions.ConditionParseException: Invalid punctuation: $
+   at NLog.Conditions.ConditionTokenizer.GetNextToken()
+   at NLog.Conditions.ConditionTokenizer..ctor(SimpleStringReader stringReader)
+   at NLog.Conditions.ConditionParser..ctor(SimpleStringReader stringReader, ConfigurationItemFactory configurationItemFactory)
+   at NLog.Conditions.ConditionParser.ParseExpression(String expressionText, ConfigurationItemFactory configurationItemFactories)
+   at NLog.Internal.PropertyHelper.TryParseConditionValue(String stringValue, ConfigurationItemFactory configurationItemFactory)
+   --- End of inner exception stack trace ---
+   at NLog.Internal.PropertyHelper.TryParseConditionValue(String stringValue, ConfigurationItemFactory configurationItemFactory)
+   at NLog.Internal.PropertyHelper.TryNLogSpecificConversion(Type propertyType, String value, ConfigurationItemFactory configurationItemFactory, Object& newValue)
+   at NLog.Internal.PropertyHelper.SetPropertyFromString(Object targetObject, PropertyInfo propInfo, String stringValue, ConfigurationItemFactory configurationItemFactory)
+   --- End of inner exception stack trace ---
+   at NLog.Internal.PropertyHelper.SetPropertyFromString(Object targetObject, PropertyInfo propInfo, String stringValue, ConfigurationItemFactory configurationItemFactory)
+   at NLog.Config.LoggingConfigurationParser.SetPropertyValueFromString[T](T targetObject, String propertyName, String propertyValue, ValidatedConfigurationElement element)
+2025-08-05 14:54:17.7629 Warn Error has been raised. Exception: NLog.NLogConfigurationException: Target 'debugTarget' not found for logging rule: *.
+2025-08-05 14:54:17.7742 Info NLog, Version=5.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c. File version: 5.2.8.2366. Product version: 5.2.8+f586f1341c46fa38aaaff4c641e7f0fa7e813943. GlobalAssemblyCache: False
+2025-08-05 14:54:17.7742 Info Validating config: TargetNames=performanceTarget, consoleTarget, jsonFileTarget, fileTarget, ConfigItems=133, FilePath=X:\coding\CursorPhobia\NLog.config
+2025-08-05 14:54:17.7742 Warn Error has been raised. Exception: NLog.NLogConfigurationException: Required parameter 'Condition' on 'NLog.Filters.ConditionBasedFilter' was not specified.
+   at NLog.Internal.PropertyHelper.CheckRequiredParameters(ConfigurationItemFactory configFactory, Object o)
+   at NLog.Config.LoggingConfiguration.ValidateConfig()
+2025-08-05 14:54:17.8001 Info Configuration initialized.
+2025-08-05 14:54:17.8374 Warn Exception during filter evaluation. Message will be ignore. Exception: System.NullReferenceException: Object reference not set to an instance of an object.
+   at NLog.Filters.ConditionBasedFilter.Check(LogEventInfo logEvent)
+   at NLog.Filters.Filter.GetFilterResult(LogEventInfo logEvent)
+   at NLog.LoggerImpl.GetFilterResult(IList`1 filterChain, LogEventInfo logEvent, FilterResult filterDefaultAction)
+2025-08-05 14:54:17.8805 Warn Exception during filter evaluation. Message will be ignore. Exception: System.NullReferenceException: Object reference not set to an instance of an object.
+   at NLog.Filters.ConditionBasedFilter.Check(LogEventInfo logEvent)
+   at NLog.Filters.Filter.GetFilterResult(LogEventInfo logEvent)
+   at NLog.LoggerImpl.GetFilterResult(IList`1 filterChain, LogEventInfo logEvent, FilterResult filterDefaultAction)
+2025-08-05 14:54:17.8805 Warn Exception during filter evaluation. Message will be ignore. Exception: System.NullReferenceException: Object reference not set to an instance of an object.
+   at NLog.Filters.ConditionBasedFilter.Check(LogEventInfo logEvent)
+   at NLog.Filters.Filter.GetFilterResult(LogEventInfo logEvent)
+   at NLog.LoggerImpl.GetFilterResult(IList`1 filterChain, LogEventInfo logEvent, FilterResult filterDefaultAction)
+2025-08-05 14:54:17.8911 Warn Exception during filter evaluation. Message will be ignore. Exception: System.NullReferenceException: Object reference not set to an instance of an object.
+   at NLog.Filters.ConditionBasedFilter.Check(LogEventInfo logEvent)
+   at NLog.Filters.Filter.GetFilterResult(LogEventInfo logEvent)
+   at NLog.LoggerImpl.GetFilterResult(IList`1 filterChain, LogEventInfo logEvent, FilterResult filterDefaultAction)
+2025-08-05 14:54:36.9185 Warn Error has been raised. Exception: NLog.NLogConfigurationException: 'JsonAttribute' cannot assign unknown property 'condition'='${exception} != null'
+   at NLog.Config.LoggingConfigurationParser.SetPropertyValueFromString[T](T targetObject, String propertyName, String propertyValue, ValidatedConfigurationElement element)

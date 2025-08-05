@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using CursorPhobia.Core.Services;
 using CursorPhobia.Core.Utilities;
 using CursorPhobia.Core.Models;
+using CursorPhobia.Core.Logging;
 
 namespace CursorPhobia.Console;
 
@@ -38,6 +39,13 @@ class Program
         
         try
         {
+            // Phase 2 WI#8: Initialize production logging early
+            var isDebugMode = args.Contains("--debug") || System.Diagnostics.Debugger.IsAttached;
+            if (!LoggingConfiguration.InitializeLogging(isDebugMode))
+            {
+                System.Console.WriteLine("Warning: Failed to initialize production logging. Using fallback logging.");
+            }
+            
             // Phase 1 WI#8: Single instance check early in startup
             if (!await CheckSingleInstanceAsync(args, isAutomatedMode))
             {
@@ -45,7 +53,7 @@ class Program
                 return;
             }
             // Setup dependency injection and logging
-            SetupServices(isAutomatedMode);
+            SetupServices(isAutomatedMode, isDebugMode);
             
             // Get logger after services are set up
             _logger = _serviceProvider!.GetRequiredService<Logger>();
@@ -105,6 +113,9 @@ class Program
         {
             await CleanupAsync();
             
+            // Phase 2 WI#8: Shutdown production logging
+            LoggingConfiguration.ShutdownLogging();
+            
             if (!isAutomatedMode)
             {
                 System.Console.WriteLine("\nPress any key to exit...");
@@ -115,23 +126,38 @@ class Program
         }
     }
     
-    private static void SetupServices(bool isAutomatedMode = false)
+    private static void SetupServices(bool isAutomatedMode = false, bool isDebugMode = false)
     {
         var services = new ServiceCollection();
         
-        // Add logging
+        // Phase 2 WI#8: Configure production logging services
+        LoggingConfiguration.ConfigureLoggingServices(services, isDebugMode);
+        
+        // Legacy logging setup for backward compatibility
         services.AddLogging(builder =>
         {
             builder.AddConsole();
             // Use Warning level in automated mode to reduce noise
-            builder.SetMinimumLevel(isAutomatedMode ? LogLevel.Warning : LogLevel.Debug);
+            builder.SetMinimumLevel(isAutomatedMode ? LogLevel.Warning : (isDebugMode ? LogLevel.Debug : LogLevel.Information));
         });
         
-        // Add our services
+        // Add our services with enhanced production logging
         services.AddSingleton<Logger>(provider =>
         {
             var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
+            var productionLoggerFactory = provider.GetService<IProductionLoggerFactory>();
+            
             CursorPhobia.Core.Utilities.LoggerFactory.Initialize(loggerFactory);
+            
+            // Create enhanced logger with production logging support
+            if (productionLoggerFactory != null)
+            {
+                var innerLogger = loggerFactory.CreateLogger<Program>();
+                var productionLogger = productionLoggerFactory.CreateLogger<Program>();
+                return new Logger(innerLogger, typeof(Program).Name, productionLogger);
+            }
+            
+            // Fallback to regular logger
             return CursorPhobia.Core.Utilities.LoggerFactory.CreateLogger<Program>();
         });
         

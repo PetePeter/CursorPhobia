@@ -130,23 +130,42 @@ public class WindowPusher : IWindowPusher, IDisposable
             return false;
         }
         
+        // Phase 2 WI#8: Performance logging for window push operations
+        using var perfScope = _logger is Logger loggerWithPerf ? 
+            loggerWithPerf.BeginPerformanceScope("PushWindow", 
+                ("WindowHandle", $"0x{windowHandle:X}"),
+                ("CursorX", cursorPosition.X),
+                ("CursorY", cursorPosition.Y),
+                ("PushDistance", pushDistance)) :
+            null;
+        
         try
         {
             // Get current window bounds
             var currentBounds = _windowService.GetWindowBounds(windowHandle);
             if (currentBounds.IsEmpty)
             {
+                (perfScope as IPerformanceScope)?.MarkAsFailed("Could not get window bounds");
                 _logger.LogWarning("Could not get bounds for window {Handle:X}", windowHandle.ToInt64());
                 return false;
             }
+            
+            (perfScope as IPerformanceScope)?.AddContext("CurrentX", currentBounds.X);
+            (perfScope as IPerformanceScope)?.AddContext("CurrentY", currentBounds.Y);
+            (perfScope as IPerformanceScope)?.AddContext("WindowWidth", currentBounds.Width);
+            (perfScope as IPerformanceScope)?.AddContext("WindowHeight", currentBounds.Height);
             
             // Calculate push vector using proximity detector
             var pushVector = _proximityDetector.CalculatePushVector(cursorPosition, currentBounds, pushDistance);
             if (pushVector.IsEmpty)
             {
+                (perfScope as IPerformanceScope)?.MarkAsFailed("Could not calculate push vector");
                 _logger.LogWarning("Could not calculate push vector for window {Handle:X}", windowHandle.ToInt64());
                 return false;
             }
+            
+            (perfScope as IPerformanceScope)?.AddContext("PushVectorX", pushVector.X);
+            (perfScope as IPerformanceScope)?.AddContext("PushVectorY", pushVector.Y);
             
             // Calculate target position
             var targetPosition = new Point(
@@ -217,10 +236,22 @@ public class WindowPusher : IWindowPusher, IDisposable
                 windowHandle.ToInt64(), currentBounds.X, currentBounds.Y, 
                 targetPosition.X, targetPosition.Y, safePosition.X, safePosition.Y);
             
-            return await PushWindowToPositionAsync(windowHandle, safePosition);
+            (perfScope as IPerformanceScope)?.AddContext("TargetX", targetPosition.X);
+            (perfScope as IPerformanceScope)?.AddContext("TargetY", targetPosition.Y);
+            (perfScope as IPerformanceScope)?.AddContext("SafeX", safePosition.X);
+            (perfScope as IPerformanceScope)?.AddContext("SafeY", safePosition.Y);
+            
+            var result = await PushWindowToPositionAsync(windowHandle, safePosition);
+            if (!result)
+            {
+                (perfScope as IPerformanceScope)?.MarkAsFailed("PushWindowToPositionAsync failed");
+            }
+            
+            return result;
         }
         catch (Exception ex)
         {
+            (perfScope as IPerformanceScope)?.MarkAsFailed(ex.Message);
             _logger.LogError(ex, "Error pushing window {Handle:X} away from cursor ({CursorX},{CursorY})",
                 windowHandle.ToInt64(), cursorPosition.X, cursorPosition.Y);
             return false;
@@ -241,15 +272,28 @@ public class WindowPusher : IWindowPusher, IDisposable
             return false;
         }
         
+        // Phase 2 WI#8: Performance logging for window positioning
+        using var perfScope = _logger is Logger loggerWithPerf ? 
+            loggerWithPerf.BeginPerformanceScope("PushWindowToPosition", 
+                ("WindowHandle", $"0x{windowHandle:X}"),
+                ("TargetX", targetPosition.X),
+                ("TargetY", targetPosition.Y),
+                ("AnimationsEnabled", _config.EnableAnimations)) :
+            null;
+        
         try
         {
             // Get current window bounds
             var currentBounds = _windowService.GetWindowBounds(windowHandle);
             if (currentBounds.IsEmpty)
             {
+                (perfScope as IPerformanceScope)?.MarkAsFailed("Could not get window bounds");
                 _logger.LogWarning("Could not get bounds for window {Handle:X}", windowHandle.ToInt64());
                 return false;
             }
+            
+            (perfScope as IPerformanceScope)?.AddContext("CurrentX", currentBounds.X);
+            (perfScope as IPerformanceScope)?.AddContext("CurrentY", currentBounds.Y);
             
             var currentPosition = new Point(currentBounds.X, currentBounds.Y);
             
@@ -264,7 +308,13 @@ public class WindowPusher : IWindowPusher, IDisposable
             // If animations are disabled, move immediately
             if (!_config.EnableAnimations || _config.AnimationDurationMs <= 0)
             {
-                return _windowService.MoveWindow(windowHandle, targetPosition.X, targetPosition.Y);
+                (perfScope as IPerformanceScope)?.AddContext("AnimationType", "Immediate");
+                var moveResult = _windowService.MoveWindow(windowHandle, targetPosition.X, targetPosition.Y);
+                if (!moveResult)
+                {
+                    (perfScope as IPerformanceScope)?.MarkAsFailed("MoveWindow failed");
+                }
+                return moveResult;
             }
             
             // Cancel any existing animation for this window
@@ -288,11 +338,32 @@ public class WindowPusher : IWindowPusher, IDisposable
                 windowHandle.ToInt64(), currentPosition.X, currentPosition.Y, 
                 targetPosition.X, targetPosition.Y, _config.AnimationDurationMs);
             
+            // Phase 2 WI#8: Window operation logging
+            if (_logger is Logger windowLogger)
+            {
+                windowLogger.LogWindowOperation(Microsoft.Extensions.Logging.LogLevel.Information, 
+                    "StartAnimation", windowHandle, null, 
+                    $"Starting animated push from ({currentPosition.X},{currentPosition.Y}) to ({targetPosition.X},{targetPosition.Y})",
+                    ("AnimationDuration", _config.AnimationDurationMs),
+                    ("AnimationEasing", _config.AnimationEasing.ToString()));
+            }
+            
+            (perfScope as IPerformanceScope)?.AddContext("AnimationType", "Animated");
+            (perfScope as IPerformanceScope)?.AddContext("AnimationDuration", _config.AnimationDurationMs);
+            (perfScope as IPerformanceScope)?.AddContext("AnimationEasing", _config.AnimationEasing.ToString());
+            
             // Run the animation
-            return await RunAnimationAsync(animation, _cancellationTokenSource.Token);
+            var animationResult = await RunAnimationAsync(animation, _cancellationTokenSource.Token);
+            if (!animationResult)
+            {
+                (perfScope as IPerformanceScope)?.MarkAsFailed("Animation failed or was cancelled");
+            }
+            
+            return animationResult;
         }
         catch (Exception ex)
         {
+            (perfScope as IPerformanceScope)?.MarkAsFailed(ex.Message);
             _logger.LogError(ex, "Error pushing window {Handle:X} to position ({X},{Y})",
                 windowHandle.ToInt64(), targetPosition.X, targetPosition.Y);
             return false;
@@ -401,6 +472,20 @@ public class WindowPusher : IWindowPusher, IDisposable
                 animation.WindowHandle.ToInt64(), 
                 success ? "completed" : "cancelled",
                 stopwatch.ElapsedMilliseconds);
+            
+            // Phase 2 WI#8: Window operation logging for animation completion
+            if (_logger is Logger windowLogger)
+            {
+                var logLevel = success ? Microsoft.Extensions.Logging.LogLevel.Information : Microsoft.Extensions.Logging.LogLevel.Warning;
+                windowLogger.LogWindowOperation(logLevel, 
+                    success ? "CompleteAnimation" : "CancelAnimation", 
+                    animation.WindowHandle, null, 
+                    $"Animation {(success ? "completed" : "cancelled")} after {stopwatch.ElapsedMilliseconds}ms",
+                    ("ElapsedMs", stopwatch.ElapsedMilliseconds),
+                    ("Success", success),
+                    ("FinalX", animation.EndPosition.X),
+                    ("FinalY", animation.EndPosition.Y));
+            }
             
             return success;
         }
