@@ -21,6 +21,8 @@ class Program
     private static ISnoozeManager? _snoozeManager;
     private static ICursorPhobiaEngine? _engine;
     private static IConfigurationWatcherService? _configWatcher;
+    private static ISingleInstanceManager? _singleInstanceManager;
+    private static IGlobalExceptionHandler? _globalExceptionHandler;
     
     static async Task Main(string[] args)
     {
@@ -36,6 +38,12 @@ class Program
         
         try
         {
+            // Phase 1 WI#8: Single instance check early in startup
+            if (!await CheckSingleInstanceAsync(args, isAutomatedMode))
+            {
+                System.Console.WriteLine("Another instance of CursorPhobia is already running. Activation request sent.");
+                return;
+            }
             // Setup dependency injection and logging
             SetupServices(isAutomatedMode);
             
@@ -95,6 +103,8 @@ class Program
         }
         finally
         {
+            await CleanupAsync();
+            
             if (!isAutomatedMode)
             {
                 System.Console.WriteLine("\nPress any key to exit...");
@@ -167,6 +177,10 @@ class Program
         services.AddSingleton<IApplicationLifecycleManager, ApplicationLifecycleManager>();
         services.AddSingleton<IStartupManager, StartupManager>();
         services.AddSingleton<ISnoozeManager, SnoozeManager>();
+        
+        // Production readiness services (Phase 1 WI#8)
+        services.AddSingleton<ISingleInstanceManager, SingleInstanceManager>();
+        services.AddSingleton<IGlobalExceptionHandler, GlobalExceptionHandler>();
         
         _serviceProvider = services.BuildServiceProvider();
     }
@@ -1035,6 +1049,116 @@ class Program
             return $"{timeSpan.Minutes}m";
         else
             return $"{timeSpan.Seconds}s";
+    }
+    
+    /// <summary>
+    /// Phase 1 WI#8: Checks for single instance and handles activation
+    /// </summary>
+    private static async Task<bool> CheckSingleInstanceAsync(string[] args, bool isAutomatedMode)
+    {
+        try
+        {
+            // Create a temporary logger for single instance check
+            using var loggerFactory = Microsoft.Extensions.Logging.LoggerFactory.Create(builder =>
+            {
+                builder.AddConsole();
+                builder.SetMinimumLevel(isAutomatedMode ? LogLevel.Warning : LogLevel.Debug);
+            });
+            
+            var logger = new CursorPhobia.Core.Utilities.Logger(loggerFactory.CreateLogger<Program>(), nameof(Program));
+            
+            // Create single instance manager without DI to avoid disposal issues
+            _singleInstanceManager = new SingleInstanceManager(logger);
+            
+            // Try to acquire the single instance lock
+            bool isOwner = await _singleInstanceManager.TryAcquireLockAsync();
+            
+            if (!isOwner)
+            {
+                // Another instance is running, send activation request
+                await _singleInstanceManager.SendActivationRequestAsync(args);
+                return false;
+            }
+            
+            // We are the primary instance, initialize the manager
+            if (!await _singleInstanceManager.InitializeAsync())
+            {
+                System.Console.WriteLine("Warning: Failed to initialize single instance manager");
+            }
+            else if (!isAutomatedMode)
+            {
+                // Setup activation handler for future instances
+                _singleInstanceManager.InstanceActivationRequested += OnInstanceActivationRequested;
+                System.Console.WriteLine("Single instance manager initialized - this is the primary instance");
+            }
+            
+            return true;
+        }
+        catch (Exception ex)
+        {
+            System.Console.WriteLine($"Warning: Single instance check failed: {ex.Message}");
+            // Continue anyway - better to have multiple instances than no instance
+            return true;
+        }
+    }
+    
+    /// <summary>
+    /// Handles activation requests from other instances
+    /// </summary>
+    private static void OnInstanceActivationRequested(object? sender, InstanceActivationEventArgs e)
+    {
+        try
+        {
+            _logger?.LogInformation("Received activation request from another instance with {ArgCount} arguments", e.Arguments.Length);
+            
+            // Bring the main window to front if in tray mode
+            if (_trayManager != null && Application.MessageLoop)
+            {
+                // Could implement window activation logic here
+                // For now, just show a notification
+                Task.Run(async () =>
+                {
+                    await _trayManager.ShowNotificationAsync("CursorPhobia", 
+                        "Another instance attempted to start", false);
+                });
+            }
+            else
+            {
+                System.Console.WriteLine($"Another CursorPhobia instance tried to start at {e.RequestTime:HH:mm:ss}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error handling instance activation request");
+        }
+    }
+    
+    /// <summary>
+    /// Cleanup method for Phase 1 WI#8 services
+    /// </summary>
+    private static async Task CleanupAsync()
+    {
+        try
+        {
+            if (_singleInstanceManager != null)
+            {
+                _singleInstanceManager.InstanceActivationRequested -= OnInstanceActivationRequested;
+                await _singleInstanceManager.ShutdownAsync();
+                _singleInstanceManager.Dispose();
+                _singleInstanceManager = null;
+            }
+            
+            if (_globalExceptionHandler != null)
+            {
+                await _globalExceptionHandler.ShutdownAsync();
+                _globalExceptionHandler.Dispose();
+                _globalExceptionHandler = null;
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger?.LogError(ex, "Error during Phase 1 WI#8 cleanup");
+        }
     }
 }
 

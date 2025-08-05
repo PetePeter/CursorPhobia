@@ -5,10 +5,12 @@ namespace CursorPhobia.Core.Services;
 /// <summary>
 /// Manages application lifecycle events and coordinates clean shutdown
 /// Handles service registration/disposal and ensures graceful application termination
+/// Integrates with GlobalExceptionHandler for comprehensive error handling (Phase 1 WI#8)
 /// </summary>
 public class ApplicationLifecycleManager : IApplicationLifecycleManager
 {
     private readonly ILogger _logger;
+    private readonly IGlobalExceptionHandler? _globalExceptionHandler;
     private readonly List<(IDisposable Service, string? Name)> _registeredServices = new();
     private readonly object _lock = new();
     private bool _disposed = false;
@@ -34,51 +36,75 @@ public class ApplicationLifecycleManager : IApplicationLifecycleManager
     /// Creates a new ApplicationLifecycleManager instance
     /// </summary>
     /// <param name="logger">Logger for diagnostic output</param>
-    public ApplicationLifecycleManager(ILogger logger)
+    /// <param name="globalExceptionHandler">Optional global exception handler for enhanced error handling</param>
+    public ApplicationLifecycleManager(ILogger logger, IGlobalExceptionHandler? globalExceptionHandler = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        _globalExceptionHandler = globalExceptionHandler;
     }
     
     /// <summary>
     /// Initializes the application lifecycle manager
     /// </summary>
     /// <returns>True if initialization was successful, false otherwise</returns>
-    public Task<bool> InitializeAsync()
+    public async Task<bool> InitializeAsync()
     {
         if (_disposed)
         {
             _logger.LogWarning("Cannot initialize disposed ApplicationLifecycleManager");
-            return Task.FromResult(false);
+            return false;
         }
         
         if (_initialized)
         {
             _logger.LogDebug("ApplicationLifecycleManager is already initialized");
-            return Task.FromResult(true);
+            return true;
         }
         
         try
         {
             _logger.LogInformation("Initializing application lifecycle manager...");
             
+            // Initialize global exception handler first (Phase 1 WI#8)
+            if (_globalExceptionHandler != null)
+            {
+                if (await _globalExceptionHandler.InitializeAsync())
+                {
+                    _logger.LogInformation("Global exception handler initialized");
+                    
+                    // Hook into global exception handler events
+                    _globalExceptionHandler.CriticalExceptionOccurred += OnGlobalCriticalException;
+                    _globalExceptionHandler.ExceptionHandled += OnGlobalExceptionHandled;
+                }
+                else
+                {
+                    _logger.LogWarning("Failed to initialize global exception handler - continuing without enhanced error handling");
+                }
+            }
+            else
+            {
+                // Fallback to basic exception handling if no global handler is available
+                _logger.LogDebug("No global exception handler provided - using basic exception handling");
+                
+                // Setup application domain unhandled exception handler
+                AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
+                
+                // Setup task scheduler unobserved task exception handler
+                TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
+            }
+            
             // Setup console cancel event handler for graceful shutdown
             Console.CancelKeyPress += OnConsoleCancelKeyPress;
-            
-            // Setup application domain unhandled exception handler
-            AppDomain.CurrentDomain.UnhandledException += OnUnhandledException;
-            
-            // Setup task scheduler unobserved task exception handler
-            TaskScheduler.UnobservedTaskException += OnUnobservedTaskException;
             
             _initialized = true;
             _logger.LogInformation("Application lifecycle manager initialized successfully");
             
-            return Task.FromResult(true);
+            return true;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Failed to initialize application lifecycle manager");
-            return Task.FromResult(false);
+            return false;
         }
     }
     
@@ -254,6 +280,38 @@ public class ApplicationLifecycleManager : IApplicationLifecycleManager
     }
     
     /// <summary>
+    /// Handles critical exceptions from the global exception handler (Phase 1 WI#8)
+    /// </summary>
+    private async void OnGlobalCriticalException(object? sender, CriticalExceptionEventArgs e)
+    {
+        _logger.LogCritical(e.Exception, "Critical exception detected in {Context}, terminating: {IsTerminating}", 
+            e.Context, e.IsTerminating);
+        
+        if (e.IsTerminating && !_isShuttingDown)
+        {
+            _logger.LogWarning("Critical exception is causing application termination, initiating emergency shutdown");
+            await ShutdownAsync(1);
+        }
+    }
+    
+    /// <summary>
+    /// Handles regular exceptions from the global exception handler (Phase 1 WI#8)
+    /// </summary>
+    private void OnGlobalExceptionHandled(object? sender, ExceptionHandledEventArgs e)
+    {
+        if (e.RecoverySuccessful)
+        {
+            _logger.LogInformation("Exception handled successfully in {Context}: {ExceptionType}", 
+                e.Context, e.Exception.GetType().Name);
+        }
+        else
+        {
+            _logger.LogWarning("Exception handled but recovery failed in {Context}: {ExceptionType} - {Message}", 
+                e.Context, e.Exception.GetType().Name, e.Exception.Message);
+        }
+    }
+    
+    /// <summary>
     /// Disposes the lifecycle manager and releases all resources
     /// </summary>
     public void Dispose()
@@ -267,8 +325,17 @@ public class ApplicationLifecycleManager : IApplicationLifecycleManager
         {
             // Remove event handlers
             Console.CancelKeyPress -= OnConsoleCancelKeyPress;
-            AppDomain.CurrentDomain.UnhandledException -= OnUnhandledException;
-            TaskScheduler.UnobservedTaskException -= OnUnobservedTaskException;
+            
+            if (_globalExceptionHandler != null)
+            {
+                _globalExceptionHandler.CriticalExceptionOccurred -= OnGlobalCriticalException;
+                _globalExceptionHandler.ExceptionHandled -= OnGlobalExceptionHandled;
+            }
+            else
+            {
+                AppDomain.CurrentDomain.UnhandledException -= OnUnhandledException;
+                TaskScheduler.UnobservedTaskException -= OnUnobservedTaskException;
+            }
             
             // Dispose any remaining services
             if (!_isShuttingDown)

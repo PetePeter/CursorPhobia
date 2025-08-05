@@ -23,9 +23,10 @@ public class WindowPusherTests
         var proximityDetector = new MockProximityDetector();
         
         // Act
+        var windowDetectionService = new MockWindowDetectionService();
         var monitorManager = new MockMonitorManager();
         var edgeWrapHandler = new MockEdgeWrapHandler(monitorManager);
-        using var pusher = new WindowPusher(logger, windowService, safetyManager, proximityDetector, monitorManager, edgeWrapHandler);
+        using var pusher = new WindowPusher(logger, windowService, safetyManager, proximityDetector, windowDetectionService, monitorManager, edgeWrapHandler);
         
         // Assert
         Assert.NotNull(pusher);
@@ -40,10 +41,11 @@ public class WindowPusherTests
         var proximityDetector = new MockProximityDetector();
         
         // Act & Assert
+        var windowDetectionService = new MockWindowDetectionService();
         var monitorManager = new MockMonitorManager();
         var edgeWrapHandler = new MockEdgeWrapHandler(monitorManager);
         Assert.Throws<ArgumentNullException>(() => 
-            new WindowPusher(null!, windowService, safetyManager, proximityDetector, monitorManager, edgeWrapHandler));
+            new WindowPusher(null!, windowService, safetyManager, proximityDetector, windowDetectionService, monitorManager, edgeWrapHandler));
     }
     
     [Fact]
@@ -55,10 +57,11 @@ public class WindowPusherTests
         var proximityDetector = new MockProximityDetector();
         
         // Act & Assert
+        var windowDetectionService = new MockWindowDetectionService();
         var monitorManager = new MockMonitorManager();
         var edgeWrapHandler = new MockEdgeWrapHandler(monitorManager);
         Assert.Throws<ArgumentNullException>(() => 
-            new WindowPusher(logger, null!, safetyManager, proximityDetector, monitorManager, edgeWrapHandler));
+            new WindowPusher(logger, null!, safetyManager, proximityDetector, windowDetectionService, monitorManager, edgeWrapHandler));
     }
     
     [Fact]
@@ -70,10 +73,11 @@ public class WindowPusherTests
         var proximityDetector = new MockProximityDetector();
         
         // Act & Assert
+        var windowDetectionService = new MockWindowDetectionService();
         var monitorManager = new MockMonitorManager();
         var edgeWrapHandler = new MockEdgeWrapHandler(monitorManager);
         Assert.Throws<ArgumentNullException>(() => 
-            new WindowPusher(logger, windowService, null!, proximityDetector, monitorManager, edgeWrapHandler));
+            new WindowPusher(logger, windowService, null!, proximityDetector, windowDetectionService, monitorManager, edgeWrapHandler));
     }
     
     [Fact]
@@ -85,10 +89,11 @@ public class WindowPusherTests
         var safetyManager = new MockSafetyManager();
         
         // Act & Assert
+        var windowDetectionService = new MockWindowDetectionService();
         var monitorManager = new MockMonitorManager();
         var edgeWrapHandler = new MockEdgeWrapHandler(monitorManager);
         Assert.Throws<ArgumentNullException>(() => 
-            new WindowPusher(logger, windowService, safetyManager, null!, monitorManager, edgeWrapHandler));
+            new WindowPusher(logger, windowService, safetyManager, null!, windowDetectionService, monitorManager, edgeWrapHandler));
     }
     
     [Fact]
@@ -102,10 +107,11 @@ public class WindowPusherTests
         var invalidConfig = new CursorPhobiaConfiguration { ProximityThreshold = -1 };
         
         // Act & Assert
+        var windowDetectionService = new MockWindowDetectionService();
         var monitorManager = new MockMonitorManager();
         var edgeWrapHandler = new MockEdgeWrapHandler(monitorManager);
         Assert.Throws<ArgumentException>(() => 
-            new WindowPusher(logger, windowService, safetyManager, proximityDetector, monitorManager, edgeWrapHandler, invalidConfig));
+            new WindowPusher(logger, windowService, safetyManager, proximityDetector, windowDetectionService, monitorManager, edgeWrapHandler, invalidConfig));
     }
     
     #endregion
@@ -493,6 +499,7 @@ public class WindowPusherTests
         ISafetyManager? safetyManager = null,
         IProximityDetector? proximityDetector = null,
         CursorPhobiaConfiguration? config = null,
+        IWindowDetectionService? windowDetectionService = null,
         MonitorManager? monitorManager = null,
         EdgeWrapHandler? edgeWrapHandler = null)
     {
@@ -504,6 +511,7 @@ public class WindowPusherTests
             windowService ?? new MockWindowManipulationService(),
             safetyManager ?? new MockSafetyManager(),
             proximityDetector ?? new MockProximityDetector(),
+            windowDetectionService ?? new MockWindowDetectionService(),
             mockMonitorManager,
             mockEdgeWrapHandler,
             config
@@ -786,6 +794,58 @@ public class MockProximityDetector : IProximityDetector
     public Point CalculatePushVector(Point cursorPosition, Rectangle windowBounds, int pushDistance)
     {
         return _pushVector;
+    }
+}
+
+/// <summary>
+/// Mock implementation of IWindowDetectionService for testing
+/// </summary>
+public class MockWindowDetectionService : IWindowDetectionService
+{
+    private readonly List<WindowInfo> _topMostWindows = new();
+    private readonly Dictionary<IntPtr, bool> _alwaysOnTopWindows = new();
+    private readonly Dictionary<IntPtr, WindowInfo> _windowInfos = new();
+    private readonly List<WindowInfo> _visibleWindows = new();
+
+    public void AddTopMostWindow(WindowInfo window)
+    {
+        _topMostWindows.Add(window);
+        _alwaysOnTopWindows[window.WindowHandle] = true;
+    }
+    
+    public void SetWindowAlwaysOnTop(IntPtr handle, bool isAlwaysOnTop)
+    {
+        _alwaysOnTopWindows[handle] = isAlwaysOnTop;
+    }
+    
+    public void SetWindowInfo(IntPtr handle, WindowInfo info)
+    {
+        _windowInfos[handle] = info;
+    }
+    
+    public void AddVisibleWindow(WindowInfo window)
+    {
+        _visibleWindows.Add(window);
+    }
+
+    public List<WindowInfo> GetAllTopMostWindows()
+    {
+        return new List<WindowInfo>(_topMostWindows);
+    }
+
+    public bool IsWindowAlwaysOnTop(IntPtr hWnd)
+    {
+        return _alwaysOnTopWindows.TryGetValue(hWnd, out var isAlwaysOnTop) && isAlwaysOnTop;
+    }
+
+    public WindowInfo? GetWindowInformation(IntPtr hWnd)
+    {
+        return _windowInfos.TryGetValue(hWnd, out var info) ? info : null;
+    }
+
+    public List<WindowInfo> EnumerateVisibleWindows()
+    {
+        return new List<WindowInfo>(_visibleWindows);
     }
 }
 
