@@ -6,11 +6,14 @@ namespace CursorPhobia.Core.Services;
 /// Manages application lifecycle events and coordinates clean shutdown
 /// Handles service registration/disposal and ensures graceful application termination
 /// Integrates with GlobalExceptionHandler for comprehensive error handling (Phase 1 WI#8)
+/// Enhanced with Phase 3 WI#8: Health monitoring integration
 /// </summary>
 public class ApplicationLifecycleManager : IApplicationLifecycleManager
 {
     private readonly ILogger _logger;
     private readonly IGlobalExceptionHandler? _globalExceptionHandler;
+    private readonly IServiceHealthMonitor? _healthMonitor;
+    private readonly IErrorRecoveryManager? _errorRecoveryManager;
     private readonly List<(IDisposable Service, string? Name)> _registeredServices = new();
     private readonly object _lock = new();
     private bool _disposed = false;
@@ -37,10 +40,15 @@ public class ApplicationLifecycleManager : IApplicationLifecycleManager
     /// </summary>
     /// <param name="logger">Logger for diagnostic output</param>
     /// <param name="globalExceptionHandler">Optional global exception handler for enhanced error handling</param>
-    public ApplicationLifecycleManager(ILogger logger, IGlobalExceptionHandler? globalExceptionHandler = null)
+    /// <param name="healthMonitor">Optional health monitor for service health tracking</param>
+    /// <param name="errorRecoveryManager">Optional error recovery manager for self-healing capabilities</param>
+    public ApplicationLifecycleManager(ILogger logger, IGlobalExceptionHandler? globalExceptionHandler = null, 
+        IServiceHealthMonitor? healthMonitor = null, IErrorRecoveryManager? errorRecoveryManager = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _globalExceptionHandler = globalExceptionHandler;
+        _healthMonitor = healthMonitor;
+        _errorRecoveryManager = errorRecoveryManager;
     }
     
     /// <summary>
@@ -101,8 +109,13 @@ public class ApplicationLifecycleManager : IApplicationLifecycleManager
             // Setup console cancel event handler for graceful shutdown
             Console.CancelKeyPress += OnConsoleCancelKeyPress;
             
+            // Phase 3 WI#8: Initialize health monitoring and error recovery
+            await InitializeHealthMonitoringAsync();
+            await InitializeErrorRecoveryAsync();
+            
             _initialized = true;
-            _logger.LogInformation("Application lifecycle manager initialized successfully");
+            _logger.LogInformation("Application lifecycle manager initialized successfully with health monitoring: {HealthMonitoring}, error recovery: {ErrorRecovery}",
+                _healthMonitor != null, _errorRecoveryManager != null);
             
             return true;
         }
@@ -332,6 +345,364 @@ public class ApplicationLifecycleManager : IApplicationLifecycleManager
     }
     
     /// <summary>
+    /// Phase 3 WI#8: Initializes health monitoring integration
+    /// </summary>
+    private async Task InitializeHealthMonitoringAsync()
+    {
+        if (_healthMonitor == null)
+        {
+            _logger.LogDebug("No health monitor provided, skipping health monitoring initialization");
+            return;
+        }
+        
+        try
+        {
+            _logger.LogInformation("Initializing health monitoring integration...");
+            
+            // Register health check for the lifecycle manager itself
+            await _healthMonitor.RegisterServiceAsync("ApplicationLifecycleManager", 
+                PerformLifecycleHealthCheckAsync,
+                new ServiceMonitoringOptions
+                {
+                    CheckInterval = TimeSpan.FromMinutes(1),
+                    CheckTimeout = TimeSpan.FromSeconds(10),
+                    IsCritical = true,
+                    FailureThreshold = 2,
+                    RecoveryThreshold = 1,
+                    EnableAutoRestart = false, // Lifecycle manager shouldn't auto-restart itself
+                    EnableNotifications = true,
+                    Tags = new Dictionary<string, string> { { "Component", "Core" }, { "Type", "Lifecycle" } }
+                });
+            
+            // Hook into health monitor events for system-wide health monitoring
+            _healthMonitor.SystemHealthChanged += OnSystemHealthChanged;
+            _healthMonitor.CriticalServiceUnhealthy += OnCriticalServiceUnhealthy;
+            _healthMonitor.ServiceRestartRecommended += OnServiceRestartRecommended;
+            
+            // Start health monitoring
+            if (await _healthMonitor.StartAsync())
+            {
+                _logger.LogInformation("Health monitoring started successfully");
+            }
+            else
+            {
+                _logger.LogWarning("Failed to start health monitoring");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to initialize health monitoring");
+        }
+    }
+    
+    /// <summary>
+    /// Phase 3 WI#8: Initializes error recovery integration
+    /// </summary>
+    private async Task InitializeErrorRecoveryAsync()
+    {
+        if (_errorRecoveryManager == null)
+        {
+            _logger.LogDebug("No error recovery manager provided, skipping error recovery initialization");
+            return;
+        }
+        
+        try
+        {
+            _logger.LogInformation("Initializing error recovery integration...");
+            
+            // Initialize error recovery manager
+            if (await _errorRecoveryManager.InitializeAsync())
+            {
+                // Register lifecycle manager for recovery
+                await _errorRecoveryManager.RegisterComponentAsync("ApplicationLifecycleManager",
+                    RecoverLifecycleManagerAsync,
+                    new RecoveryOptions
+                    {
+                        MaxRetryAttempts = 2,
+                        RetryDelay = TimeSpan.FromSeconds(2),
+                        MaxRetryDelay = TimeSpan.FromSeconds(10),
+                        FailureThreshold = 3,
+                        CircuitBreakerTimeout = TimeSpan.FromMinutes(5),
+                        EnableCircuitBreaker = true,
+                        ShowUserNotifications = true,
+                        Priority = RecoveryPriority.Critical
+                    });
+                
+                // Hook into recovery events
+                _errorRecoveryManager.RecoveryStarted += OnRecoveryStarted;
+                _errorRecoveryManager.RecoveryCompleted += OnRecoveryCompleted;
+                _errorRecoveryManager.RecoveryFailed += OnRecoveryFailed;
+                _errorRecoveryManager.CircuitBreakerStateChanged += OnCircuitBreakerStateChanged;
+                
+                _logger.LogInformation("Error recovery integration initialized successfully");
+            }
+            else
+            {
+                _logger.LogWarning("Failed to initialize error recovery manager");
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to initialize error recovery");
+        }
+    }
+    
+    /// <summary>
+    /// Phase 3 WI#8: Performs health check for the lifecycle manager
+    /// </summary>
+    private async Task<ServiceHealthResult> PerformLifecycleHealthCheckAsync()
+    {
+        try
+        {
+            var stopwatch = System.Diagnostics.Stopwatch.StartNew();
+            
+            // Check if lifecycle manager is properly initialized
+            if (!_initialized || _disposed)
+            {
+                return new ServiceHealthResult
+                {
+                    Status = ServiceHealthStatus.Critical,
+                    Description = $"Lifecycle manager not properly initialized (initialized: {_initialized}, disposed: {_disposed})",
+                    ResponseTime = stopwatch.Elapsed
+                };
+            }
+            
+            // Check if shutdown is in progress
+            if (_isShuttingDown)
+            {
+                return new ServiceHealthResult
+                {
+                    Status = ServiceHealthStatus.Warning,
+                    Description = "Application shutdown in progress",
+                    ResponseTime = stopwatch.Elapsed
+                };
+            }
+            
+            // Count registered services
+            int serviceCount;
+            lock (_lock)
+            {
+                serviceCount = _registeredServices.Count;
+            }
+            
+            stopwatch.Stop();
+            
+            return new ServiceHealthResult
+            {
+                Status = ServiceHealthStatus.Healthy,
+                Description = $"Lifecycle manager operating normally with {serviceCount} registered services",
+                ResponseTime = stopwatch.Elapsed,
+                Data = new Dictionary<string, object>
+                {
+                    { "RegisteredServices", serviceCount },
+                    { "IsInitialized", _initialized },
+                    { "IsShuttingDown", _isShuttingDown },
+                    { "HasGlobalExceptionHandler", _globalExceptionHandler != null },
+                    { "HasHealthMonitor", _healthMonitor != null },
+                    { "HasErrorRecovery", _errorRecoveryManager != null }
+                }
+            };
+        }
+        catch (Exception ex)
+        {
+            return new ServiceHealthResult
+            {
+                Status = ServiceHealthStatus.Critical,
+                Description = $"Health check failed: {ex.Message}",
+                Exception = ex,
+                ResponseTime = TimeSpan.FromSeconds(10) // Assume timeout
+            };
+        }
+        
+        await Task.CompletedTask;
+    }
+    
+    /// <summary>
+    /// Phase 3 WI#8: Recovery function for the lifecycle manager
+    /// </summary>
+    private async Task<bool> RecoverLifecycleManagerAsync()
+    {
+        try
+        {
+            _logger.LogInformation("Starting lifecycle manager recovery...");
+            
+            // Attempt to reinitialize if needed
+            if (!_initialized && !_disposed)
+            {
+                return await InitializeAsync();
+            }
+            
+            // Check and fix any inconsistent state
+            if (_initialized && !_disposed && !_isShuttingDown)
+            {
+                _logger.LogInformation("Lifecycle manager appears to be in good state, recovery successful");
+                return true;
+            }
+            
+            _logger.LogWarning("Lifecycle manager recovery failed - cannot recover from disposed or shutdown state");
+            return false;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error during lifecycle manager recovery");
+            return false;
+        }
+    }
+    
+    /// <summary>
+    /// Phase 3 WI#8: Handles system health changes
+    /// </summary>
+    private void OnSystemHealthChanged(object? sender, SystemHealthChangedEventArgs e)
+    {
+        _logger.LogInformation("System health changed from {PreviousStatus} to {NewStatus}: {Summary}",
+            e.PreviousStatus, e.NewStatus, e.Summary);
+        
+        // Take action based on system health
+        switch (e.NewStatus)
+        {
+            case SystemHealthStatus.Critical:
+                _logger.LogWarning("System health is critical - considering emergency shutdown if condition persists");
+                break;
+                
+            case SystemHealthStatus.Unhealthy:
+                _logger.LogWarning("System health is unhealthy - monitoring for improvement");
+                break;
+                
+            case SystemHealthStatus.Degraded:
+                _logger.LogInformation("System health is degraded but functional");
+                break;
+                
+            case SystemHealthStatus.Healthy:
+                if (e.PreviousStatus != SystemHealthStatus.Healthy && e.PreviousStatus != SystemHealthStatus.Unknown)
+                {
+                    _logger.LogInformation("System health recovered to healthy state");
+                }
+                break;
+        }
+    }
+    
+    /// <summary>
+    /// Phase 3 WI#8: Handles critical service becoming unhealthy
+    /// </summary>
+    private void OnCriticalServiceUnhealthy(object? sender, CriticalServiceUnhealthyEventArgs e)
+    {
+        _logger.LogWarning("Critical service '{ServiceName}' is unhealthy after {FailureCount} consecutive failures: {Description}",
+            e.ServiceName, e.ConsecutiveFailures, e.CheckResult.Description);
+        
+        // If a critical service fails repeatedly, consider shutdown
+        if (e.ConsecutiveFailures >= 5)
+        {
+            _logger.LogError("Critical service '{ServiceName}' has failed {FailureCount} times - system may be unstable",
+                e.ServiceName, e.ConsecutiveFailures);
+        }
+    }
+    
+    /// <summary>
+    /// Phase 3 WI#8: Handles service restart recommendations
+    /// </summary>
+    private void OnServiceRestartRecommended(object? sender, ServiceRestartRecommendedEventArgs e)
+    {
+        _logger.LogInformation("Service restart recommended for '{ServiceName}': {Reason} (automatic: {IsAutomatic}, priority: {Priority})",
+            e.ServiceName, e.Reason, e.IsAutomatic, e.Priority);
+        
+        // For critical services with high priority, we might want to take immediate action
+        if (e.Priority >= 5)
+        {
+            _logger.LogWarning("High priority restart recommended for '{ServiceName}' - immediate attention required", e.ServiceName);
+        }
+    }
+    
+    /// <summary>
+    /// Phase 3 WI#8: Handles recovery operation events
+    /// </summary>
+    private void OnRecoveryStarted(object? sender, RecoveryOperationEventArgs e)
+    {
+        _logger.LogInformation("Recovery started for component '{ComponentName}' with priority {Priority}",
+            e.ComponentName, e.Priority);
+    }
+    
+    private void OnRecoveryCompleted(object? sender, RecoveryOperationEventArgs e)
+    {
+        _logger.LogInformation("Recovery completed successfully for component '{ComponentName}' after {Attempts} attempts in {Duration}ms",
+            e.ComponentName, e.Result.AttemptsCount, e.Result.Duration.TotalMilliseconds);
+    }
+    
+    private void OnRecoveryFailed(object? sender, RecoveryOperationEventArgs e)
+    {
+        _logger.LogError("Recovery failed for component '{ComponentName}' after {Attempts} attempts: {ErrorMessage}",
+            e.ComponentName, e.Result.AttemptsCount, e.Result.ErrorMessage);
+    }
+    
+    private void OnCircuitBreakerStateChanged(object? sender, CircuitBreakerStateChangedEventArgs e)
+    {
+        _logger.LogInformation("Circuit breaker state changed for '{ComponentName}': {PreviousState} -> {NewState} ({Reason})",
+            e.ComponentName, e.PreviousState, e.NewState, e.Reason);
+    }
+    
+    /// <summary>
+    /// Phase 3 WI#8: Cleanup health monitoring integration
+    /// </summary>
+    private async Task CleanupHealthMonitoringAsync()
+    {
+        if (_healthMonitor == null)
+            return;
+        
+        try
+        {
+            _logger.LogDebug("Cleaning up health monitoring integration...");
+            
+            // Remove event handlers
+            _healthMonitor.SystemHealthChanged -= OnSystemHealthChanged;
+            _healthMonitor.CriticalServiceUnhealthy -= OnCriticalServiceUnhealthy;
+            _healthMonitor.ServiceRestartRecommended -= OnServiceRestartRecommended;
+            
+            // Unregister ourselves
+            await _healthMonitor.UnregisterServiceAsync("ApplicationLifecycleManager");
+            
+            // Stop health monitoring
+            await _healthMonitor.StopAsync();
+            
+            _logger.LogDebug("Health monitoring cleanup completed");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Error during health monitoring cleanup: {Message}", ex.Message);
+        }
+    }
+    
+    /// <summary>
+    /// Phase 3 WI#8: Cleanup error recovery integration
+    /// </summary>
+    private async Task CleanupErrorRecoveryAsync()
+    {
+        if (_errorRecoveryManager == null)
+            return;
+        
+        try
+        {
+            _logger.LogDebug("Cleaning up error recovery integration...");
+            
+            // Remove event handlers
+            _errorRecoveryManager.RecoveryStarted -= OnRecoveryStarted;
+            _errorRecoveryManager.RecoveryCompleted -= OnRecoveryCompleted;
+            _errorRecoveryManager.RecoveryFailed -= OnRecoveryFailed;
+            _errorRecoveryManager.CircuitBreakerStateChanged -= OnCircuitBreakerStateChanged;
+            
+            // Unregister ourselves
+            await _errorRecoveryManager.UnregisterComponentAsync("ApplicationLifecycleManager");
+            
+            // Shutdown error recovery
+            await _errorRecoveryManager.ShutdownAsync();
+            
+            _logger.LogDebug("Error recovery cleanup completed");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Error during error recovery cleanup: {Message}", ex.Message);
+        }
+    }
+    
+    /// <summary>
     /// Disposes the lifecycle manager and releases all resources
     /// </summary>
     public void Dispose()
@@ -356,6 +727,10 @@ public class ApplicationLifecycleManager : IApplicationLifecycleManager
                 AppDomain.CurrentDomain.UnhandledException -= OnUnhandledException;
                 TaskScheduler.UnobservedTaskException -= OnUnobservedTaskException;
             }
+            
+            // Phase 3 WI#8: Cleanup health monitoring and error recovery
+            Task.Run(async () => await CleanupHealthMonitoringAsync()).Wait(TimeSpan.FromSeconds(5));
+            Task.Run(async () => await CleanupErrorRecoveryAsync()).Wait(TimeSpan.FromSeconds(5));
             
             // Dispose any remaining services
             if (!_isShuttingDown)

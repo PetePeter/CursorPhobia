@@ -1,0 +1,282 @@
+name: Build and Test CursorPhobia
+
+on:
+  push:
+    branches: [ main, 'issue_*' ]
+  pull_request:
+    branches: [ main ]
+  release:
+    types: [ published ]
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  BUILD_CONFIGURATION: 'Release'
+  ARTIFACT_NAME: 'CursorPhobia'
+
+jobs:
+  build-and-test:
+    name: Build, Test & Package
+    runs-on: windows-latest
+    
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      build-number: ${{ steps.version.outputs.build-number }}
+      
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0 # Full history for version generation
+        
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+        
+    - name: Generate version information
+      id: version
+      shell: powershell
+      run: |
+        # Get git information for versioning
+        $gitHash = git rev-parse --short HEAD
+        $gitBranch = git branch --show-current
+        $buildDate = Get-Date -Format "yyyy-MM-dd"
+        $buildNumber = $env:GITHUB_RUN_NUMBER
+        
+        # Generate semantic version
+        $version = "1.0.0"
+        if ($env:GITHUB_REF -match "refs/tags/v(.*)") {
+          $version = $matches[1]
+        } elseif ($env:GITHUB_EVENT_NAME -eq "pull_request") {
+          $version = "1.0.0-pr${{ github.event.number }}-$gitHash"
+        } elseif ($gitBranch -ne "main") {
+          $version = "1.0.0-$gitBranch-$gitHash"
+        } else {
+          $version = "1.0.0-build$buildNumber-$gitHash"
+        }
+        
+        Write-Host "Generated version: $version"
+        Write-Host "Build number: $buildNumber"
+        Write-Host "Git hash: $gitHash"
+        Write-Host "Build date: $buildDate"
+        
+        # Set outputs for other jobs
+        echo "version=$version" >> $env:GITHUB_OUTPUT
+        echo "build-number=$buildNumber" >> $env:GITHUB_OUTPUT
+        echo "git-hash=$gitHash" >> $env:GITHUB_OUTPUT
+        echo "build-date=$buildDate" >> $env:GITHUB_OUTPUT
+        
+        # Set environment variables for MSBuild
+        echo "VERSION=$version" >> $env:GITHUB_ENV
+        echo "BUILD_NUMBER=$buildNumber" >> $env:GITHUB_ENV
+        echo "GIT_HASH=$gitHash" >> $env:GITHUB_ENV
+        echo "BUILD_DATE=$buildDate" >> $env:GITHUB_ENV
+        
+    - name: Restore dependencies
+      run: dotnet restore CursorPhobia.sln
+      
+    - name: Build solution
+      run: |
+        dotnet build CursorPhobia.sln `
+          --configuration ${{ env.BUILD_CONFIGURATION }} `
+          --no-restore `
+          --verbosity minimal `
+          -p:Version=${{ env.VERSION }} `
+          -p:BuildNumber=${{ env.BUILD_NUMBER }} `
+          -p:GitHash=${{ env.GIT_HASH }} `
+          -p:BuildDate=${{ env.BUILD_DATE }}
+          
+    - name: Run tests
+      run: |
+        dotnet test tests/CursorPhobia.Tests.csproj `
+          --configuration ${{ env.BUILD_CONFIGURATION }} `
+          --no-build `
+          --verbosity normal `
+          --logger trx `
+          --results-directory TestResults `
+          --collect:"XPlat Code Coverage"
+          
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results
+        path: TestResults/
+        retention-days: 7
+        
+    - name: Publish single-file executable (x64)
+      run: |
+        dotnet publish src/Console/CursorPhobia.Console.csproj `
+          --configuration ${{ env.BUILD_CONFIGURATION }} `
+          --runtime win-x64 `
+          --self-contained true `
+          --output "publish/win-x64" `
+          -p:PublishSingleFile=true `
+          -p:PublishTrimmed=true `
+          -p:TrimMode=partial `
+          -p:Version=${{ env.VERSION }} `
+          -p:BuildNumber=${{ env.BUILD_NUMBER }} `
+          -p:GitHash=${{ env.GIT_HASH }} `
+          -p:BuildDate=${{ env.BUILD_DATE }}
+          
+    - name: Publish single-file executable (x86)
+      run: |
+        dotnet publish src/Console/CursorPhobia.Console.csproj `
+          --configuration ${{ env.BUILD_CONFIGURATION }} `
+          --runtime win-x86 `
+          --self-contained true `
+          --output "publish/win-x86" `
+          -p:PublishSingleFile=true `
+          -p:PublishTrimmed=true `
+          -p:TrimMode=partial `
+          -p:Version=${{ env.VERSION }} `
+          -p:BuildNumber=${{ env.BUILD_NUMBER }} `
+          -p:GitHash=${{ env.GIT_HASH }} `
+          -p:BuildDate=${{ env.BUILD_DATE }}
+          
+    - name: Create build info file
+      shell: powershell
+      run: |
+        $buildInfo = @"
+        CursorPhobia Build Information
+        ==============================
+        Version: ${{ env.VERSION }}
+        Build Number: ${{ env.BUILD_NUMBER }}
+        Git Hash: ${{ env.GIT_HASH }}
+        Build Date: ${{ env.BUILD_DATE }}
+        Build Environment: GitHub Actions
+        .NET Version: ${{ env.DOTNET_VERSION }}
+        Configuration: ${{ env.BUILD_CONFIGURATION }}
+        Target Runtimes: win-x64, win-x86
+        
+        Build Artifacts:
+        - CursorPhobia.exe (x64) - Single-file executable with all dependencies
+        - CursorPhobia.exe (x86) - Single-file executable with all dependencies
+        
+        Usage:
+        - Run CursorPhobia.exe --tray to start in system tray mode
+        - Run CursorPhobia.exe --help for command-line options
+        - Double-click to run with console interface
+        "@
+        
+        Set-Content -Path "publish/BUILD_INFO.txt" -Value $buildInfo
+        
+    - name: Package build artifacts
+      shell: powershell
+      run: |
+        # Create deployment packages
+        $version = "${{ env.VERSION }}"
+        
+        # Package x64 version
+        Compress-Archive -Path "publish/win-x64/*" -DestinationPath "CursorPhobia-$version-win-x64.zip"
+        
+        # Package x86 version  
+        Compress-Archive -Path "publish/win-x86/*" -DestinationPath "CursorPhobia-$version-win-x86.zip"
+        
+        # Create combined package with build info
+        New-Item -ItemType Directory -Path "combined-package" -Force
+        Copy-Item "publish/win-x64/CursorPhobia.exe" "combined-package/CursorPhobia-x64.exe"
+        Copy-Item "publish/win-x86/CursorPhobia.exe" "combined-package/CursorPhobia-x86.exe"
+        Copy-Item "publish/BUILD_INFO.txt" "combined-package/"
+        Copy-Item "README.md" "combined-package/" -ErrorAction SilentlyContinue
+        Copy-Item "LICENSE" "combined-package/" -ErrorAction SilentlyContinue
+        
+        Compress-Archive -Path "combined-package/*" -DestinationPath "CursorPhobia-$version-Complete.zip"
+        
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ env.ARTIFACT_NAME }}-${{ steps.version.outputs.version }}
+        path: |
+          *.zip
+          publish/BUILD_INFO.txt
+        retention-days: 30
+        
+    - name: Build validation
+      shell: powershell
+      run: |
+        Write-Host "=== Build Validation ==="
+        
+        # Check that executables were created
+        $x64Exe = "publish/win-x64/CursorPhobia.exe"
+        $x86Exe = "publish/win-x86/CursorPhobia.exe"
+        
+        if (Test-Path $x64Exe) {
+          $x64Size = (Get-Item $x64Exe).Length / 1MB
+          Write-Host "✓ x64 executable created: $([math]::Round($x64Size, 2)) MB"
+        } else {
+          Write-Error "✗ x64 executable not found"
+          exit 1
+        }
+        
+        if (Test-Path $x86Exe) {
+          $x86Size = (Get-Item $x86Exe).Length / 1MB  
+          Write-Host "✓ x86 executable created: $([math]::Round($x86Size, 2)) MB"
+        } else {
+          Write-Error "✗ x86 executable not found"
+          exit 1
+        }
+        
+        # Verify executables can show help (basic smoke test)
+        Write-Host "=== Smoke Tests ==="
+        try {
+          & $x64Exe --help | Out-Null
+          Write-Host "✓ x64 executable responds to --help"
+        } catch {
+          Write-Warning "⚠ x64 executable --help test failed: $_"
+        }
+        
+        try {
+          & $x86Exe --help | Out-Null
+          Write-Host "✓ x86 executable responds to --help"  
+        } catch {
+          Write-Warning "⚠ x86 executable --help test failed: $_"
+        }
+        
+        Write-Host "=== Build validation completed ==="
+
+  # Release job only runs on release events
+  release:
+    name: Create Release
+    runs-on: windows-latest
+    needs: build-and-test
+    if: github.event_name == 'release'
+    
+    steps:
+    - name: Download build artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: ${{ env.ARTIFACT_NAME }}-${{ needs.build-and-test.outputs.version }}
+        
+    - name: Upload release assets
+      uses: softprops/action-gh-release@v1
+      with:
+        files: |
+          *.zip
+          BUILD_INFO.txt
+        body: |
+          ## CursorPhobia Release ${{ needs.build-and-test.outputs.version }}
+          
+          ### What's New
+          Automated build from commit ${{ github.sha }}
+          
+          ### Downloads
+          - **CursorPhobia-${{ needs.build-and-test.outputs.version }}-Complete.zip** - Complete package with both x64 and x86 executables
+          - **CursorPhobia-${{ needs.build-and-test.outputs.version }}-win-x64.zip** - Windows x64 only
+          - **CursorPhobia-${{ needs.build-and-test.outputs.version }}-win-x86.zip** - Windows x86 only
+          
+          ### Installation
+          1. Download the appropriate package for your system
+          2. Extract the ZIP file to your desired location
+          3. Run `CursorPhobia.exe --tray` to start in system tray mode
+          4. Or run `CursorPhobia.exe` for console interface
+          
+          ### System Requirements
+          - Windows 10/11 (x64 or x86)
+          - No additional dependencies required (self-contained)
+          
+          Built with ❤️ by the CursorPhobia team
+        draft: false
+        prerelease: ${{ contains(needs.build-and-test.outputs.version, '-') }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -7,6 +7,57 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <PlatformTarget>AnyCPU</PlatformTarget>
+    
+    <!-- Phase 3 WI#8: Build Automation & Versioning -->
+    <Version Condition="'$(Version)' == ''">1.0.0-dev</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion Condition="'$(Version)' != ''">$(Version)</FileVersion>
+    <FileVersion Condition="'$(Version)' == ''">1.0.0.0</FileVersion>
+    <InformationalVersion Condition="'$(Version)' != ''">$(Version)</InformationalVersion>
+    <InformationalVersion Condition="'$(Version)' == ''">1.0.0-dev</InformationalVersion>
+    
+    <!-- Assembly metadata -->
+    <Product>CursorPhobia</Product>
+    <Description>CursorPhobia - Pushes windows away from cursor with self-healing error recovery</Description>
+    <Company>CursorPhobia Project</Company>
+    <Copyright>Copyright © CursorPhobia Project</Copyright>
+    <Authors>CursorPhobia Team</Authors>
+    <AssemblyTitle>CursorPhobia</AssemblyTitle>
+    
+    <!-- Single-file deployment settings -->
+    <PublishSingleFile Condition="'$(PublishSingleFile)' == ''">false</PublishSingleFile>
+    <SelfContained Condition="'$(SelfContained)' == ''">false</SelfContained>
+    <RuntimeIdentifier Condition="'$(RuntimeIdentifier)' == '' And '$(PublishSingleFile)' == 'true'">win-x64</RuntimeIdentifier>
+    
+    <!-- Trimming settings for smaller executables -->
+    <PublishTrimmed Condition="'$(PublishTrimmed)' == ''">false</PublishTrimmed>
+    <TrimMode Condition="'$(PublishTrimmed)' == 'true'">partial</TrimMode>
+    
+    <!-- Application icon -->
+    <ApplicationIcon Condition="Exists('icon.ico')">icon.ico</ApplicationIcon>
+    
+    <!-- Build metadata injection -->
+    <DefineConstants Condition="'$(BuildNumber)' != ''">$(DefineConstants);BUILD_NUMBER="$(BuildNumber)"</DefineConstants>
+    <DefineConstants Condition="'$(GitHash)' != ''">$(DefineConstants);GIT_HASH="$(GitHash)"</DefineConstants>
+    <DefineConstants Condition="'$(BuildDate)' != ''">$(DefineConstants);BUILD_DATE="$(BuildDate)"</DefineConstants>
+    
+    <!-- Optimization settings -->
+    <Optimize Condition="'$(Configuration)' == 'Release'">true</Optimize>
+    <DebugType Condition="'$(Configuration)' == 'Release'">portable</DebugType>
+    <DebugSymbols Condition="'$(Configuration)' == 'Release'">true</DebugSymbols>
+  </PropertyGroup>
+
+  <!-- Runtime-specific optimizations for single-file deployment -->
+  <PropertyGroup Condition="'$(PublishSingleFile)' == 'true'">
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+  </PropertyGroup>
+
+  <!-- Trimming-safe configuration -->
+  <PropertyGroup Condition="'$(PublishTrimmed)' == 'true'">
+    <!-- Preserve Windows Forms and related assemblies -->
+    <TrimmerDefaultAction>link</TrimmerDefaultAction>
   </PropertyGroup>
 
   <ItemGroup>
@@ -16,6 +67,31 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="8.0.0" />
+  </ItemGroup>
+
+  <!-- Include build metadata in assembly attributes -->
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute" Condition="'$(BuildNumber)' != ''">
+      <_Parameter1>BuildNumber</_Parameter1>
+      <_Parameter2>$(BuildNumber)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute" Condition="'$(GitHash)' != ''">
+      <_Parameter1>GitHash</_Parameter1>
+      <_Parameter2>$(GitHash)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute" Condition="'$(BuildDate)' != ''">
+      <_Parameter1>BuildDate</_Parameter1>
+      <_Parameter2>$(BuildDate)</_Parameter2>
+    </AssemblyAttribute>
+  </ItemGroup>
+
+  <!-- Preserve assemblies that are needed at runtime for trimming -->
+  <ItemGroup Condition="'$(PublishTrimmed)' == 'true'">
+    <TrimmerRootAssembly Include="System.Windows.Forms" />
+    <TrimmerRootAssembly Include="System.Drawing" />
+    <TrimmerRootAssembly Include="Microsoft.Extensions.Logging" />
+    <TrimmerRootAssembly Include="Microsoft.Extensions.DependencyInjection" />
+    <TrimmerRootAssembly Include="NLog" />
   </ItemGroup>
 
 </Project>

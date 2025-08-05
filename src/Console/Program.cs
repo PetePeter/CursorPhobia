@@ -180,7 +180,23 @@ class Program
         services.AddSingleton<IMonitorManager, MonitorManager>();
         services.AddSingleton<MonitorManager>();
         services.AddSingleton<EdgeWrapHandler>();
-        services.AddTransient<IWindowPusher, WindowPusher>();
+        
+        // WindowPusher with error recovery integration
+        services.AddTransient<IWindowPusher>(provider =>
+        {
+            var logger = provider.GetRequiredService<Logger>();
+            var windowService = provider.GetRequiredService<IWindowManipulationService>();
+            var safetyManager = provider.GetRequiredService<ISafetyManager>();
+            var proximityDetector = provider.GetRequiredService<IProximityDetector>();
+            var windowDetectionService = provider.GetRequiredService<IWindowDetectionService>();
+            var monitorManager = provider.GetRequiredService<MonitorManager>();
+            var edgeWrapHandler = provider.GetRequiredService<EdgeWrapHandler>();
+            var errorRecoveryManager = provider.GetService<IErrorRecoveryManager>();
+            var trayManager = provider.GetService<ISystemTrayManager>();
+            
+            return new WindowPusher(logger, windowService, safetyManager, proximityDetector, 
+                windowDetectionService, monitorManager, edgeWrapHandler, null, errorRecoveryManager, trayManager);
+        });
         
         // Engine
         services.AddTransient<ICursorPhobiaEngine, CursorPhobiaEngine>();
@@ -200,13 +216,26 @@ class Program
         
         // System tray and lifecycle management (Phase A WI#5)
         services.AddSingleton<ISystemTrayManager, SystemTrayManager>();
-        services.AddSingleton<IApplicationLifecycleManager, ApplicationLifecycleManager>();
         services.AddSingleton<IStartupManager, StartupManager>();
         services.AddSingleton<ISnoozeManager, SnoozeManager>();
         
         // Production readiness services (Phase 1 WI#8)
         services.AddSingleton<ISingleInstanceManager, SingleInstanceManager>();
         services.AddSingleton<IGlobalExceptionHandler, GlobalExceptionHandler>();
+        
+        // Phase 3 WI#8: Error recovery and health monitoring services
+        services.AddSingleton<IErrorRecoveryManager, ErrorRecoveryManager>();
+        services.AddSingleton<IServiceHealthMonitor, ServiceHealthMonitor>();
+        
+        // ApplicationLifecycleManager with health monitoring and error recovery integration
+        services.AddSingleton<IApplicationLifecycleManager>(provider =>
+        {
+            var logger = provider.GetRequiredService<CursorPhobia.Core.Utilities.ILogger>();
+            var globalExceptionHandler = provider.GetService<IGlobalExceptionHandler>();
+            var healthMonitor = provider.GetService<IServiceHealthMonitor>();
+            var errorRecoveryManager = provider.GetService<IErrorRecoveryManager>();
+            return new ApplicationLifecycleManager(logger, globalExceptionHandler, healthMonitor, errorRecoveryManager);
+        });
         
         _serviceProvider = services.BuildServiceProvider();
     }

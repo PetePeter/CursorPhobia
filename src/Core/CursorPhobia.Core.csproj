@@ -7,6 +7,44 @@
     <Nullable>enable</Nullable>
     <PlatformTarget>AnyCPU</PlatformTarget>
     <OutputType>Library</OutputType>
+    
+    <!-- Phase 3 WI#8: Build Automation & Versioning -->
+    <Version Condition="'$(Version)' == ''">1.0.0-dev</Version>
+    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <FileVersion Condition="'$(Version)' != ''">$(Version)</FileVersion>
+    <FileVersion Condition="'$(Version)' == ''">1.0.0.0</FileVersion>
+    <InformationalVersion Condition="'$(Version)' != ''">$(Version)</InformationalVersion>
+    <InformationalVersion Condition="'$(Version)' == ''">1.0.0-dev</InformationalVersion>
+    
+    <!-- Assembly metadata -->
+    <Product>CursorPhobia</Product>
+    <Description>CursorPhobia Core Library - Pushes windows away from cursor with advanced error recovery</Description>
+    <Company>CursorPhobia Project</Company>
+    <Copyright>Copyright © CursorPhobia Project</Copyright>
+    <Authors>CursorPhobia Team</Authors>
+    
+    <!-- Build metadata injection -->
+    <DefineConstants Condition="'$(BuildNumber)' != ''">$(DefineConstants);BUILD_NUMBER="$(BuildNumber)"</DefineConstants>
+    <DefineConstants Condition="'$(GitHash)' != ''">$(DefineConstants);GIT_HASH="$(GitHash)"</DefineConstants>
+    <DefineConstants Condition="'$(BuildDate)' != ''">$(DefineConstants);BUILD_DATE="$(BuildDate)"</DefineConstants>
+    
+    <!-- Optimization settings -->
+    <Optimize Condition="'$(Configuration)' == 'Release'">true</Optimize>
+    <DebugType Condition="'$(Configuration)' == 'Release'">portable</DebugType>
+    <DebugSymbols Condition="'$(Configuration)' == 'Release'">true</DebugSymbols>
+    
+    <!-- XML documentation -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <DocumentationFile>bin\$(Configuration)\$(TargetFramework)\$(AssemblyName).xml</DocumentationFile>
+    
+    <!-- Suppress specific warnings -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn> <!-- Missing XML comment for publicly visible type or member -->
+  </PropertyGroup>
+
+  <!-- Runtime-specific optimizations for single-file deployment -->
+  <PropertyGroup Condition="'$(PublishSingleFile)' == 'true'">
+    <IncludeAllContentForSelfExtract>true</IncludeAllContentForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
   </PropertyGroup>
 
   <ItemGroup>
@@ -14,6 +52,22 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="8.0.0" />
     <PackageReference Include="NLog" Version="5.2.8" />
     <PackageReference Include="NLog.Extensions.Logging" Version="5.3.8" />
+  </ItemGroup>
+
+  <!-- Include build metadata in assembly attributes -->
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute" Condition="'$(BuildNumber)' != ''">
+      <_Parameter1>BuildNumber</_Parameter1>
+      <_Parameter2>$(BuildNumber)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute" Condition="'$(GitHash)' != ''">
+      <_Parameter1>GitHash</_Parameter1>
+      <_Parameter2>$(GitHash)</_Parameter2>
+    </AssemblyAttribute>
+    <AssemblyAttribute Include="System.Reflection.AssemblyMetadataAttribute" Condition="'$(BuildDate)' != ''">
+      <_Parameter1>BuildDate</_Parameter1>
+      <_Parameter2>$(BuildDate)</_Parameter2>
+    </AssemblyAttribute>
   </ItemGroup>
 
 </Project>

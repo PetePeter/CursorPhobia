@@ -48,6 +48,7 @@ public interface IWindowPusher
 
 /// <summary>
 /// Service for pushing windows away from the cursor with smooth animations
+/// Enhanced with Phase 3 WI#8: Hook recovery and error handling
 /// </summary>
 public class WindowPusher : IWindowPusher, IDisposable
 {
@@ -59,12 +60,22 @@ public class WindowPusher : IWindowPusher, IDisposable
     private readonly CursorPhobiaConfiguration _config;
     private readonly MonitorManager _monitorManager;
     private readonly EdgeWrapHandler _edgeWrapHandler;
+    private readonly IErrorRecoveryManager? _errorRecoveryManager;
+    private readonly ISystemTrayManager? _trayManager;
     
     // Animation tracking
     private readonly Dictionary<IntPtr, WindowAnimation> _activeAnimations;
     private readonly object _animationLock = new();
     private readonly CancellationTokenSource _cancellationTokenSource;
     private bool _disposed = false;
+    
+    // Phase 3 WI#8: Hook recovery tracking
+    private readonly object _hookRecoveryLock = new();
+    private DateTime _lastHookFailure = DateTime.MinValue;
+    private int _consecutiveHookFailures = 0;
+    private bool _hookRecoveryInProgress = false;
+    private const int MaxConsecutiveHookFailures = 3;
+    private const int HookRecoveryTimeoutMs = 5000; // 5 seconds
     
     /// <summary>
     /// Creates a new WindowPusher instance
@@ -77,6 +88,8 @@ public class WindowPusher : IWindowPusher, IDisposable
     /// <param name="monitorManager">Monitor manager for multi-monitor support</param>
     /// <param name="edgeWrapHandler">Edge wrap handler for screen boundary wrapping</param>
     /// <param name="config">Configuration for animation and behavior settings</param>
+    /// <param name="errorRecoveryManager">Optional error recovery manager for hook recovery</param>
+    /// <param name="trayManager">Optional system tray manager for user notifications</param>
     public WindowPusher(
         ILogger logger,
         IWindowManipulationService windowService,
@@ -85,7 +98,9 @@ public class WindowPusher : IWindowPusher, IDisposable
         IWindowDetectionService windowDetectionService,
         MonitorManager monitorManager,
         EdgeWrapHandler edgeWrapHandler,
-        CursorPhobiaConfiguration? config = null)
+        CursorPhobiaConfiguration? config = null,
+        IErrorRecoveryManager? errorRecoveryManager = null,
+        ISystemTrayManager? trayManager = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _windowService = windowService ?? throw new ArgumentNullException(nameof(windowService));
@@ -95,6 +110,8 @@ public class WindowPusher : IWindowPusher, IDisposable
         _monitorManager = monitorManager ?? throw new ArgumentNullException(nameof(monitorManager));
         _edgeWrapHandler = edgeWrapHandler ?? throw new ArgumentNullException(nameof(edgeWrapHandler));
         _config = config ?? CursorPhobiaConfiguration.CreateDefault();
+        _errorRecoveryManager = errorRecoveryManager;
+        _trayManager = trayManager;
         
         var validationErrors = _config.Validate();
         if (validationErrors.Count > 0)
@@ -105,8 +122,14 @@ public class WindowPusher : IWindowPusher, IDisposable
         _activeAnimations = new Dictionary<IntPtr, WindowAnimation>();
         _cancellationTokenSource = new CancellationTokenSource();
         
-        _logger.LogDebug("WindowPusher initialized with animations {Enabled}, duration {Duration}ms, easing {Easing}",
-            _config.EnableAnimations, _config.AnimationDurationMs, _config.AnimationEasing);
+        // Phase 3 WI#8: Register with error recovery manager for hook failures
+        if (_errorRecoveryManager != null)
+        {
+            Task.Run(async () => await RegisterForErrorRecoveryAsync());
+        }
+        
+        _logger.LogDebug("WindowPusher initialized with animations {Enabled}, duration {Duration}ms, easing {Easing}, hook recovery {HookRecovery}",
+            _config.EnableAnimations, _config.AnimationDurationMs, _config.AnimationEasing, _errorRecoveryManager != null);
     }
     
     /// <summary>
@@ -246,14 +269,23 @@ public class WindowPusher : IWindowPusher, IDisposable
             {
                 (perfScope as IPerformanceScope)?.MarkAsFailed("PushWindowToPositionAsync failed");
             }
+            else
+            {
+                // Phase 3 WI#8: Report successful hook operation
+                await ReportHookSuccessAsync();
+            }
             
             return result;
         }
         catch (Exception ex)
         {
             (perfScope as IPerformanceScope)?.MarkAsFailed(ex.Message);
-            _logger.LogError(ex, "Error pushing window {Handle:X} away from cursor ({CursorX},{CursorY})",
-                windowHandle.ToInt64(), cursorPosition.X, cursorPosition.Y);
+            _logger.LogError("Error pushing window {Handle:X} away from cursor ({CursorX},{CursorY}): {Message}",
+                windowHandle.ToInt64(), cursorPosition.X, cursorPosition.Y, ex.Message);
+            
+            // Phase 3 WI#8: Report hook failure for recovery
+            await ReportHookFailureAsync("PushWindowAsync", ex);
+            
             return false;
         }
     }
@@ -364,8 +396,12 @@ public class WindowPusher : IWindowPusher, IDisposable
         catch (Exception ex)
         {
             (perfScope as IPerformanceScope)?.MarkAsFailed(ex.Message);
-            _logger.LogError(ex, "Error pushing window {Handle:X} to position ({X},{Y})",
-                windowHandle.ToInt64(), targetPosition.X, targetPosition.Y);
+            _logger.LogError("Error pushing window {Handle:X} to position ({X},{Y}): {Message}",
+                windowHandle.ToInt64(), targetPosition.X, targetPosition.Y, ex.Message);
+            
+            // Phase 3 WI#8: Report hook failure for recovery
+            await ReportHookFailureAsync("PushWindowToPositionAsync", ex);
+            
             return false;
         }
     }
@@ -496,7 +532,7 @@ public class WindowPusher : IWindowPusher, IDisposable
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error during animation for window {Handle:X}", animation.WindowHandle.ToInt64());
+            _logger.LogError("Error during animation for window {Handle:X}: {Message}", animation.WindowHandle.ToInt64(), ex.Message);
             return false;
         }
     }
@@ -563,6 +599,253 @@ public class WindowPusher : IWindowPusher, IDisposable
     }
     
     /// <summary>
+    /// Phase 3 WI#8: Registers the WindowPusher for error recovery
+    /// </summary>
+    private async Task RegisterForErrorRecoveryAsync()
+    {
+        if (_errorRecoveryManager == null)
+            return;
+        
+        try
+        {
+            var recoveryOptions = new RecoveryOptions
+            {
+                MaxRetryAttempts = 3,
+                RetryDelay = TimeSpan.FromSeconds(1),
+                MaxRetryDelay = TimeSpan.FromSeconds(5),
+                FailureThreshold = MaxConsecutiveHookFailures,
+                CircuitBreakerTimeout = TimeSpan.FromMinutes(2),
+                EnableCircuitBreaker = true,
+                ShowUserNotifications = true,
+                Priority = RecoveryPriority.High
+            };
+            
+            await _errorRecoveryManager.RegisterComponentAsync("WindowPusher", RecoverHookAsync, recoveryOptions);
+            _logger.LogInformation("WindowPusher registered for error recovery with hook recovery support");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to register WindowPusher for error recovery");
+        }
+    }
+    
+    /// <summary>
+    /// Phase 3 WI#8: Hook recovery function for error recovery manager
+    /// </summary>
+    private async Task<bool> RecoverHookAsync()
+    {
+        lock (_hookRecoveryLock)
+        {
+            if (_hookRecoveryInProgress)
+            {
+                _logger.LogDebug("Hook recovery already in progress");
+                return false;
+            }
+            _hookRecoveryInProgress = true;
+        }
+        
+        try
+        {
+            _logger.LogInformation("Starting WindowPusher hook recovery...");
+            
+            // Cancel all active animations to clear state
+            CancelAllAnimations();
+            
+            // Wait a short time for cleanup
+            await Task.Delay(500);
+            
+            // Attempt to validate hook functionality by testing window operations
+            bool recoverySuccessful = await ValidateHookFunctionalityAsync();
+            
+            if (recoverySuccessful)
+            {
+                lock (_hookRecoveryLock)
+                {
+                    _consecutiveHookFailures = 0;
+                    _lastHookFailure = DateTime.MinValue;
+                }
+                
+                _logger.LogInformation("WindowPusher hook recovery completed successfully");
+                
+                // Notify user of successful recovery
+                if (_trayManager != null)
+                {
+                    await _trayManager.ShowNotificationAsync("CursorPhobia Recovery",
+                        "Window pushing functionality recovered successfully", false);
+                }
+            }
+            else
+            {
+                _logger.LogError("WindowPusher hook recovery failed - functionality not restored");
+            }
+            
+            return recoverySuccessful;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("Error during WindowPusher hook recovery: {Message}", ex.Message);
+            return false;
+        }
+        finally
+        {
+            lock (_hookRecoveryLock)
+            {
+                _hookRecoveryInProgress = false;
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Phase 3 WI#8: Validates hook functionality after recovery
+    /// </summary>
+    private async Task<bool> ValidateHookFunctionalityAsync()
+    {
+        try
+        {
+            // Test basic window detection and manipulation capabilities
+            var windows = _windowDetectionService.EnumerateVisibleWindows();
+            if (windows.Count == 0)
+            {
+                _logger.LogWarning("No visible windows found during hook validation");
+                return false;
+            }
+            
+            // Try to get information about the first few windows
+            int testedWindows = 0;
+            int successfulTests = 0;
+            
+            foreach (var window in windows.Take(3))
+            {
+                testedWindows++;
+                
+                try
+                {
+                    // Test window information retrieval
+                    var windowInfo = _windowDetectionService.GetWindowInformation(window.WindowHandle);
+                    if (windowInfo != null)
+                    {
+                        // Test bounds retrieval
+                        var bounds = _windowService.GetWindowBounds(window.WindowHandle);
+                        if (!bounds.IsEmpty)
+                        {
+                            // Test visibility check
+                            var isVisible = _windowService.IsWindowVisible(window.WindowHandle);
+                            if (isVisible)
+                            {
+                                successfulTests++;
+                                _logger.LogDebug("Hook validation successful for window: {Title}", windowInfo.Title);
+                            }
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning("Hook validation failed for window {Handle:X}: {Message}", window.WindowHandle.ToInt64(), ex.Message);
+                }
+            }
+            
+            var successRate = testedWindows > 0 ? (double)successfulTests / testedWindows : 0.0;
+            bool isValid = successRate >= 0.5; // At least 50% of tests should pass
+            
+            _logger.LogInformation("Hook validation completed: {Successful}/{Total} tests passed ({Rate:P1})",
+                successfulTests, testedWindows, successRate);
+            
+            return isValid;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError("Error during hook functionality validation: {Message}", ex.Message);
+            return false;
+        }
+    }
+    
+    /// <summary>
+    /// Phase 3 WI#8: Reports hook failure and potentially triggers recovery
+    /// </summary>
+    private async Task ReportHookFailureAsync(string operation, Exception exception)
+    {
+        lock (_hookRecoveryLock)
+        {
+            _lastHookFailure = DateTime.UtcNow;
+            _consecutiveHookFailures++;
+        }
+        
+        _logger.LogWarning("Hook failure detected in {Operation}: {ExceptionType} - {Message} (consecutive failures: {Count})",
+            operation, exception.GetType().Name, exception.Message, _consecutiveHookFailures);
+        
+        // Report to error recovery manager if available
+        if (_errorRecoveryManager != null)
+        {
+            try
+            {
+                await _errorRecoveryManager.ReportFailureAsync("WindowPusher", exception, operation);
+            }
+            catch (Exception recoveryEx)
+            {
+                _logger.LogError("Error reporting hook failure to recovery manager: {Message}", recoveryEx.Message);
+            }
+        }
+        
+        // If we've exceeded the failure threshold, show user notification
+        if (_consecutiveHookFailures >= MaxConsecutiveHookFailures && _trayManager != null)
+        {
+            await _trayManager.ShowNotificationAsync("CursorPhobia Error",
+                $"Window pushing has failed {_consecutiveHookFailures} times. Recovery will be attempted.", true);
+        }
+    }
+    
+    /// <summary>
+    /// Phase 3 WI#8: Reports successful hook operation (resets failure counters)
+    /// </summary>
+    private async Task ReportHookSuccessAsync()
+    {
+        bool hadFailures;
+        lock (_hookRecoveryLock)
+        {
+            hadFailures = _consecutiveHookFailures > 0;
+            _consecutiveHookFailures = 0;
+        }
+        
+        // Report success to error recovery manager if available
+        if (_errorRecoveryManager != null && hadFailures)
+        {
+            try
+            {
+                await _errorRecoveryManager.ReportSuccessAsync("WindowPusher");
+                _logger.LogDebug("Reported hook operation success to recovery manager");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Error reporting hook success to recovery manager: {Message}", ex.Message);
+            }
+        }
+    }
+    
+    /// <summary>
+    /// Phase 3 WI#8: Checks if hook recovery is needed based on recent failures
+    /// </summary>
+    private bool ShouldTriggerHookRecovery()
+    {
+        lock (_hookRecoveryLock)
+        {
+            if (_hookRecoveryInProgress)
+                return false;
+            
+            if (_consecutiveHookFailures >= MaxConsecutiveHookFailures)
+                return true;
+            
+            // Check if we've had recent failures within the timeout window
+            if (_lastHookFailure != DateTime.MinValue)
+            {
+                var timeSinceLastFailure = DateTime.UtcNow - _lastHookFailure;
+                return timeSinceLastFailure.TotalMilliseconds < HookRecoveryTimeoutMs && _consecutiveHookFailures > 0;
+            }
+            
+            return false;
+        }
+    }
+    
+    /// <summary>
     /// Disposes the WindowPusher and cancels all animations
     /// </summary>
     public void Dispose()
@@ -573,6 +856,19 @@ public class WindowPusher : IWindowPusher, IDisposable
         _logger.LogDebug("Disposing WindowPusher");
         
         CancelAllAnimations();
+        
+        // Phase 3 WI#8: Unregister from error recovery
+        if (_errorRecoveryManager != null)
+        {
+            try
+            {
+                Task.Run(async () => await _errorRecoveryManager.UnregisterComponentAsync("WindowPusher")).Wait(TimeSpan.FromSeconds(2));
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning("Error unregistering WindowPusher from error recovery during disposal: {Message}", ex.Message);
+            }
+        }
         
         try
         {
