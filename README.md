@@ -1,174 +1,154 @@
-# CursorPhobia - Phase 1 Implementation
+# CursorPhobia
 
-CursorPhobia is a Windows application that automatically moves always-on-top windows away from the mouse cursor. This repository contains the Phase 1 implementation focusing on core Windows API foundation.
+A Windows application that automatically pushes away always-on-top windows when your cursor approaches them, keeping your desktop clean and distraction-free.
 
-## Phase 1 Status: ✅ COMPLETED
+## Warning
 
-### What's Implemented
+**This project is "vibe coded" and experimental.** Not everything will work exactly as hoped. However, the core functionality of shooing away always-on-top windows appears to work reliably.
 
-Phase 1 delivers the core Windows API foundation with the following components:
+Use at your own risk and expect some rough edges.
 
-#### 🏗️ Architecture
-- **Clean layered architecture** with proper separation of concerns
-- **Dependency injection** ready with interfaces
-- **Comprehensive error handling** and logging
-- **Unit testable** design with mocked Windows API calls
+## What It Does
 
-#### 📁 Directory Structure
-```
-src/Core/
-├── WindowsAPI/
-│   ├── User32.cs               # P/Invoke declarations for User32.dll
-│   ├── Kernel32.cs             # P/Invoke declarations for Kernel32.dll
-│   └── WindowsStructures.cs    # Windows API structures and constants
-├── Models/
-│   ├── WindowInfo.cs           # Window information data model
-│   └── MonitorInfo.cs          # Monitor information data model
-├── Services/
-│   ├── WindowDetectionService.cs   # Always-on-top window detection
-│   └── WindowManipulationService.cs # Basic window positioning
-└── Utilities/
-    └── Logger.cs               # Basic logging infrastructure
-```
+CursorPhobia monitors your cursor position and automatically moves always-on-top windows away when you get too close to them. This is particularly useful for:
 
-#### 🔧 Core Functionality
+- Persistent notification windows
+- Always-on-top utility applications
+- Floating toolbars and panels
+- Any window that stays in front of your work
 
-**WindowDetectionService:**
-- ✅ `GetAllTopMostWindows()` - Finds all always-on-top windows
-- ✅ `IsWindowAlwaysOnTop(IntPtr hWnd)` - Checks topmost flag
-- ✅ `GetWindowInformation(IntPtr hWnd)` - Gets comprehensive window info
-- ✅ `EnumerateVisibleWindows()` - Lists all visible windows
+The application runs quietly in your system tray and can be toggled on/off as needed.
 
-**WindowManipulationService:**
-- ✅ `MoveWindow(IntPtr hWnd, int x, int y)` - Moves windows (preserves size)
-- ✅ `GetWindowBounds(IntPtr hWnd)` - Gets window rectangle
-- ✅ `IsWindowVisible(IntPtr hWnd)` - Checks window visibility
+## Features
 
-#### 🧪 Testing Infrastructure
-- **Unit tests** with XUnit and Moq for mocking
-- **Integration tests** for real Windows API validation
-- **Console test application** for manual verification
-- **Automated test runner** (`runTests.bat`)
+- **System Tray Integration**: Runs silently in the background with tray icon controls
+- **Always-On-Top Detection**: Specifically targets windows with the always-on-top property
+- **Configurable Behavior**: Adjustable push distances and detection zones
+- **Safety First**: Starts disabled by default - you choose when to activate
+- **Performance Monitoring**: Built-in performance tracking and health monitoring
+- **Multi-Monitor Support**: Works across multiple monitor setups
 
-## Prerequisites
+## Quick Start
 
-- Windows 10 or Windows 11
-- .NET 6.0 SDK or later
-- Visual Studio 2022 or Visual Studio Code (recommended)
+### Prerequisites
 
-## Building and Running
+- Windows 10/11
+- .NET 8.0 Runtime
 
-### Build the Solution
-```bash
-dotnet build CursorPhobia.sln
-```
+### Running the Application
 
-### Run Unit Tests
-```bash
-dotnet test tests/CursorPhobia.Tests.csproj
-```
+1. **Build and Run Tests**:
+   ```
+   runTests.bat
+   ```
 
-### Run Console Test Application
-```bash
-dotnet run --project src/Console/CursorPhobia.Console.csproj
-```
+2. **Build and Run in System Tray**:
+   ```
+   runApp.bat
+   ```
 
-### Run All Tests (Windows)
-```bash
-runTests.bat
-```
+The application will start in the system tray with the engine **disabled by default** for safety. Right-click the tray icon to enable it when you're ready.
 
-## Usage Example
+### System Tray Controls
 
-```csharp
-// Setup dependency injection
-var services = new ServiceCollection();
-services.AddLogging();
-services.AddSingleton<Logger>();
-services.AddTransient<IWindowDetectionService, WindowDetectionService>();
-services.AddTransient<IWindowManipulationService, WindowManipulationService>();
-
-var provider = services.BuildServiceProvider();
-
-// Use the services
-var detectionService = provider.GetRequiredService<IWindowDetectionService>();
-var manipulationService = provider.GetRequiredService<IWindowManipulationService>();
-
-// Find all topmost windows
-var topmostWindows = detectionService.GetAllTopMostWindows();
-foreach (var window in topmostWindows)
-{
-    Console.WriteLine($"Topmost window: {window.title} at {window.bounds}");
-    
-    // Move window away by 100 pixels
-    manipulationService.MoveWindow(window.windowHandle, 
-        window.bounds.X + 100, window.bounds.Y + 100);
-}
-```
+Right-click the CursorPhobia tray icon to:
+- Enable/Disable the cursor phobia engine
+- Access settings and configuration
+- View performance statistics
+- Exit the application
 
 ## Technical Details
 
-### Windows API Integration
-- **Proper P/Invoke patterns** with error handling
-- **64-bit compatibility** using safe handle operations
-- **Memory-safe** string operations with StringBuilder
-- **Structured error reporting** with Win32 error codes
+### Architecture
 
-### Key Features
-- **Always-on-top detection** using `WS_EX_TOPMOST` extended style
-- **Window filtering** to exclude system/hidden windows
-- **Multi-monitor awareness** with monitor information models
-- **Process/thread information** retrieval for each window
-- **Comprehensive logging** at Debug/Info/Warning/Error levels
+- **Core Engine**: Window detection and manipulation logic
+- **System Integration**: Windows API integration for window management
+- **Health Monitoring**: Comprehensive error recovery and performance tracking
+- **Configuration Management**: Live configuration reloading
+- **Single Instance**: Prevents multiple instances from running
 
-### Error Handling
-- All Windows API calls are wrapped with try/catch
-- Invalid handles return safe default values
-- Win32 error codes are logged with meaningful messages
-- Services never throw unhandled exceptions
+### Configuration
 
-## Phase 1 Acceptance Criteria Status
+The application supports various configuration options for:
+- Detection sensitivity
+- Push distances
+- Excluded applications
+- Performance thresholds
 
-- ✅ Can enumerate all visible windows on system
-- ✅ Correctly identifies windows with WS_EX_TOPMOST flag
-- ✅ Can retrieve comprehensive window information (title, class, bounds)
-- ✅ Can move windows to specified coordinates
-- ✅ All Windows API calls have proper error handling
-- ✅ Logging system captures all significant events
-- ✅ Unit test coverage > 80% for core detection logic
+Configuration files are stored in `%APPDATA%\CursorPhobia\`
 
-## What's Next: Phase 2
+### Logging
 
-Phase 2 will implement:
-- Global low-level mouse hook
-- Mouse cursor position tracking
-- Basic proximity detection and window pushing
-- Multi-monitor support foundation
+Comprehensive logging is available at:
+```
+%APPDATA%\CursorPhobia\Logs\
+```
 
-## Architecture Decisions
+Log levels include performance metrics, window operations, and error tracking.
 
-### Why This Structure?
-1. **Layered Architecture**: Separates Windows API concerns from business logic
-2. **Interface-Based Design**: Enables unit testing with mocked dependencies
-3. **Dependency Injection**: Promotes loose coupling and testability
-4. **Comprehensive Logging**: Essential for debugging Windows API interactions
-5. **Error-First Design**: All operations can fail gracefully
+## Development
 
-### Windows API Choices
-- **User32.dll**: Core window management functions
-- **Kernel32.dll**: System-level operations and error handling
-- **SetWindowPos vs MoveWindow**: SetWindowPos provides more control
-- **GetWindowLongPtr**: 64-bit safe window property retrieval
+### Project Structure
 
-## Contributing
+```
+src/
+├── Console/          # Main application entry point
+└── Core/            # Core engine and services
+tests/               # Unit and integration tests
+```
 
-This is Phase 1 of a 4-phase implementation plan. Each phase builds upon the previous one:
+### Building from Source
 
-1. **Phase 1**: ✅ Core Windows API Foundation (Current)
-2. **Phase 2**: Global Mouse Tracking and Basic Avoidance
-3. **Phase 3**: Advanced Timing Logic and Enhanced Features  
-4. **Phase 4**: User Interface and Configuration System
+```bash
+# Build solution
+dotnet build CursorPhobia.sln
+
+# Run tests
+dotnet test
+
+# Run application
+dotnet run --project src/Console/CursorPhobia.Console.csproj
+```
+
+### Testing
+
+The application includes comprehensive test suites:
+- Unit tests for core functionality
+- Integration tests for system components
+- Performance and stress testing
+- Manual verification utilities
+
+## Known Issues
+
+This is experimental software with known limitations:
+
+- May not work perfectly with all window types
+- Performance can vary depending on system load
+- Some edge cases in multi-monitor setups may not be handled
+- Configuration UI is still in development
+- Not all planned features are fully implemented
+
+## Safety and Privacy
+
+- **No Network Activity**: The application operates entirely locally
+- **No Data Collection**: No telemetry or usage data is transmitted
+- **Minimal System Impact**: Designed to be lightweight and non-intrusive
+- **User Control**: You maintain full control over when and how it operates
 
 ## License
 
-MIT License - See LICENSE file for details.
+MIT License - see LICENSE file for details.
+
+## Contributing
+
+This is an experimental project. Contributions are welcome but expect the codebase to be somewhat chaotic as it's been "vibe coded" rather than formally architected.
+
+Feel free to:
+- Report issues and bugs
+- Suggest improvements
+- Submit pull requests for fixes
+- Share your experiences with different window types
+
+## Disclaimer
+
+This software is provided "as is" without any warranties. The core functionality of moving always-on-top windows works, but the overall experience may be rough around the edges. Use responsibly and be prepared for unexpected behavior.

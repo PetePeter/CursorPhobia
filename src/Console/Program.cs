@@ -39,7 +39,7 @@ class Program
     static async Task Main(string[] args)
     {
         // Check for automated mode (when run from batch)
-        bool isAutomatedMode = args.Contains("--automated") || System.Console.IsInputRedirected;
+        bool isAutomatedMode = args.Contains("--automated");
 
         // Check for tray mode (runs with system tray instead of console menu)
         bool isTrayMode = args.Contains("--tray") && !isAutomatedMode;

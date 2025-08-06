@@ -1,39 +1,36 @@
 @echo off
-echo Running CursorPhobia Tests
-echo =========================
+echo CursorPhobia - Build and Test
+echo =============================
 
-echo.
-echo Building solution...
-dotnet build CursorPhobia.sln >nul 2>&1
+echo [1/3] Building solution...
+dotnet build CursorPhobia.sln --configuration Release --verbosity minimal
 
 if %ERRORLEVEL% neq 0 (
     echo BUILD FAILED!
-    dotnet build CursorPhobia.sln
+    dotnet build CursorPhobia.sln --configuration Release --verbosity normal
+    pause
+    exit /b 1
+)
+
+echo [2/3] Running unit tests...
+dotnet test tests/CursorPhobia.Tests.csproj --configuration Release --no-build --logger "console;verbosity=normal"
+
+if %ERRORLEVEL% neq 0 (
+    echo TESTS FAILED!
+    pause
+    exit /b 1
+)
+
+echo [3/3] Running console integration test...
+dotnet run --project src/Console/CursorPhobia.Console.csproj --configuration Release --no-build -- --automated
+
+if %ERRORLEVEL% neq 0 (
+    echo INTEGRATION TEST FAILED!
     pause
     exit /b 1
 )
 
 echo.
-echo Running unit tests...
-dotnet test tests/CursorPhobia.Tests.csproj --logger "console;verbosity=minimal" | findstr /V "Passed" | findstr /V "Starting test execution" | findstr /V "Total tests:" | findstr /V "Test Run Successful" | findstr /V "^$"
-
-if %ERRORLEVEL% neq 0 (
-    echo UNIT TESTS FAILED!
-    dotnet test tests/CursorPhobia.Tests.csproj --logger "console;verbosity=normal"
-    pause
-    exit /b 1
-)
-
-echo.
-echo Running console test application...
-dotnet run --project src/Console/CursorPhobia.Console.csproj -- --automated >nul 2>&1
-
-if %ERRORLEVEL% neq 0 (
-    echo CONSOLE TEST FAILED!
-    dotnet run --project src/Console/CursorPhobia.Console.csproj
-    pause
-    exit /b 1
-)
-
-echo All tests passed!
+echo ✓ All tests passed!
+echo ✓ Build and tests completed successfully!
 pause
