@@ -27,3 +27,9 @@ runQuick.bat
 
 # Documentation drafts and work items
 wi*_*.md
+PHASE*_*.md
+*_COMPLETION_*.md
+*Demo.cs
+*_completion_*.md
+github_issue_*.md
+issue*_update.md
