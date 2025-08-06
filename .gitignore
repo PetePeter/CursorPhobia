@@ -1,5 +1,29 @@
+# IDE and editor files
 .aider*
+.vs/
+.vscode/
+
+# Build outputs
 */bin/*
 */obj/*
 */*/obj/*
 */*/bin/*
+bin/
+obj/
+build/
+publish/
+
+# Logs and temporary files
+*.log
+nul
+internal-nlog-*.txt
+**/internal-nlog-*.txt
+
+# Test and development files
+test_*.bat
+test_*.cs
+*_test.*
+runQuick.bat
+
+# Documentation drafts and work items
+wi*_*.md
