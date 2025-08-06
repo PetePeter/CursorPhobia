@@ -25,65 +25,80 @@ class Program
     private static ISingleInstanceManager? _singleInstanceManager;
     private static IGlobalExceptionHandler? _globalExceptionHandler;
     
+    /// <summary>
+    /// Helper method to write console output only when not in tray mode
+    /// </summary>
+    private static void SafeConsoleWriteLine(string message, bool isTrayMode = false)
+    {
+        if (!isTrayMode)
+        {
+            System.Console.WriteLine(message);
+        }
+    }
+
     static async Task Main(string[] args)
     {
-        System.Console.WriteLine("CursorPhobia Test Console - Phase A: System Tray Integration (WI#5)");
-        System.Console.WriteLine("=====================================================================");
-        System.Console.WriteLine();
-        
         // Check for automated mode (when run from batch)
         bool isAutomatedMode = args.Contains("--automated") || System.Console.IsInputRedirected;
-        
+
         // Check for tray mode (runs with system tray instead of console menu)
         bool isTrayMode = args.Contains("--tray") && !isAutomatedMode;
-        
+
+        // Only show console output if not in tray mode
+        if (!isTrayMode)
+        {
+            System.Console.WriteLine("CursorPhobia Test Console - Phase A: System Tray Integration (WI#5)");
+            System.Console.WriteLine("=====================================================================");
+            System.Console.WriteLine();
+        }
+
         try
         {
             // Phase 2 WI#8: Initialize production logging early with log4net
             var isDebugMode = args.Contains("--debug") || System.Diagnostics.Debugger.IsAttached;
             if (!LoggingConfiguration.InitializeLogging(LoggingProvider.Log4Net, isDebugMode))
             {
-                System.Console.WriteLine("Warning: Failed to initialize production logging. Using fallback logging.");
+                SafeConsoleWriteLine("Warning: Failed to initialize production logging. Using fallback logging.", isTrayMode);
             }
-            
+
             // Phase 1 WI#8: Single instance check early in startup
             if (!await CheckSingleInstanceAsync(args, isAutomatedMode))
             {
-                System.Console.WriteLine("Another instance of CursorPhobia is already running. Activation request sent.");
+                SafeConsoleWriteLine("Another instance of CursorPhobia is already running. Activation request sent.", isTrayMode);
                 return;
             }
             // Setup dependency injection and logging
             SetupServices(isAutomatedMode, isDebugMode);
-            
+
             // Get logger after services are set up
             _logger = _serviceProvider!.GetRequiredService<Logger>();
             _logger.LogInformation("Starting CursorPhobia application");
-            
+
             // Initialize ApplicationLifecycleManager for all modes
             await InitializeApplicationLifecycleAsync();
-            
+
             if (isAutomatedMode)
             {
                 System.Console.WriteLine("Running in automated mode - basic tests only");
                 await RunBasicTests();
                 return;
             }
-            
+
             if (isTrayMode)
             {
                 System.Console.WriteLine("Starting in tray mode...");
                 await RunTrayMode();
                 return;
             }
-            
+
             // Show menu options
             ShowMenu();
-            
+
             while (true)
             {
                 System.Console.Write("\nEnter your choice (1-4, q to quit): ");
                 var choice = System.Console.ReadLine()?.ToLower();
-                
+
                 switch (choice)
                 {
                     case "1":
@@ -115,27 +130,27 @@ class Program
         finally
         {
             await CleanupAsync();
-            
+
             // Phase 2 WI#8: Shutdown production logging
             LoggingConfiguration.ShutdownLogging();
-            
+
             if (!isAutomatedMode)
             {
                 System.Console.WriteLine("\nPress any key to exit...");
                 System.Console.ReadKey();
             }
-            
+
             _serviceProvider?.Dispose();
         }
     }
-    
+
     private static void SetupServices(bool isAutomatedMode = false, bool isDebugMode = false)
     {
         var services = new ServiceCollection();
-        
+
         // Phase 2 WI#8: Configure production logging services with log4net
         LoggingConfiguration.ConfigureLoggingServices(services, LoggingProvider.Log4Net, isDebugMode);
-        
+
         // Legacy logging setup for backward compatibility
         services.AddLogging(builder =>
         {
@@ -143,15 +158,15 @@ class Program
             // Use Warning level in automated mode to reduce noise
             builder.SetMinimumLevel(isAutomatedMode ? LogLevel.Warning : (isDebugMode ? LogLevel.Debug : LogLevel.Information));
         });
-        
+
         // Add our services with enhanced production logging
         services.AddSingleton<Logger>(provider =>
         {
             var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
             var productionLoggerFactory = provider.GetService<IProductionLoggerFactory>();
-            
+
             CursorPhobia.Core.Utilities.LoggerFactory.Initialize(loggerFactory);
-            
+
             // Create enhanced logger with production logging support
             if (productionLoggerFactory != null)
             {
@@ -159,17 +174,17 @@ class Program
                 var productionLogger = productionLoggerFactory.CreateLogger<Program>();
                 return new Logger(innerLogger, typeof(Program).Name, productionLogger);
             }
-            
+
             // Fallback to regular logger
             return CursorPhobia.Core.Utilities.LoggerFactory.CreateLogger<Program>();
         });
-        
+
         // Register ILogger for services that need it
         services.AddSingleton<CursorPhobia.Core.Utilities.ILogger>(provider =>
         {
             return provider.GetRequiredService<Logger>();
         });
-        
+
         // Core services
         services.AddTransient<IWindowDetectionService, WindowDetectionService>();
         services.AddTransient<IWindowManipulationService, WindowManipulationService>();
@@ -183,7 +198,7 @@ class Program
         services.AddSingleton<IMonitorManager, MonitorManager>();
         services.AddSingleton<MonitorManager>();
         services.AddSingleton<EdgeWrapHandler>();
-        
+
         // WindowPusher with error recovery integration
         services.AddTransient<IWindowPusher>(provider =>
         {
@@ -196,18 +211,18 @@ class Program
             var edgeWrapHandler = provider.GetRequiredService<EdgeWrapHandler>();
             var errorRecoveryManager = provider.GetService<IErrorRecoveryManager>();
             var trayManager = provider.GetService<ISystemTrayManager>();
-            
-            return new WindowPusher(logger, windowService, safetyManager, proximityDetector, 
+
+            return new WindowPusher(logger, windowService, safetyManager, proximityDetector,
                 windowDetectionService, monitorManager, edgeWrapHandler, null, errorRecoveryManager, trayManager);
         });
-        
+
         // Engine
         services.AddTransient<ICursorPhobiaEngine, CursorPhobiaEngine>();
-        
+
         // Configuration services (Phase B WI#5)
         services.AddSingleton<IConfigurationBackupService, ConfigurationBackupService>();
         services.AddSingleton<IConfigurationService, ConfigurationService>();
-        
+
         // Configuration file watcher (Phase 3 WI#4)
         services.AddSingleton<IConfigurationWatcherService>(provider =>
         {
@@ -216,20 +231,20 @@ class Program
             var trayManager = provider.GetService<ISystemTrayManager>(); // Optional dependency
             return new ConfigurationWatcherService(logger, configService, trayManager);
         });
-        
+
         // System tray and lifecycle management (Phase A WI#5)
         services.AddSingleton<ISystemTrayManager, SystemTrayManager>();
         services.AddSingleton<IStartupManager, StartupManager>();
         services.AddSingleton<ISnoozeManager, SnoozeManager>();
-        
+
         // Production readiness services (Phase 1 WI#8)
         services.AddSingleton<ISingleInstanceManager, SingleInstanceManager>();
         services.AddSingleton<IGlobalExceptionHandler, GlobalExceptionHandler>();
-        
+
         // Phase 3 WI#8: Error recovery and health monitoring services
         services.AddSingleton<IErrorRecoveryManager, ErrorRecoveryManager>();
         services.AddSingleton<IServiceHealthMonitor, ServiceHealthMonitor>();
-        
+
         // ApplicationLifecycleManager with health monitoring and error recovery integration
         services.AddSingleton<IApplicationLifecycleManager>(provider =>
         {
@@ -239,10 +254,10 @@ class Program
             var errorRecoveryManager = provider.GetService<IErrorRecoveryManager>();
             return new ApplicationLifecycleManager(logger, globalExceptionHandler, healthMonitor, errorRecoveryManager);
         });
-        
+
         _serviceProvider = services.BuildServiceProvider();
     }
-    
+
     /// <summary>
     /// Initializes the ApplicationLifecycleManager and registers core services for lifecycle management
     /// </summary>
@@ -252,27 +267,27 @@ class Program
         {
             // Get the lifecycle manager from DI
             _lifecycleManager = _serviceProvider!.GetRequiredService<IApplicationLifecycleManager>();
-            
+
             // Initialize the lifecycle manager
             if (!await _lifecycleManager.InitializeAsync())
             {
                 throw new Exception("Failed to initialize ApplicationLifecycleManager");
             }
-            
+
             _logger!.LogInformation("ApplicationLifecycleManager initialized successfully");
-            
+
             // Register core services for lifecycle management
             RegisterServicesForLifecycleManagement();
-            
+
             // Register single instance manager with lifecycle manager if available
             if (_singleInstanceManager != null)
             {
                 _lifecycleManager.RegisterService(_singleInstanceManager, "Single Instance Manager");
             }
-            
+
             // Setup lifecycle event handlers
             _lifecycleManager.ApplicationExitRequested += OnApplicationExitRequested;
-            
+
             _logger.LogDebug("ApplicationLifecycleManager integration completed");
         }
         catch (Exception ex)
@@ -282,7 +297,7 @@ class Program
             // Continue without proper lifecycle management rather than failing completely
         }
     }
-    
+
     /// <summary>
     /// Registers key services with the ApplicationLifecycleManager for proper disposal order
     /// </summary>
@@ -290,7 +305,7 @@ class Program
     {
         if (_lifecycleManager == null || _serviceProvider == null)
             return;
-        
+
         try
         {
             // Register services in the order they should be disposed (reverse order will be used)
@@ -300,21 +315,21 @@ class Program
             {
                 _lifecycleManager.RegisterService(globalExceptionHandler, "Global Exception Handler");
             }
-            
+
             // Service health monitor
             var healthMonitor = _serviceProvider.GetService<IServiceHealthMonitor>();
             if (healthMonitor != null)
             {
                 _lifecycleManager.RegisterService(healthMonitor, "Service Health Monitor");
             }
-            
+
             // Error recovery manager
             var errorRecoveryManager = _serviceProvider.GetService<IErrorRecoveryManager>();
             if (errorRecoveryManager != null)
             {
                 _lifecycleManager.RegisterService(errorRecoveryManager, "Error Recovery Manager");
             }
-            
+
             _logger?.LogDebug("Core services registered with ApplicationLifecycleManager");
         }
         catch (Exception ex)
@@ -322,7 +337,7 @@ class Program
             _logger?.LogWarning(ex, "Error registering services with ApplicationLifecycleManager");
         }
     }
-    
+
     private static void ShowMenu()
     {
         System.Console.WriteLine("Available Tests:");
@@ -336,51 +351,51 @@ class Program
         System.Console.WriteLine("      Use CTRL key to temporarily disable, or press any key to stop.");
         System.Console.WriteLine("      Option 4 runs with system tray icon and context menu.");
     }
-    
+
     private static async Task RunBasicTests()
     {
         System.Console.WriteLine("\nRunning Basic Functionality Tests...\n");
-        
+
         var windowDetectionService = _serviceProvider!.GetRequiredService<IWindowDetectionService>();
         var windowManipulationService = _serviceProvider!.GetRequiredService<IWindowManipulationService>();
-        
+
         // Test 1: Enumerate visible windows
         await TestEnumerateVisibleWindows(windowDetectionService);
-        
+
         // Test 2: Check for topmost windows
         await TestTopmostWindowDetection(windowDetectionService);
-        
+
         // Test 3: Test window information retrieval
         await TestWindowInformationRetrieval(windowDetectionService);
-        
+
         // Test 4: Test window bounds retrieval
         await TestWindowBoundsRetrieval(windowManipulationService, windowDetectionService);
-        
+
         // Test 5: Test window visibility check
         await TestWindowVisibilityCheck(windowManipulationService, windowDetectionService);
-        
+
         System.Console.WriteLine("\nAll basic functionality tests completed!");
     }
-    
+
     private static async Task RunEngineDemo()
     {
         System.Console.WriteLine("\nStarting CursorPhobia Engine Demo...\n");
         System.Console.WriteLine("⚠️  WARNING: This will actively push always-on-top windows away from your cursor!");
         System.Console.WriteLine("    Hold CTRL to temporarily disable pushing.");
         System.Console.WriteLine("    Press any key to stop the demo.\n");
-        
+
         System.Console.Write("Press ENTER to start, or any other key to cancel: ");
         var key = System.Console.ReadKey();
         System.Console.WriteLine();
-        
+
         if (key.Key != ConsoleKey.Enter)
         {
             System.Console.WriteLine("Demo cancelled.");
             return;
         }
-        
+
         var engine = _serviceProvider!.GetRequiredService<ICursorPhobiaEngine>();
-        
+
         // Configure engine for demo (more responsive settings)
         var config = new CursorPhobiaConfiguration
         {
@@ -394,7 +409,7 @@ class Program
             AnimationDurationMs = 300,  // Slightly longer animation for visibility
             AnimationEasing = AnimationEasing.EaseOut
         };
-        
+
         // Create engine with demo configuration
         var demoEngine = new CursorPhobiaEngine(
             _serviceProvider!.GetRequiredService<Logger>(),
@@ -405,17 +420,17 @@ class Program
             _serviceProvider!.GetRequiredService<ISafetyManager>(),
             _serviceProvider!.GetRequiredService<IMonitorManager>(),
             config);
-        
+
         // Subscribe to events for live feedback
         demoEngine.WindowPushed += (sender, args) =>
         {
             System.Console.WriteLine($"🚀 Pushed window: '{args.WindowInfo.Title}' (distance: {args.PushDistance}px)");
         };
-        
+
         try
         {
             System.Console.WriteLine("Starting engine...\n");
-            
+
             if (await demoEngine.StartAsync())
             {
                 System.Console.WriteLine($"✅ Engine started! Tracking {demoEngine.TrackedWindowCount} windows");
@@ -423,7 +438,7 @@ class Program
                 System.Console.WriteLine("🔧 Hold CTRL to temporarily disable pushing");
                 System.Console.WriteLine("⏰ Hover over a window for 3+ seconds to stop pushing that window");
                 System.Console.WriteLine("\nPress any key to stop...\n");
-                
+
                 // Wait for user input while showing live stats
                 var statsTask = Task.Run(async () =>
                 {
@@ -434,7 +449,7 @@ class Program
                         await Task.Delay(1000);
                     }
                 });
-                
+
                 System.Console.ReadKey(true);  // Wait for any key
                 System.Console.WriteLine("\n\nStopping engine...");
             }
@@ -454,13 +469,13 @@ class Program
             System.Console.WriteLine("✅ Engine stopped and disposed");
         }
     }
-    
+
     private static async Task RunPerformanceTests()
     {
         System.Console.WriteLine("\nRunning Performance Tests...\n");
-        
+
         var engine = _serviceProvider!.GetRequiredService<ICursorPhobiaEngine>();
-        
+
         // Test different update intervals
         var testConfigs = new[]
         {
@@ -468,11 +483,11 @@ class Program
             new { Name = "Balanced (16ms, ~60fps)", Config = CursorPhobiaConfiguration.CreateDefault() },
             new { Name = "Power Saving (33ms, ~30fps)", Config = CursorPhobiaConfiguration.CreatePerformanceOptimized() }
         };
-        
+
         foreach (var test in testConfigs)
         {
             System.Console.WriteLine($"Testing: {test.Name}");
-            
+
             var testEngine = new CursorPhobiaEngine(
                 _serviceProvider!.GetRequiredService<Logger>(),
                 _serviceProvider!.GetRequiredService<ICursorTracker>(),
@@ -482,14 +497,14 @@ class Program
                 _serviceProvider!.GetRequiredService<ISafetyManager>(),
                 _serviceProvider!.GetRequiredService<IMonitorManager>(),
                 test.Config);
-            
+
             try
             {
                 if (await testEngine.StartAsync())
                 {
                     // Run for 5 seconds
                     await Task.Delay(5000);
-                    
+
                     var stats = testEngine.GetPerformanceStats();
                     System.Console.WriteLine($"  Results: {stats.UpdateCount} updates in 5s");
                     System.Console.WriteLine($"  Average: {stats.AverageUpdateTimeMs:F2}ms per update");
@@ -504,76 +519,76 @@ class Program
                 testEngine.Dispose();
             }
         }
-        
+
         System.Console.WriteLine("Performance tests completed!");
     }
-    
+
     private static async Task TestEnumerateVisibleWindows(IWindowDetectionService detectionService)
     {
         System.Console.WriteLine("Test 1: Enumerating visible windows...");
-        
+
         try
         {
             var windows = detectionService.EnumerateVisibleWindows();
-            
+
             System.Console.WriteLine($"Found {windows.Count} visible windows:");
-            
+
             var displayCount = Math.Min(10, windows.Count);
             for (int i = 0; i < displayCount; i++)
             {
                 var window = windows[i];
                 System.Console.WriteLine($"  {i + 1}. '{window.Title}' ({window.ClassName}) - {window.Bounds}");
             }
-            
+
             if (windows.Count > 10)
             {
                 System.Console.WriteLine($"  ... and {windows.Count - 10} more windows");
             }
-            
+
             System.Console.WriteLine("✓ Window enumeration test passed\n");
         }
         catch (Exception ex)
         {
             System.Console.WriteLine($"✗ Window enumeration test failed: {ex.Message}\n");
         }
-        
+
         await Task.Delay(1000);
     }
-    
+
     private static async Task TestTopmostWindowDetection(IWindowDetectionService detectionService)
     {
         System.Console.WriteLine("Test 2: Detecting topmost windows...");
-        
+
         try
         {
             var topmostWindows = detectionService.GetAllTopMostWindows();
-            
+
             System.Console.WriteLine($"Found {topmostWindows.Count} topmost windows:");
-            
+
             foreach (var window in topmostWindows.Take(5))
             {
                 System.Console.WriteLine($"  - '{window.Title}' ({window.ClassName})");
             }
-            
+
             if (topmostWindows.Count > 5)
             {
                 System.Console.WriteLine($"  ... and {topmostWindows.Count - 5} more topmost windows");
             }
-            
+
             System.Console.WriteLine("✓ Topmost window detection test passed\n");
         }
         catch (Exception ex)
         {
             System.Console.WriteLine($"✗ Topmost window detection test failed: {ex.Message}\n");
         }
-        
+
         await Task.Delay(1000);
     }
-    
+
     private static async Task TestWindowInformationRetrieval(IWindowDetectionService detectionService)
     {
         System.Console.WriteLine("Test 3: Testing window information retrieval...");
-        
+
         try
         {
             var windows = detectionService.EnumerateVisibleWindows();
@@ -581,7 +596,7 @@ class Program
             {
                 var testWindow = windows.First();
                 var windowInfo = detectionService.GetWindowInformation(testWindow.WindowHandle);
-                
+
                 if (windowInfo != null)
                 {
                     System.Console.WriteLine("Sample window information:");
@@ -594,7 +609,7 @@ class Program
                     System.Console.WriteLine($"  Visible: {windowInfo.IsVisible}");
                     System.Console.WriteLine($"  Topmost: {windowInfo.IsTopmost}");
                     System.Console.WriteLine($"  Minimized: {windowInfo.IsMinimized}");
-                    
+
                     System.Console.WriteLine("✓ Window information retrieval test passed\n");
                 }
                 else
@@ -611,14 +626,14 @@ class Program
         {
             System.Console.WriteLine($"✗ Window information retrieval test failed: {ex.Message}\n");
         }
-        
+
         await Task.Delay(1000);
     }
-    
+
     private static async Task TestWindowBoundsRetrieval(IWindowManipulationService manipulationService, IWindowDetectionService detectionService)
     {
         System.Console.WriteLine("Test 4: Testing window bounds retrieval...");
-        
+
         try
         {
             var windows = detectionService.EnumerateVisibleWindows();
@@ -626,12 +641,12 @@ class Program
             {
                 var testWindow = windows.First();
                 var bounds = manipulationService.GetWindowBounds(testWindow.WindowHandle);
-                
+
                 System.Console.WriteLine($"Window bounds for '{testWindow.Title}':");
                 System.Console.WriteLine($"  Position: ({bounds.X}, {bounds.Y})");
                 System.Console.WriteLine($"  Size: {bounds.Width} x {bounds.Height}");
                 System.Console.WriteLine($"  Area: {bounds.Width * bounds.Height} pixels");
-                
+
                 System.Console.WriteLine("✓ Window bounds retrieval test passed\n");
             }
             else
@@ -643,14 +658,14 @@ class Program
         {
             System.Console.WriteLine($"✗ Window bounds retrieval test failed: {ex.Message}\n");
         }
-        
+
         await Task.Delay(1000);
     }
-    
+
     private static async Task TestWindowVisibilityCheck(IWindowManipulationService manipulationService, IWindowDetectionService detectionService)
     {
         System.Console.WriteLine("Test 5: Testing window visibility checks...");
-        
+
         try
         {
             var windows = detectionService.EnumerateVisibleWindows();
@@ -658,18 +673,18 @@ class Program
             {
                 var visibleCount = 0;
                 var testCount = Math.Min(5, windows.Count);
-                
+
                 for (int i = 0; i < testCount; i++)
                 {
                     var window = windows[i];
                     var isVisible = manipulationService.IsWindowVisible(window.WindowHandle);
                     if (isVisible) visibleCount++;
                 }
-                
+
                 System.Console.WriteLine($"Tested {testCount} windows:");
                 System.Console.WriteLine($"  {visibleCount} are visible");
                 System.Console.WriteLine($"  {testCount - visibleCount} are not visible");
-                
+
                 System.Console.WriteLine("✓ Window visibility check test passed\n");
             }
             else
@@ -681,42 +696,42 @@ class Program
         {
             System.Console.WriteLine($"✗ Window visibility check test failed: {ex.Message}\n");
         }
-        
+
         await Task.Delay(1000);
     }
-    
+
     private static async Task RunTrayDemo()
     {
         System.Console.WriteLine("\nStarting System Tray Demo (Phase A WI#5)...\n");
         System.Console.WriteLine("⚠️  WARNING: This will show a system tray icon and actively push windows!");
         System.Console.WriteLine("    Use the tray context menu to control the engine.");
         System.Console.WriteLine("    Press any key to stop the demo.\n");
-        
+
         System.Console.Write("Press ENTER to start, or any other key to cancel: ");
         var key = System.Console.ReadKey();
         System.Console.WriteLine();
-        
+
         if (key.Key != ConsoleKey.Enter)
         {
             System.Console.WriteLine("Demo cancelled.");
             return;
         }
-        
+
         // Initialize tray and lifecycle managers
         _trayManager = _serviceProvider!.GetRequiredService<ISystemTrayManager>();
         _lifecycleManager = _serviceProvider!.GetRequiredService<IApplicationLifecycleManager>();
         _engine = _serviceProvider!.GetRequiredService<ICursorPhobiaEngine>();
         _configWatcher = _serviceProvider!.GetRequiredService<IConfigurationWatcherService>();
-        
+
         try
         {
             await SetupTrayIntegration();
-            
+
             System.Console.WriteLine("✅ System tray demo started!");
             System.Console.WriteLine("📍 Check your system tray for the CursorPhobia icon");
             System.Console.WriteLine("🔧 Right-click the tray icon to control the engine");
             System.Console.WriteLine("\nPress any key to stop the demo...\n");
-            
+
             System.Console.ReadKey(true);
             System.Console.WriteLine("\nStopping tray demo...");
         }
@@ -730,7 +745,7 @@ class Program
             System.Console.WriteLine("✅ Tray demo stopped");
         }
     }
-    
+
     private static async Task RunTrayMode()
     {
         try
@@ -738,7 +753,7 @@ class Program
             // Initialize application with Windows Forms
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            
+
             // Initialize services
             _trayManager = _serviceProvider!.GetRequiredService<ISystemTrayManager>();
             _lifecycleManager = _serviceProvider!.GetRequiredService<IApplicationLifecycleManager>();
@@ -746,29 +761,29 @@ class Program
             _snoozeManager = _serviceProvider!.GetRequiredService<ISnoozeManager>();
             _engine = _serviceProvider!.GetRequiredService<ICursorPhobiaEngine>();
             _configWatcher = _serviceProvider!.GetRequiredService<IConfigurationWatcherService>();
-            
+
             await SetupTrayIntegration();
-            
+
             _logger!.LogInformation("CursorPhobia started in tray mode");
-            System.Console.WriteLine("✅ CursorPhobia is now running in the system tray");
-            System.Console.WriteLine("Right-click the tray icon to control the application");
-            
+            // No console output needed in tray mode - app runs silently in background
+
             // Run the Windows Forms message loop
             Application.Run();
-            
+
             _logger.LogInformation("Application message loop ended");
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Error in tray mode");
-            System.Console.WriteLine($"❌ Tray mode error: {ex.Message}");
+            // In tray mode, show error as a message box instead of console
+            MessageBox.Show($"CursorPhobia Error: {ex.Message}", "CursorPhobia", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
         finally
         {
             await CleanupTrayIntegration();
         }
     }
-    
+
     private static async Task SetupTrayIntegration()
     {
         // Lifecycle manager is already initialized in main startup flow
@@ -777,20 +792,20 @@ class Program
         {
             throw new Exception("ApplicationLifecycleManager not initialized - should be initialized during startup");
         }
-        
+
         // Register additional services for lifecycle management
         if (_engine is IDisposable disposableEngine)
         {
             _lifecycleManager.RegisterService(disposableEngine, "CursorPhobia Engine");
         }
         _lifecycleManager.RegisterService(_trayManager!, "System Tray Manager");
-        
+
         // Initialize tray manager
         if (!await _trayManager!.InitializeAsync())
         {
             throw new Exception("Failed to initialize tray manager");
         }
-        
+
         // Setup tray event handlers
         _trayManager.ToggleEngineRequested += OnTrayToggleEngineRequested;
         _trayManager.SnoozeRequested += OnTraySnoozeRequested;
@@ -800,22 +815,22 @@ class Program
         _trayManager.PerformanceStatsRequested += OnTrayPerformanceStatsRequested;
         _trayManager.AboutRequested += OnTrayAboutRequested;
         _trayManager.ExitRequested += OnTrayExitRequested;
-        
+
         // Setup engine event handlers for tray notifications
         _engine!.EngineStateChanged += OnEngineStateChanged;
         _engine.PerformanceIssueDetected += OnEnginePerformanceIssue;
         _engine.WindowPushed += OnEngineWindowPushed;
-        
+
         // Lifecycle event handlers are already setup in main initialization
-        
+
         // Setup configuration file watcher for live reloading (Phase 3 WI#4)
         await SetupConfigurationWatcher();
-        
+
         // Start with engine disabled
         await _trayManager.UpdateStateAsync(TrayIconState.Disabled);
         await _trayManager.UpdateMenuStateAsync(false);
     }
-    
+
     private static async Task CleanupTrayIntegration()
     {
         try
@@ -826,12 +841,12 @@ class Program
                 {
                     await _engine.StopAsync();
                 }
-                
+
                 _engine.EngineStateChanged -= OnEngineStateChanged;
                 _engine.PerformanceIssueDetected -= OnEnginePerformanceIssue;
                 _engine.WindowPushed -= OnEngineWindowPushed;
             }
-            
+
             // Cleanup configuration watcher
             if (_configWatcher != null)
             {
@@ -839,7 +854,7 @@ class Program
                 _configWatcher.ConfigurationFileChanged -= OnConfigurationFileChanged;
                 _configWatcher.ConfigurationFileChangeFailed -= OnConfigurationFileChangeFailed;
             }
-            
+
             if (_trayManager != null)
             {
                 _trayManager.ToggleEngineRequested -= OnTrayToggleEngineRequested;
@@ -850,10 +865,10 @@ class Program
                 _trayManager.PerformanceStatsRequested -= OnTrayPerformanceStatsRequested;
                 _trayManager.AboutRequested -= OnTrayAboutRequested;
                 _trayManager.ExitRequested -= OnTrayExitRequested;
-                
+
                 await _trayManager.HideAsync();
             }
-            
+
             // Lifecycle manager cleanup is handled globally in CleanupAsync()
             // Don't cleanup lifecycle manager here to avoid double cleanup
         }
@@ -862,29 +877,29 @@ class Program
             _logger?.LogError(ex, "Error during tray integration cleanup");
         }
     }
-    
+
     private static async Task SetupConfigurationWatcher()
     {
         try
         {
             if (_configWatcher == null)
                 return;
-            
+
             // Get the default configuration path
             var configService = _serviceProvider!.GetRequiredService<IConfigurationService>();
             var configPath = await configService.GetDefaultConfigurationPathAsync();
-            
+
             // Setup event handlers for configuration changes
             _configWatcher.ConfigurationFileChanged += OnConfigurationFileChanged;
             _configWatcher.ConfigurationFileChangeFailed += OnConfigurationFileChangeFailed;
-            
+
             // Start watching the configuration file
             var success = await _configWatcher.StartWatchingAsync(configPath, 500);
-            
+
             if (success)
             {
                 _logger?.LogInformation("Configuration file watcher started: {Path}", configPath);
-                await _trayManager?.ShowNotificationAsync("CursorPhobia", 
+                await _trayManager?.ShowNotificationAsync("CursorPhobia",
                     "Live configuration reloading enabled", false)!;
             }
             else
@@ -897,23 +912,23 @@ class Program
             _logger?.LogError(ex, "Error setting up configuration file watcher");
         }
     }
-    
+
     // Configuration watcher event handlers
     private static async void OnConfigurationFileChanged(object? sender, ConfigurationFileChangedEventArgs e)
     {
         try
         {
             _logger?.LogInformation("Configuration file changed, applying hot-swap: {Path}", e.FilePath);
-            
+
             if (_engine != null)
             {
                 // Use the engine's hot-swap capability to apply the new configuration
                 var updateResult = await _engine.UpdateConfigurationAsync(e.Configuration);
-                
+
                 if (updateResult.Success)
                 {
                     _logger?.LogInformation("Configuration hot-swap successful: {Summary}", updateResult.GetSummary());
-                    
+
                     // Show success notification
                     await _trayManager?.ShowNotificationAsync("CursorPhobia Configuration",
                         "Configuration reloaded and applied successfully", false)!;
@@ -921,7 +936,7 @@ class Program
                 else
                 {
                     _logger?.LogWarning("Configuration hot-swap failed: {Error}", updateResult.ErrorMessage ?? "Unknown error");
-                    
+
                     // Show failure notification
                     await _trayManager?.ShowNotificationAsync("CursorPhobia Configuration",
                         $"Configuration reload failed: {updateResult.ErrorMessage}", true)!;
@@ -935,18 +950,18 @@ class Program
                 $"Error applying configuration: {ex.Message}", true)!;
         }
     }
-    
+
     private static async void OnConfigurationFileChangeFailed(object? sender, ConfigurationFileChangeFailedEventArgs e)
     {
-        _logger?.LogWarning("Configuration file change failed: {Path} - {Reason} - {Exception}", 
+        _logger?.LogWarning("Configuration file change failed: {Path} - {Reason} - {Exception}",
             e.FilePath, e.FailureReason, e.Exception.Message);
-        
+
         // The ConfigurationWatcherService already shows tray notifications for failures,
         // but we can add additional logging or handling here if needed
-        
+
         await Task.CompletedTask;
     }
-    
+
     // Tray event handlers
     private static async void OnTrayToggleEngineRequested(object? sender, EventArgs e)
     {
@@ -968,7 +983,7 @@ class Program
                     await _trayManager!.ShowNotificationAsync("CursorPhobia", "Failed to start engine", true);
                 }
             }
-            
+
             await _trayManager.UpdateMenuStateAsync(_engine.IsRunning);
         }
         catch (Exception ex)
@@ -977,25 +992,25 @@ class Program
             await _trayManager!.ShowNotificationAsync("CursorPhobia", $"Error: {ex.Message}", true);
         }
     }
-    
+
     private static void OnTraySettingsRequested(object? sender, EventArgs e)
     {
         try
         {
             _logger?.LogInformation("Opening settings dialog from tray");
-            
+
             // Create and show settings form
             using var settingsForm = new CursorPhobia.Core.UI.Forms.SettingsForm(
                 _serviceProvider!.GetRequiredService<IConfigurationService>(),
                 _engine!,
                 _logger!);
-            
+
             var result = settingsForm.ShowDialog();
-            
+
             if (result == DialogResult.OK)
             {
                 _logger?.LogInformation("Settings saved successfully");
-                _trayManager?.ShowNotificationAsync("CursorPhobia", 
+                _trayManager?.ShowNotificationAsync("CursorPhobia",
                     "Settings saved successfully", false);
             }
             else
@@ -1006,22 +1021,22 @@ class Program
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Error opening settings dialog");
-            _trayManager?.ShowNotificationAsync("CursorPhobia", 
+            _trayManager?.ShowNotificationAsync("CursorPhobia",
                 "Error opening settings: " + ex.Message, true);
         }
     }
-    
+
     private static void OnTrayAboutRequested(object? sender, EventArgs e)
     {
         var message = "CursorPhobia v1.0 (Phase A)\nSystem Tray Integration\n\nPushes windows away from cursor";
         MessageBox.Show(message, "About CursorPhobia", MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
-    
+
     private static async void OnTrayExitRequested(object? sender, EventArgs e)
     {
         _logger?.LogInformation("Exit requested from tray");
         await _lifecycleManager!.ShutdownAsync();
-        
+
         // Exit the application message loop if running in tray mode
         if (Application.MessageLoop)
         {
@@ -1034,18 +1049,18 @@ class Program
         try
         {
             _logger?.LogInformation("Snooze requested from tray: {Duration}", e.Duration);
-            
+
             if (_snoozeManager != null)
             {
                 await _snoozeManager.SnoozeAsync(e.Duration);
-                await _trayManager!.ShowNotificationAsync("CursorPhobia", 
+                await _trayManager!.ShowNotificationAsync("CursorPhobia",
                     $"Snoozed for {FormatTimeSpan(e.Duration)}", false);
             }
         }
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Error processing snooze request");
-            await _trayManager!.ShowNotificationAsync("CursorPhobia", 
+            await _trayManager!.ShowNotificationAsync("CursorPhobia",
                 $"Snooze error: {ex.Message}", true);
         }
     }
@@ -1055,7 +1070,7 @@ class Program
         try
         {
             _logger?.LogInformation("Custom snooze requested from tray");
-            
+
             // Show a custom snooze dialog
             using var snoozeForm = new CustomSnoozeDialog();
             if (snoozeForm.ShowDialog() == DialogResult.OK)
@@ -1063,7 +1078,7 @@ class Program
                 Task.Run(async () =>
                 {
                     await _snoozeManager!.SnoozeAsync(snoozeForm.SelectedDuration);
-                    await _trayManager!.ShowNotificationAsync("CursorPhobia", 
+                    await _trayManager!.ShowNotificationAsync("CursorPhobia",
                         $"Snoozed for {FormatTimeSpan(snoozeForm.SelectedDuration)}", false);
                 });
             }
@@ -1071,7 +1086,7 @@ class Program
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Error showing custom snooze dialog");
-            Task.Run(async () => await _trayManager!.ShowNotificationAsync("CursorPhobia", 
+            Task.Run(async () => await _trayManager!.ShowNotificationAsync("CursorPhobia",
                 $"Custom snooze error: {ex.Message}", true));
         }
     }
@@ -1081,7 +1096,7 @@ class Program
         try
         {
             _logger?.LogInformation("End snooze requested from tray");
-            
+
             if (_snoozeManager != null)
             {
                 await _snoozeManager.EndSnoozeAsync();
@@ -1091,7 +1106,7 @@ class Program
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Error ending snooze");
-            await _trayManager!.ShowNotificationAsync("CursorPhobia", 
+            await _trayManager!.ShowNotificationAsync("CursorPhobia",
                 $"End snooze error: {ex.Message}", true);
         }
     }
@@ -1101,7 +1116,7 @@ class Program
         try
         {
             _logger?.LogInformation("Performance stats requested from tray");
-            
+
             // Show performance statistics dialog
             using var statsForm = new PerformanceStatsDialog(_engine!, _logger!);
             statsForm.ShowDialog();
@@ -1109,11 +1124,11 @@ class Program
         catch (Exception ex)
         {
             _logger?.LogError(ex, "Error showing performance stats");
-            Task.Run(async () => await _trayManager!.ShowNotificationAsync("CursorPhobia", 
+            Task.Run(async () => await _trayManager!.ShowNotificationAsync("CursorPhobia",
                 $"Stats error: {ex.Message}", true));
         }
     }
-    
+
     // Engine event handlers for tray notifications
     private static async void OnEngineStateChanged(object? sender, EngineStateChangedEventArgs e)
     {
@@ -1126,10 +1141,10 @@ class Program
                 EngineState.Error => TrayIconState.Error,
                 _ => TrayIconState.Disabled
             };
-            
+
             var tooltip = e.Message ?? $"CursorPhobia - {e.State}";
             await _trayManager!.UpdateStateAsync(trayState, tooltip);
-            
+
             _logger?.LogDebug("Tray state updated: {State} - {Message}", e.State, e.Message ?? "No message");
         }
         catch (Exception ex)
@@ -1137,15 +1152,15 @@ class Program
             _logger?.LogError(ex, "Error updating tray state");
         }
     }
-    
+
     private static async void OnEnginePerformanceIssue(object? sender, EnginePerformanceEventArgs e)
     {
         try
         {
-            await _trayManager!.UpdateStateAsync(TrayIconState.Warning, 
+            await _trayManager!.UpdateStateAsync(TrayIconState.Warning,
                 $"CursorPhobia - Performance Warning: {e.IssueType}");
-            
-            _logger?.LogWarning("Performance issue detected: {IssueType} - {Description}", 
+
+            _logger?.LogWarning("Performance issue detected: {IssueType} - {Description}",
                 e.IssueType, e.Description);
         }
         catch (Exception ex)
@@ -1153,17 +1168,17 @@ class Program
             _logger?.LogError(ex, "Error handling performance issue");
         }
     }
-    
+
     private static void OnEngineWindowPushed(object? sender, WindowPushEventArgs e)
     {
         // Optional: Could show brief notifications or update statistics
         _logger?.LogDebug("Window pushed: {Title}", e.WindowInfo.Title);
     }
-    
+
     private static void OnApplicationExitRequested(object? sender, EventArgs e)
     {
         _logger?.LogInformation("Application exit requested by lifecycle manager");
-        
+
         // Exit the application message loop if running
         if (Application.MessageLoop)
         {
@@ -1185,7 +1200,7 @@ class Program
         else
             return $"{timeSpan.Seconds}s";
     }
-    
+
     /// <summary>
     /// Phase 1 WI#8: Checks for single instance and handles activation
     /// </summary>
@@ -1199,22 +1214,22 @@ class Program
                 builder.AddConsole();
                 builder.SetMinimumLevel(isAutomatedMode ? LogLevel.Warning : LogLevel.Debug);
             });
-            
+
             var logger = new CursorPhobia.Core.Utilities.Logger(loggerFactory.CreateLogger<Program>(), nameof(Program));
-            
+
             // Create single instance manager without DI to avoid disposal issues
             _singleInstanceManager = new SingleInstanceManager(logger);
-            
+
             // Try to acquire the single instance lock
             bool isOwner = await _singleInstanceManager.TryAcquireLockAsync();
-            
+
             if (!isOwner)
             {
                 // Another instance is running, send activation request
                 await _singleInstanceManager.SendActivationRequestAsync(args);
                 return false;
             }
-            
+
             // We are the primary instance, initialize the manager
             if (!await _singleInstanceManager.InitializeAsync())
             {
@@ -1226,7 +1241,7 @@ class Program
                 _singleInstanceManager.InstanceActivationRequested += OnInstanceActivationRequested;
                 System.Console.WriteLine("Single instance manager initialized - this is the primary instance");
             }
-            
+
             return true;
         }
         catch (Exception ex)
@@ -1236,7 +1251,7 @@ class Program
             return true;
         }
     }
-    
+
     /// <summary>
     /// Handles activation requests from other instances
     /// </summary>
@@ -1245,7 +1260,7 @@ class Program
         try
         {
             _logger?.LogInformation("Received activation request from another instance with {ArgCount} arguments", e.Arguments.Length);
-            
+
             // Bring the main window to front if in tray mode
             if (_trayManager != null && Application.MessageLoop)
             {
@@ -1253,7 +1268,7 @@ class Program
                 // For now, just show a notification
                 Task.Run(async () =>
                 {
-                    await _trayManager.ShowNotificationAsync("CursorPhobia", 
+                    await _trayManager.ShowNotificationAsync("CursorPhobia",
                         "Another instance attempted to start", false);
                 });
             }
@@ -1267,7 +1282,7 @@ class Program
             _logger?.LogError(ex, "Error handling instance activation request");
         }
     }
-    
+
     /// <summary>
     /// Cleanup method using ApplicationLifecycleManager for proper service disposal
     /// </summary>
@@ -1280,32 +1295,32 @@ class Program
             {
                 _singleInstanceManager.InstanceActivationRequested -= OnInstanceActivationRequested;
             }
-            
+
             // Use ApplicationLifecycleManager for graceful shutdown if available
             if (_lifecycleManager != null)
             {
                 _logger?.LogInformation("Initiating graceful shutdown through ApplicationLifecycleManager");
-                
+
                 // Remove lifecycle event handler to prevent recursion
                 _lifecycleManager.ApplicationExitRequested -= OnApplicationExitRequested;
-                
+
                 // Shutdown all registered services through lifecycle manager
                 await _lifecycleManager.ShutdownAsync(0);
-                
+
                 _logger?.LogInformation("ApplicationLifecycleManager shutdown completed");
             }
             else
             {
                 // Fallback to manual cleanup if lifecycle manager isn't available
                 _logger?.LogWarning("ApplicationLifecycleManager not available, performing manual cleanup");
-                
+
                 if (_singleInstanceManager != null)
                 {
                     await _singleInstanceManager.ShutdownAsync();
                     _singleInstanceManager.Dispose();
                     _singleInstanceManager = null;
                 }
-                
+
                 if (_globalExceptionHandler != null)
                 {
                     await _globalExceptionHandler.ShutdownAsync();
@@ -1369,7 +1384,8 @@ public class CustomSnoozeDialog : Form
             DialogResult = DialogResult.Cancel
         };
 
-        okButton.Click += (s, e) => {
+        okButton.Click += (s, e) =>
+        {
             SelectedDuration = TimeSpan.FromMinutes((double)numericUpDown.Value);
         };
 
@@ -1406,12 +1422,12 @@ public class PerformanceStatsDialog : Form
         stats.AppendLine($"Tracked Windows: {engine.TrackedWindowCount}");
         stats.AppendLine($"Average Update Time: {engine.AverageUpdateTimeMs:F2} ms");
         stats.AppendLine();
-        
+
         var performanceStats = engine.GetPerformanceStats();
         stats.AppendLine($"Total Updates: {performanceStats.TotalUpdates}");
         stats.AppendLine($"Successful Updates: {performanceStats.SuccessfulUpdates}");
         stats.AppendLine($"Failed Updates: {performanceStats.FailedUpdates}");
-        stats.AppendLine($"Success Rate: {(performanceStats.TotalUpdates > 0 ? (performanceStats.SuccessfulUpdates * 100.0 / performanceStats.TotalUpdates):0):F1}%");
+        stats.AppendLine($"Success Rate: {(performanceStats.TotalUpdates > 0 ? (performanceStats.SuccessfulUpdates * 100.0 / performanceStats.TotalUpdates) : 0):F1}%");
         stats.AppendLine();
         stats.AppendLine($"Memory Usage: {GC.GetTotalMemory(false) / 1024 / 1024:F1} MB");
         stats.AppendLine($"Generation 0 Collections: {GC.CollectionCount(0)}");

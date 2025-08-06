@@ -23,7 +23,7 @@ public class SystemTrayManager : ISystemTrayManager
     private ToolStripMenuItem? _toggleMenuItem;
     private bool _disposed = false;
     private TrayIconState _currentState = TrayIconState.Disabled;
-    
+
     /// <summary>
     /// Event raised when the user requests to toggle enable/disable from the tray menu
     /// </summary>
@@ -32,32 +32,32 @@ public class SystemTrayManager : ISystemTrayManager
     public event EventHandler? CustomSnoozeRequested;
     public event EventHandler? EndSnoozeRequested;
     public event EventHandler? PerformanceStatsRequested;
-    
+
     /// <summary>
     /// Event raised when the user requests to open settings from the tray menu
     /// </summary>
     public event EventHandler? SettingsRequested;
-    
+
     /// <summary>
     /// Event raised when the user requests to view about information from the tray menu
     /// </summary>
     public event EventHandler? AboutRequested;
-    
+
     /// <summary>
     /// Event raised when the user requests to exit the application from the tray menu
     /// </summary>
     public event EventHandler? ExitRequested;
-    
+
     /// <summary>
     /// Gets whether the tray manager is currently initialized and visible
     /// </summary>
     public bool IsInitialized => _notifyIcon != null && _notifyIcon.Visible;
-    
+
     /// <summary>
     /// Gets the current tray icon state
     /// </summary>
     public TrayIconState CurrentState => _currentState;
-    
+
     /// <summary>
     /// Executes an action on the UI thread safely
     /// </summary>
@@ -65,11 +65,11 @@ public class SystemTrayManager : ISystemTrayManager
     private void InvokeOnUIThread(Action action)
     {
         if (action == null) return;
-        
+
         // If we have a synchronization context and we're not already on the UI thread
         if (_synchronizationContext != null && SynchronizationContext.Current != _synchronizationContext)
         {
-            _synchronizationContext.Post(_ => 
+            _synchronizationContext.Post(_ =>
             {
                 try
                 {
@@ -87,7 +87,7 @@ public class SystemTrayManager : ISystemTrayManager
             action();
         }
     }
-    
+
     /// <summary>
     /// Creates a new SystemTrayManager instance
     /// </summary>
@@ -97,7 +97,7 @@ public class SystemTrayManager : ISystemTrayManager
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _synchronizationContext = SynchronizationContext.Current;
     }
-    
+
     /// <summary>
     /// Initializes the system tray icon and context menu
     /// </summary>
@@ -109,20 +109,20 @@ public class SystemTrayManager : ISystemTrayManager
             _logger.LogWarning("Cannot initialize disposed SystemTrayManager");
             return false;
         }
-        
+
         if (IsInitialized)
         {
             _logger.LogDebug("SystemTrayManager is already initialized");
             return true;
         }
-        
+
         try
         {
             _logger.LogInformation("Initializing system tray manager...");
-            
+
             // Create the context menu
             CreateContextMenu();
-            
+
             // Create the notify icon
             _notifyIcon = new NotifyIcon
             {
@@ -130,10 +130,10 @@ public class SystemTrayManager : ISystemTrayManager
                 Text = "CursorPhobia - Disabled",
                 Visible = true
             };
-            
+
             // Set initial icon state
             await UpdateStateAsync(TrayIconState.Disabled);
-            
+
             _logger.LogInformation("System tray manager initialized successfully");
             return true;
         }
@@ -143,7 +143,7 @@ public class SystemTrayManager : ISystemTrayManager
             return false;
         }
     }
-    
+
     /// <summary>
     /// Updates the tray icon state and tooltip
     /// </summary>
@@ -156,13 +156,13 @@ public class SystemTrayManager : ISystemTrayManager
             _logger.LogWarning("Cannot update state of disposed or uninitialized SystemTrayManager");
             return Task.CompletedTask;
         }
-        
+
         // Validate inputs
         if (tooltipText != null && string.IsNullOrWhiteSpace(tooltipText))
         {
             tooltipText = null;
         }
-        
+
         // Execute UI update on the UI thread
         InvokeOnUIThread(() =>
         {
@@ -186,7 +186,7 @@ public class SystemTrayManager : ISystemTrayManager
                 {
                     finalTooltip = GetDefaultTooltipForState(state);
                 }
-                
+
                 _notifyIcon.Text = finalTooltip;
 
                 _logger.LogDebug("Tray icon updated to state: {State}", state);
@@ -196,10 +196,10 @@ public class SystemTrayManager : ISystemTrayManager
                 _logger.LogError(ex, "Error updating tray icon state to {State}", state);
             }
         });
-        
+
         return Task.CompletedTask;
     }
-    
+
     /// <summary>
     /// Updates the menu state (enabled/disabled text) based on engine status
     /// </summary>
@@ -211,7 +211,7 @@ public class SystemTrayManager : ISystemTrayManager
             _logger.LogWarning("Cannot update menu state of disposed or uninitialized SystemTrayManager");
             return Task.CompletedTask;
         }
-        
+
         // Execute UI update on the UI thread
         InvokeOnUIThread(() =>
         {
@@ -225,10 +225,10 @@ public class SystemTrayManager : ISystemTrayManager
                 _logger.LogError(ex, "Error updating menu state");
             }
         });
-        
+
         return Task.CompletedTask;
     }
-    
+
     /// <summary>
     /// Shows a balloon notification from the tray icon
     /// </summary>
@@ -242,24 +242,24 @@ public class SystemTrayManager : ISystemTrayManager
             _logger.LogWarning("Cannot show notification from disposed or uninitialized SystemTrayManager");
             return Task.CompletedTask;
         }
-        
+
         // Validate inputs
         if (string.IsNullOrWhiteSpace(title))
         {
             _logger.LogWarning("Cannot show notification with null or empty title");
             return Task.CompletedTask;
         }
-        
+
         if (string.IsNullOrWhiteSpace(message))
         {
             _logger.LogWarning("Cannot show notification with null or empty message");
             return Task.CompletedTask;
         }
-        
+
         // Truncate title and message to Windows notification limits
         var finalTitle = title.Length > 63 ? title.Substring(0, 63) : title;
         var finalMessage = message.Length > 255 ? message.Substring(0, 252) + "..." : message;
-        
+
         // Execute UI update on the UI thread
         InvokeOnUIThread(() =>
         {
@@ -274,10 +274,10 @@ public class SystemTrayManager : ISystemTrayManager
                 _logger.LogError(ex, "Error showing tray notification");
             }
         });
-        
+
         return Task.CompletedTask;
     }
-    
+
     /// <summary>
     /// Hides the tray icon and cleans up resources
     /// </summary>
@@ -285,7 +285,7 @@ public class SystemTrayManager : ISystemTrayManager
     {
         if (_disposed)
             return Task.CompletedTask;
-        
+
         // Execute UI update on the UI thread
         InvokeOnUIThread(() =>
         {
@@ -302,83 +302,83 @@ public class SystemTrayManager : ISystemTrayManager
                 _logger.LogError(ex, "Error hiding tray icon");
             }
         });
-        
+
         return Task.CompletedTask;
     }
-    
+
     /// <summary>
     /// Creates the context menu with all menu items
     /// </summary>
     private void CreateContextMenu()
     {
         _contextMenu = new ContextMenuStrip();
-        
+
         // Toggle Enable/Disable
         _toggleMenuItem = new ToolStripMenuItem("&Enable CursorPhobia");
         _toggleMenuItem.Click += (sender, e) => ToggleEngineRequested?.Invoke(this, EventArgs.Empty);
         _contextMenu.Items.Add(_toggleMenuItem);
-        
+
         // Snooze submenu
         var snoozeMenuItem = new ToolStripMenuItem("Sn&ooze");
-        
+
         // Quick snooze options
         var snooze5minItem = new ToolStripMenuItem("5 minutes");
         snooze5minItem.Click += (sender, e) => SnoozeRequested?.Invoke(this, new SnoozeRequestedEventArgs(TimeSpan.FromMinutes(5)));
         snoozeMenuItem.DropDownItems.Add(snooze5minItem);
-        
+
         var snooze15minItem = new ToolStripMenuItem("15 minutes");
         snooze15minItem.Click += (sender, e) => SnoozeRequested?.Invoke(this, new SnoozeRequestedEventArgs(TimeSpan.FromMinutes(15)));
         snoozeMenuItem.DropDownItems.Add(snooze15minItem);
-        
+
         var snooze30minItem = new ToolStripMenuItem("30 minutes");
         snooze30minItem.Click += (sender, e) => SnoozeRequested?.Invoke(this, new SnoozeRequestedEventArgs(TimeSpan.FromMinutes(30)));
         snoozeMenuItem.DropDownItems.Add(snooze30minItem);
-        
+
         var snooze1hourItem = new ToolStripMenuItem("1 hour");
         snooze1hourItem.Click += (sender, e) => SnoozeRequested?.Invoke(this, new SnoozeRequestedEventArgs(TimeSpan.FromHours(1)));
         snoozeMenuItem.DropDownItems.Add(snooze1hourItem);
-        
+
         snoozeMenuItem.DropDownItems.Add(new ToolStripSeparator());
-        
+
         var snoozeCustomItem = new ToolStripMenuItem("Custom...");
         snoozeCustomItem.Click += (sender, e) => CustomSnoozeRequested?.Invoke(this, EventArgs.Empty);
         snoozeMenuItem.DropDownItems.Add(snoozeCustomItem);
-        
+
         var endSnoozeItem = new ToolStripMenuItem("End Snooze");
         endSnoozeItem.Click += (sender, e) => EndSnoozeRequested?.Invoke(this, EventArgs.Empty);
         snoozeMenuItem.DropDownItems.Add(endSnoozeItem);
-        
+
         _contextMenu.Items.Add(snoozeMenuItem);
-        
+
         // Separator
         _contextMenu.Items.Add(new ToolStripSeparator());
-        
+
         // Settings
         var settingsMenuItem = new ToolStripMenuItem("&Settings...");
         settingsMenuItem.Click += (sender, e) => SettingsRequested?.Invoke(this, EventArgs.Empty);
         _contextMenu.Items.Add(settingsMenuItem);
-        
+
         // Performance Stats
         var statsMenuItem = new ToolStripMenuItem("&Performance Stats...");
         statsMenuItem.Click += (sender, e) => PerformanceStatsRequested?.Invoke(this, EventArgs.Empty);
         _contextMenu.Items.Add(statsMenuItem);
-        
+
         // About
         var aboutMenuItem = new ToolStripMenuItem("&About CursorPhobia...");
         aboutMenuItem.Click += (sender, e) => AboutRequested?.Invoke(this, EventArgs.Empty);
         _contextMenu.Items.Add(aboutMenuItem);
-        
+
         // Separator
         _contextMenu.Items.Add(new ToolStripSeparator());
-        
+
         // Exit
         var exitMenuItem = new ToolStripMenuItem("E&xit");
         exitMenuItem.Click += (sender, e) => ExitRequested?.Invoke(this, EventArgs.Empty);
         _contextMenu.Items.Add(exitMenuItem);
-        
+
         _logger.LogDebug("Context menu created with {ItemCount} items", _contextMenu.Items.Count);
     }
-    
+
     /// <summary>
     /// Creates an icon for the specified state
     /// </summary>
@@ -386,8 +386,8 @@ public class SystemTrayManager : ISystemTrayManager
     /// <returns>Icon representing the state</returns>
     private Icon CreateIconForState(TrayIconState state)
     {
-        // Create a simple colored icon based on state
-        var color = state switch
+        // Create a cute mouse cursor icon with colors based on state
+        var cursorColor = state switch
         {
             TrayIconState.Enabled => Color.Green,
             TrayIconState.Disabled => Color.Red,
@@ -395,22 +395,46 @@ public class SystemTrayManager : ISystemTrayManager
             TrayIconState.Error => Color.Gray,
             _ => Color.Gray
         };
-        
-        // Create a simple 16x16 bitmap with the state color
+
+        // Create a 16x16 bitmap for the icon
         using var bitmap = new Bitmap(16, 16);
         using var graphics = Graphics.FromImage(bitmap);
         
-        // Fill with background color
         graphics.Clear(Color.Transparent);
-        
-        // Draw a filled circle with the state color
-        using var brush = new SolidBrush(color);
-        graphics.FillEllipse(brush, 2, 2, 12, 12);
-        
-        // Draw a border
-        using var pen = new Pen(Color.Black, 1);
-        graphics.DrawEllipse(pen, 2, 2, 12, 12);
-        
+        graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+
+        // Draw a cute mouse cursor shape
+        // Main cursor body (arrow shape)
+        var cursorPath = new System.Drawing.Drawing2D.GraphicsPath();
+        var points = new Point[]
+        {
+            new Point(2, 2),   // Top point
+            new Point(2, 12),  // Bottom left
+            new Point(6, 9),   // Middle point
+            new Point(9, 13),  // Bottom right outer
+            new Point(11, 11), // Bottom right inner
+            new Point(7, 7),   // Right middle
+            new Point(2, 2)    // Back to top
+        };
+        cursorPath.AddPolygon(points);
+
+        // Fill the cursor with the state color
+        using var brush = new SolidBrush(Color.White);
+        graphics.FillPath(brush, cursorPath);
+
+        // Draw colored outline
+        using var coloredPen = new Pen(cursorColor, 2);
+        graphics.DrawPath(coloredPen, cursorPath);
+
+        // Add a small cute sparkle effect for enabled state
+        if (state == TrayIconState.Enabled)
+        {
+            using var sparkle = new SolidBrush(Color.Yellow);
+            graphics.FillEllipse(sparkle, 10, 3, 2, 2);
+            graphics.FillEllipse(sparkle, 12, 1, 1, 1);
+            graphics.FillEllipse(sparkle, 13, 4, 1, 1);
+        }
+
         // Convert to icon
         var iconHandle = bitmap.GetHicon();
         var originalIcon = Icon.FromHandle(iconHandle);
@@ -419,7 +443,7 @@ public class SystemTrayManager : ISystemTrayManager
         DestroyIcon(iconHandle);
         return icon;
     }
-    
+
     /// <summary>
     /// Gets the default tooltip text for a state
     /// </summary>
@@ -436,7 +460,7 @@ public class SystemTrayManager : ISystemTrayManager
             _ => "CursorPhobia"
         };
     }
-    
+
     /// <summary>
     /// Disposes the tray manager and releases all resources
     /// </summary>
@@ -444,14 +468,14 @@ public class SystemTrayManager : ISystemTrayManager
     {
         if (_disposed)
             return;
-        
+
         _logger.LogInformation("Disposing SystemTrayManager");
-        
+
         try
         {
             // Mark as disposed first to prevent further operations
             _disposed = true;
-            
+
             // Execute disposal on the UI thread to avoid cross-thread issues
             if (_synchronizationContext != null && SynchronizationContext.Current != _synchronizationContext)
             {
@@ -467,7 +491,7 @@ public class SystemTrayManager : ISystemTrayManager
                         waitHandle.Set();
                     }
                 }, null);
-                
+
                 // Wait for disposal to complete, with timeout
                 if (!waitHandle.Wait(5000))
                 {
@@ -478,17 +502,17 @@ public class SystemTrayManager : ISystemTrayManager
             {
                 DisposeUIResources();
             }
-            
+
             _logger.LogDebug("SystemTrayManager disposed successfully");
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during SystemTrayManager disposal");
         }
-        
+
         GC.SuppressFinalize(this);
     }
-    
+
     /// <summary>
     /// Disposes UI resources (must be called on UI thread)
     /// </summary>
@@ -500,7 +524,7 @@ public class SystemTrayManager : ISystemTrayManager
             _notifyIcon.Dispose();
             _notifyIcon = null;
         }
-        
+
         _contextMenu?.Dispose();
         _contextMenu = null;
         _toggleMenuItem = null;
