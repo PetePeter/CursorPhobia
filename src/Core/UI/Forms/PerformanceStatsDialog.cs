@@ -14,9 +14,9 @@ public partial class PerformanceStatsDialog : Form
     public PerformanceStatsDialog(ICursorPhobiaEngine engine)
     {
         _engine = engine ?? throw new ArgumentNullException(nameof(engine));
-        
+
         InitializeComponent();
-        
+
         // Setup refresh timer
         _refreshTimer = new System.Windows.Forms.Timer
         {
@@ -24,7 +24,7 @@ public partial class PerformanceStatsDialog : Form
             Enabled = true
         };
         _refreshTimer.Tick += OnRefreshTimerTick;
-        
+
         // Initial update
         UpdateStats();
     }
@@ -39,11 +39,11 @@ public partial class PerformanceStatsDialog : Form
         try
         {
             var stats = _engine.GetPerformanceStats();
-            
+
             // Update labels
             engineStatusLabel.Text = stats.IsRunning ? "Running" : "Stopped";
             engineStatusLabel.ForeColor = stats.IsRunning ? Color.Green : Color.Red;
-            
+
             uptimeLabel.Text = FormatTimeSpan(TimeSpan.FromMilliseconds(stats.UptimeMs));
             updateCountLabel.Text = stats.UpdateCount.ToString("N0");
             avgUpdateTimeLabel.Text = $"{stats.AverageUpdateTimeMs:F2} ms";
@@ -51,12 +51,12 @@ public partial class PerformanceStatsDialog : Form
             configuredIntervalLabel.Text = $"{stats.ConfiguredUpdateIntervalMs} ms";
             updatesPerSecondLabel.Text = $"{stats.UpdatesPerSecond:F1}";
             estimatedCpuLabel.Text = $"{stats.EstimatedCpuUsagePercent:F1}%";
-            
+
             successfulUpdatesLabel.Text = stats.SuccessfulUpdates.ToString("N0");
             failedUpdatesLabel.Text = stats.FailedUpdates.ToString("N0");
             totalUpdatesLabel.Text = stats.TotalUpdates.ToString("N0");
-            
-            var successRate = stats.TotalUpdates > 0 ? 
+
+            var successRate = stats.TotalUpdates > 0 ?
                 (double)stats.SuccessfulUpdates / stats.TotalUpdates * 100 : 0;
             successRateLabel.Text = $"{successRate:F1}%";
         }

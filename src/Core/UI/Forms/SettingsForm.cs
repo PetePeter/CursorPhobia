@@ -66,20 +66,20 @@ public partial class SettingsForm : Form
         try
         {
             _isInitializing = true;
-            
+
             // Get the default configuration path
             _configurationPath = await _configService.GetDefaultConfigurationPathAsync();
-            
+
             // Load the configuration
             var config = await _configService.LoadConfigurationAsync(_configurationPath);
-            
+
             // Update the view model
             _viewModel.Configuration = config;
             _viewModel.HasUnsavedChanges = false;
-            
+
             // Update the form title
             Text = $"CursorPhobia Settings - {Path.GetFileName(_configurationPath)}";
-            
+
             _logger.LogInformation($"Configuration loaded from: {_configurationPath}");
         }
         catch (Exception ex)
@@ -148,25 +148,25 @@ public partial class SettingsForm : Form
         try
         {
             var errors = _viewModel.ValidateConfiguration();
-            
+
             if (errors.Any())
             {
                 // Clear previous error highlighting
                 ClearValidationErrors();
-                
+
                 // Highlight controls with errors and show tooltip
                 HighlightValidationErrors(errors);
-                
+
                 return false;
             }
-            
+
             ClearValidationErrors();
             return true;
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during configuration validation");
-            MessageBox.Show($"An error occurred during validation:\n{ex.Message}", 
+            MessageBox.Show($"An error occurred during validation:\n{ex.Message}",
                 "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             return false;
         }
@@ -242,7 +242,7 @@ public partial class SettingsForm : Form
             try
             {
                 var importedConfig = await _configService.LoadConfigurationAsync(openDialog.FileName);
-                
+
                 var result = MessageBox.Show(
                     $"Configuration loaded from:\n{openDialog.FileName}\n\nApply these settings?",
                     "Import Configuration",
@@ -270,12 +270,12 @@ public partial class SettingsForm : Form
     protected override void OnLoad(EventArgs e)
     {
         base.OnLoad(e);
-        
+
         // Load configuration when form loads
         _ = Task.Run(async () =>
         {
             await LoadConfigurationAsync();
-            
+
             // Update UI on main thread
             if (InvokeRequired)
             {
@@ -292,7 +292,7 @@ public partial class SettingsForm : Form
     {
         if (_isClosing) return;
         _isClosing = true;
-        
+
         if (_viewModel.HasUnsavedChanges)
         {
             var result = MessageBox.Show(
@@ -318,7 +318,7 @@ public partial class SettingsForm : Form
 
         base.OnFormClosing(e);
     }
-    
+
     private async Task SaveAndCloseAsync()
     {
         try
@@ -329,7 +329,7 @@ public partial class SettingsForm : Form
                 // Close the form on the UI thread
                 if (InvokeRequired)
                 {
-                    Invoke(() => 
+                    Invoke(() =>
                     {
                         _isClosing = true;
                         Close();
@@ -362,7 +362,7 @@ public partial class SettingsForm : Form
             {
                 _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
             }
-            
+
             _previewUpdateTimer?.Dispose();
         }
         base.Dispose(disposing);
@@ -373,7 +373,7 @@ public partial class SettingsForm : Form
         // General Tab Bindings
         enableCtrlOverrideCheckBox.DataBindings.Add(
             nameof(CheckBox.Checked), _viewModel, nameof(_viewModel.EnableCtrlOverride), false, DataSourceUpdateMode.OnPropertyChanged);
-        
+
         applyToAllWindowsCheckBox.DataBindings.Add(
             nameof(CheckBox.Checked), _viewModel, nameof(_viewModel.ApplyToAllWindows), false, DataSourceUpdateMode.OnPropertyChanged);
 
@@ -383,13 +383,13 @@ public partial class SettingsForm : Form
         // Behavior Tab Bindings
         proximityThresholdTrackBar.DataBindings.Add(
             nameof(TrackBar.Value), _viewModel, nameof(_viewModel.ProximityThreshold), false, DataSourceUpdateMode.OnPropertyChanged);
-        
+
         proximityThresholdNumeric.DataBindings.Add(
             nameof(NumericUpDown.Value), _viewModel, nameof(_viewModel.ProximityThreshold), false, DataSourceUpdateMode.OnPropertyChanged);
 
         pushDistanceTrackBar.DataBindings.Add(
             nameof(TrackBar.Value), _viewModel, nameof(_viewModel.PushDistance), false, DataSourceUpdateMode.OnPropertyChanged);
-        
+
         pushDistanceNumeric.DataBindings.Add(
             nameof(NumericUpDown.Value), _viewModel, nameof(_viewModel.PushDistance), false, DataSourceUpdateMode.OnPropertyChanged);
 
@@ -398,7 +398,7 @@ public partial class SettingsForm : Form
 
         animationDurationTrackBar.DataBindings.Add(
             nameof(TrackBar.Value), _viewModel, nameof(_viewModel.AnimationDurationMs), false, DataSourceUpdateMode.OnPropertyChanged);
-        
+
         animationDurationNumeric.DataBindings.Add(
             nameof(NumericUpDown.Value), _viewModel, nameof(_viewModel.AnimationDurationMs), false, DataSourceUpdateMode.OnPropertyChanged);
 
@@ -511,22 +511,22 @@ public partial class SettingsForm : Form
     {
         // Subscribe to view model property changes
         _viewModel.PropertyChanged += OnViewModelPropertyChanged;
-        
+
         // Setup per-monitor event handlers
         SetupPerMonitorEventHandlers();
     }
-    
+
     private void SetupPerMonitorEventHandlers()
     {
         // Monitor selection change
         monitorListBox.SelectedIndexChanged += OnMonitorSelectionChanged;
-        
+
         // Per-monitor setting changes
         perMonitorEnabledCheckBox.CheckedChanged += OnPerMonitorSettingChanged;
         useGlobalSettingsCheckBox.CheckedChanged += OnPerMonitorSettingChanged;
         perMonitorProximityThresholdNumeric.ValueChanged += OnPerMonitorSettingChanged;
         perMonitorPushDistanceNumeric.ValueChanged += OnPerMonitorSettingChanged;
-        
+
         // Load monitor list when form is first shown
         Load += (s, e) => LoadMonitorList();
     }
@@ -560,7 +560,7 @@ public partial class SettingsForm : Form
         {
             // Validate configuration first
             var isValid = ValidateCurrentSettings();
-            
+
             // Update engine configuration for real-time preview
             if (isValid && _engine != null)
             {
@@ -576,10 +576,10 @@ public partial class SettingsForm : Form
                     _logger.LogDebug($"Engine configuration update not available: {ex.Message}");
                 }
             }
-            
+
             // Update any custom preview controls (e.g., animation preview panels)
             UpdatePreviewControls();
-            
+
             // Force redraw for custom preview controls
             Invalidate();
         }
@@ -588,18 +588,18 @@ public partial class SettingsForm : Form
             _logger.LogWarning($"Preview update failed: {ex.Message}");
         }
     }
-    
+
     private void UpdatePreviewControls()
     {
         // Update preview controls based on current settings
         // This can be expanded when specific preview controls are added
-        
+
         // Update status labels or preview text
         if (Controls.Find("previewStatusLabel", true).FirstOrDefault() is Label statusLabel)
         {
             statusLabel.Text = _viewModel.HasUnsavedChanges ? "Preview (Unsaved)" : "Preview (Current)";
         }
-        
+
         // Update any animation preview panels
         var animationPreviews = Controls.Find("animationPreviewPanel", true);
         foreach (Control preview in animationPreviews)
@@ -611,10 +611,10 @@ public partial class SettingsForm : Form
 
     private void UpdateFormTitle()
     {
-        var fileName = !string.IsNullOrEmpty(_configurationPath) 
-            ? Path.GetFileName(_configurationPath) 
+        var fileName = !string.IsNullOrEmpty(_configurationPath)
+            ? Path.GetFileName(_configurationPath)
             : "New Configuration";
-            
+
         var unsavedIndicator = _viewModel.HasUnsavedChanges ? "*" : "";
         Text = $"CursorPhobia Settings - {fileName}{unsavedIndicator}";
     }
@@ -623,11 +623,11 @@ public partial class SettingsForm : Form
     {
         // Clear error highlighting on all input controls
         ClearControlErrors(this);
-        
+
         // Clear any error tooltips - tooltips are not stored as controls
         // Individual tooltip cleanup will be handled per control
     }
-    
+
     private void ClearControlErrors(Control parent)
     {
         foreach (Control control in parent.Controls)
@@ -648,7 +648,7 @@ public partial class SettingsForm : Form
                     checkbox.BackColor = Color.Transparent;
                     break;
             }
-            
+
             // Recursively clear errors in child containers
             if (control.HasChildren)
             {
@@ -664,16 +664,16 @@ public partial class SettingsForm : Form
         {
             HighlightErrorForMessage(error);
         }
-        
+
         // Show error summary
         var errorMessage = "Please correct the following issues:\n\n" + string.Join("\n", errors);
         MessageBox.Show(errorMessage, "Validation Errors", MessageBoxButtons.OK, MessageBoxIcon.Warning);
     }
-    
+
     private void HighlightErrorForMessage(string errorMessage)
     {
         var errorColor = Color.FromArgb(255, 192, 192); // Light red background
-        
+
         // Map error messages to controls based on common validation patterns
         if (errorMessage.Contains("ProximityThreshold", StringComparison.OrdinalIgnoreCase))
         {
@@ -707,14 +707,14 @@ public partial class SettingsForm : Form
             HighlightControl("screenEdgeBufferNumeric", errorColor, errorMessage);
         }
     }
-    
+
     private void HighlightControl(string controlName, Color errorColor, string errorMessage)
     {
         var controls = Controls.Find(controlName, true);
         foreach (Control control in controls)
         {
             control.BackColor = errorColor;
-            
+
             // Add tooltip with error message
             var toolTip = new ToolTip
             {
@@ -743,7 +743,7 @@ public partial class SettingsForm : Form
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in OK button click handler");
-            MessageBox.Show($"An error occurred while saving settings:\n{ex.Message}", 
+            MessageBox.Show($"An error occurred while saving settings:\n{ex.Message}",
                 "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
@@ -760,7 +760,7 @@ public partial class SettingsForm : Form
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in Apply button click handler");
-            MessageBox.Show($"An error occurred while applying settings:\n{ex.Message}", 
+            MessageBox.Show($"An error occurred while applying settings:\n{ex.Message}",
                 "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
@@ -775,7 +775,7 @@ public partial class SettingsForm : Form
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error in Cancel button click handler");
-            MessageBox.Show($"An error occurred:\n{ex.Message}", 
+            MessageBox.Show($"An error occurred:\n{ex.Message}",
                 "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
         }
     }
@@ -875,7 +875,7 @@ public partial class SettingsForm : Form
             if (config.MultiMonitor?.PerMonitorSettings?.TryGetValue(monitorKey, out var perMonitorSettings) == true)
             {
                 perMonitorEnabledCheckBox.Checked = perMonitorSettings.Enabled;
-                useGlobalSettingsCheckBox.Checked = !perMonitorSettings.CustomProximityThreshold.HasValue && 
+                useGlobalSettingsCheckBox.Checked = !perMonitorSettings.CustomProximityThreshold.HasValue &&
                                                    !perMonitorSettings.CustomPushDistance.HasValue;
 
                 perMonitorProximityThresholdNumeric.Value = perMonitorSettings.CustomProximityThreshold ?? config.ProximityThreshold;

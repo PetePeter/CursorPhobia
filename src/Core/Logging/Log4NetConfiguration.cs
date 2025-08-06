@@ -43,7 +43,7 @@ public static class Log4NetConfiguration
                 CursorPhobia.Core.Utilities.LoggerFactory.Initialize(log4netLoggerFactory);
 
                 _initialized = true;
-                
+
                 // Log successful initialization
                 var logger = LogManager.GetLogger(typeof(Log4NetConfiguration));
                 logger.Info("Log4net logging system initialized successfully");
@@ -201,7 +201,7 @@ public static class Log4NetConfiguration
     {
         // Use basic configuration for fallback
         BasicConfigurator.Configure();
-        
+
         var logger = LogManager.GetLogger(typeof(Log4NetConfiguration));
         logger.Warn("Using fallback log4net configuration - limited functionality");
     }
@@ -214,20 +214,20 @@ public static class Log4NetConfiguration
     private static string FindProjectRoot(string startDirectory)
     {
         var currentDir = new DirectoryInfo(startDirectory);
-        
+
         while (currentDir != null)
         {
             // Look for solution file or log4net.config in current directory
-            if (currentDir.GetFiles("*.sln").Any() || 
+            if (currentDir.GetFiles("*.sln").Any() ||
                 currentDir.GetFiles("log4net.config").Any() ||
                 currentDir.GetFiles("CursorPhobia.sln").Any())
             {
                 return currentDir.FullName;
             }
-            
+
             currentDir = currentDir.Parent;
         }
-        
+
         // Fallback to start directory if no project root found
         return startDirectory;
     }
@@ -245,7 +245,7 @@ public static class Log4NetConfiguration
                 {
                     var logger = LogManager.GetLogger(typeof(Log4NetConfiguration));
                     logger.Info("Shutting down log4net logging system");
-                    
+
                     LogManager.Shutdown();
                     _initialized = false;
                 }

@@ -10,9 +10,9 @@ namespace CursorPhobia.Core.WindowsAPI;
 public static class User32
 {
     private const string User32Dll = "user32.dll";
-    
+
     #region Window Enumeration
-    
+
     /// <summary>
     /// Enumerates all top-level windows on the screen
     /// </summary>
@@ -22,7 +22,7 @@ public static class User32
     [DllImport(User32Dll, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool EnumWindows(EnumWindowsProc enumFunc, IntPtr lParam);
-    
+
     /// <summary>
     /// Enumerates child windows that belong to the specified parent window
     /// </summary>
@@ -33,11 +33,11 @@ public static class User32
     [DllImport(User32Dll, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool EnumChildWindows(IntPtr hWndParent, EnumWindowsProc enumFunc, IntPtr lParam);
-    
+
     #endregion
-    
+
     #region Window Information
-    
+
     /// <summary>
     /// Retrieves information about the specified window
     /// </summary>
@@ -46,7 +46,7 @@ public static class User32
     /// <returns>The requested value</returns>
     [DllImport(User32Dll, SetLastError = true)]
     public static extern uint GetWindowLong(IntPtr hWnd, int index);
-    
+
     /// <summary>
     /// Retrieves information about the specified window (64-bit compatible)
     /// </summary>
@@ -55,7 +55,7 @@ public static class User32
     /// <returns>The requested value</returns>
     [DllImport(User32Dll, SetLastError = true, EntryPoint = "GetWindowLongPtr")]
     public static extern IntPtr GetWindowLongPtr(IntPtr hWnd, int index);
-    
+
     /// <summary>
     /// Platform-neutral way to get window long value
     /// </summary>
@@ -69,7 +69,7 @@ public static class User32
         else
             return new IntPtr(GetWindowLong(hWnd, index));
     }
-    
+
     /// <summary>
     /// Retrieves the dimensions of the bounding rectangle of the specified window
     /// </summary>
@@ -79,7 +79,7 @@ public static class User32
     [DllImport(User32Dll, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool GetWindowRect(IntPtr hWnd, out RECT lpRect);
-    
+
     /// <summary>
     /// Retrieves the coordinates of a window's client area
     /// </summary>
@@ -89,7 +89,7 @@ public static class User32
     [DllImport(User32Dll, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
-    
+
     /// <summary>
     /// Determines the visibility state of the specified window
     /// </summary>
@@ -98,7 +98,7 @@ public static class User32
     [DllImport(User32Dll, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool IsWindowVisible(IntPtr hWnd);
-    
+
     /// <summary>
     /// Determines whether the specified window is minimized (iconic)
     /// </summary>
@@ -107,7 +107,7 @@ public static class User32
     [DllImport(User32Dll, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool IsIconic(IntPtr hWnd);
-    
+
     /// <summary>
     /// Determines whether a window is maximized
     /// </summary>
@@ -116,7 +116,7 @@ public static class User32
     [DllImport(User32Dll, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool IsZoomed(IntPtr hWnd);
-    
+
     /// <summary>
     /// Retrieves information about the specified window
     /// </summary>
@@ -126,11 +126,11 @@ public static class User32
     [DllImport(User32Dll, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool GetWindowInfo(IntPtr hWnd, ref WINDOWINFO pwi);
-    
+
     #endregion
-    
+
     #region Window Text and Class
-    
+
     /// <summary>
     /// Copies the text of the specified window's title bar into a buffer
     /// </summary>
@@ -140,7 +140,7 @@ public static class User32
     /// <returns>Length of the copied string</returns>
     [DllImport(User32Dll, SetLastError = true, CharSet = CharSet.Unicode)]
     public static extern int GetWindowText(IntPtr hWnd, StringBuilder lpString, int nMaxCount);
-    
+
     /// <summary>
     /// Retrieves the length of the specified window's title bar text
     /// </summary>
@@ -148,7 +148,7 @@ public static class User32
     /// <returns>Length of the text in characters</returns>
     [DllImport(User32Dll, SetLastError = true)]
     public static extern int GetWindowTextLength(IntPtr hWnd);
-    
+
     /// <summary>
     /// Retrieves the name of the class to which the specified window belongs
     /// </summary>
@@ -158,11 +158,11 @@ public static class User32
     /// <returns>Number of characters copied</returns>
     [DllImport(User32Dll, SetLastError = true, CharSet = CharSet.Unicode)]
     public static extern int GetClassName(IntPtr hWnd, StringBuilder lpClassName, int nMaxCount);
-    
+
     #endregion
-    
+
     #region Window Positioning and Manipulation
-    
+
     /// <summary>
     /// Changes the size, position, and Z order of a child, pop-up, or top-level window
     /// </summary>
@@ -177,7 +177,7 @@ public static class User32
     [DllImport(User32Dll, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int x, int y, int cx, int cy, uint uFlags);
-    
+
     /// <summary>
     /// Changes the position and dimensions of the specified window
     /// </summary>
@@ -191,7 +191,7 @@ public static class User32
     [DllImport(User32Dll, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool MoveWindow(IntPtr hWnd, int x, int y, int nWidth, int nHeight, bool bRepaint);
-    
+
     /// <summary>
     /// Sets the show state of a window
     /// </summary>
@@ -201,7 +201,7 @@ public static class User32
     [DllImport(User32Dll, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
-    
+
     /// <summary>
     /// Retrieves information about the current placement of a window
     /// </summary>
@@ -211,7 +211,7 @@ public static class User32
     [DllImport(User32Dll, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool GetWindowPlacement(IntPtr hWnd, ref WINDOWPLACEMENT lpwndpl);
-    
+
     /// <summary>
     /// Sets the show state and the restored, minimized, and maximized positions of the specified window
     /// </summary>
@@ -221,11 +221,11 @@ public static class User32
     [DllImport(User32Dll, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool SetWindowPlacement(IntPtr hWnd, ref WINDOWPLACEMENT lpwndpl);
-    
+
     #endregion
-    
+
     #region Process and Thread Information
-    
+
     /// <summary>
     /// Retrieves the identifier of the thread that created the specified window
     /// </summary>
@@ -234,11 +234,11 @@ public static class User32
     /// <returns>The thread identifier</returns>
     [DllImport(User32Dll, SetLastError = true)]
     public static extern uint GetWindowThreadProcessId(IntPtr hWnd, out uint lpdwProcessId);
-    
+
     #endregion
-    
+
     #region Monitor Functions
-    
+
     /// <summary>
     /// Retrieves a handle to the display monitor that contains a specified point
     /// </summary>
@@ -247,7 +247,7 @@ public static class User32
     /// <returns>Handle to the monitor</returns>
     [DllImport(User32Dll, SetLastError = true)]
     public static extern IntPtr MonitorFromPoint(POINT pt, uint dwFlags);
-    
+
     /// <summary>
     /// Retrieves a handle to the display monitor that has the largest area of intersection with a specified rectangle
     /// </summary>
@@ -256,7 +256,7 @@ public static class User32
     /// <returns>Handle to the monitor</returns>
     [DllImport(User32Dll, SetLastError = true)]
     public static extern IntPtr MonitorFromRect(ref RECT lprc, uint dwFlags);
-    
+
     /// <summary>
     /// Retrieves a handle to the display monitor that contains the specified window
     /// </summary>
@@ -265,7 +265,7 @@ public static class User32
     /// <returns>Handle to the monitor</returns>
     [DllImport(User32Dll, SetLastError = true)]
     public static extern IntPtr MonitorFromWindow(IntPtr hWnd, uint dwFlags);
-    
+
     /// <summary>
     /// Enumerates display monitors
     /// </summary>
@@ -277,7 +277,7 @@ public static class User32
     [DllImport(User32Dll, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool EnumDisplayMonitors(IntPtr hdc, IntPtr lprcClip, MonitorEnumProc lpfnEnum, IntPtr dwData);
-    
+
     /// <summary>
     /// Retrieves information about a display monitor
     /// </summary>
@@ -287,11 +287,11 @@ public static class User32
     [DllImport(User32Dll, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool GetMonitorInfo(IntPtr hMonitor, ref MONITORINFO lpmi);
-    
+
     #endregion
-    
+
     #region Mouse and Cursor Functions
-    
+
     /// <summary>
     /// Retrieves the position of the mouse cursor, in screen coordinates
     /// </summary>
@@ -300,7 +300,7 @@ public static class User32
     [DllImport(User32Dll, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool GetCursorPos(out POINT lpPoint);
-    
+
     /// <summary>
     /// Sets the position of the cursor
     /// </summary>
@@ -310,7 +310,7 @@ public static class User32
     [DllImport(User32Dll, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool SetCursorPos(int x, int y);
-    
+
     /// <summary>
     /// Retrieves the window handle of the window that contains the specified point
     /// </summary>
@@ -318,11 +318,11 @@ public static class User32
     /// <returns>Handle to the window that contains the point, or IntPtr.Zero if no window exists at the given point</returns>
     [DllImport(User32Dll, SetLastError = true)]
     public static extern IntPtr WindowFromPoint(POINT point);
-    
+
     #endregion
-    
+
     #region Hook Functions
-    
+
     /// <summary>
     /// Installs an application-defined hook procedure into a hook chain
     /// </summary>
@@ -333,7 +333,7 @@ public static class User32
     /// <returns>Handle to the hook procedure, or IntPtr.Zero if failed</returns>
     [DllImport(User32Dll, SetLastError = true)]
     public static extern IntPtr SetWindowsHookEx(int idHook, LowLevelMouseProc lpfn, IntPtr hMod, uint dwThreadId);
-    
+
     /// <summary>
     /// Removes a hook procedure installed in a hook chain by the SetWindowsHookEx function
     /// </summary>
@@ -342,7 +342,7 @@ public static class User32
     [DllImport(User32Dll, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool UnhookWindowsHookEx(IntPtr hhk);
-    
+
     /// <summary>
     /// Passes the hook information to the next hook procedure in the current hook chain
     /// </summary>
@@ -353,11 +353,11 @@ public static class User32
     /// <returns>Value returned by the next hook procedure in the chain</returns>
     [DllImport(User32Dll, SetLastError = true)]
     public static extern IntPtr CallNextHookEx(IntPtr hhk, int nCode, IntPtr wParam, IntPtr lParam);
-    
+
     #endregion
-    
+
     #region Keyboard Functions
-    
+
     /// <summary>
     /// Retrieves the status of the specified virtual key
     /// </summary>
@@ -365,7 +365,7 @@ public static class User32
     /// <returns>Key status</returns>
     [DllImport(User32Dll, SetLastError = true)]
     public static extern short GetKeyState(int nVirtKey);
-    
+
     /// <summary>
     /// Retrieves the status of the specified virtual key at the time the last input message was processed
     /// </summary>
@@ -373,11 +373,11 @@ public static class User32
     /// <returns>Key status</returns>
     [DllImport(User32Dll, SetLastError = true)]
     public static extern short GetAsyncKeyState(int nVirtKey);
-    
+
     #endregion
-    
+
     #region DPI Functions
-    
+
     /// <summary>
     /// Retrieves the dots per inch (DPI) for the specified monitor
     /// </summary>
@@ -388,7 +388,7 @@ public static class User32
     /// <returns>S_OK if successful, otherwise an error code</returns>
     [DllImport("Shcore.dll", SetLastError = true)]
     public static extern int GetDpiForMonitor(IntPtr hMonitor, int dpiType, out uint dpiX, out uint dpiY);
-    
+
     /// <summary>
     /// Sets the process-default DPI awareness
     /// </summary>
@@ -397,7 +397,7 @@ public static class User32
     [DllImport("Shcore.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool SetProcessDpiAwareness(int value);
-    
+
     /// <summary>
     /// Determines the DPI awareness of the current process
     /// </summary>
@@ -405,11 +405,11 @@ public static class User32
     /// <returns>S_OK if successful, otherwise an error code</returns>
     [DllImport("Shcore.dll", SetLastError = true)]
     public static extern int GetProcessDpiAwareness(IntPtr hProcess, out int value);
-    
+
     #endregion
-    
+
     #region Helper Methods
-    
+
     /// <summary>
     /// Helper method to safely get window text
     /// </summary>
@@ -421,7 +421,7 @@ public static class User32
         {
             int length = GetWindowTextLength(hWnd);
             if (length == 0) return string.Empty;
-            
+
             var sb = new StringBuilder(length + 1);
             int actualLength = GetWindowText(hWnd, sb, sb.Capacity);
             return actualLength > 0 ? sb.ToString() : string.Empty;
@@ -431,7 +431,7 @@ public static class User32
             return string.Empty;
         }
     }
-    
+
     /// <summary>
     /// Helper method to safely get window class name
     /// </summary>
@@ -450,6 +450,6 @@ public static class User32
             return string.Empty;
         }
     }
-    
+
     #endregion
 }

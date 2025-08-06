@@ -29,7 +29,7 @@ public class ProductionLogger : IProductionLogger
     }
 
     #region ILogger Implementation
-    
+
     public IDisposable? BeginScope<TState>(TState state) where TState : notnull
     {
         return _extensionsLogger.BeginScope(state);
@@ -47,7 +47,7 @@ public class ProductionLogger : IProductionLogger
 
         var message = formatter(state, exception);
         var nlogLevel = ConvertLogLevel(logLevel);
-        
+
         var logEvent = new LogEventInfo(nlogLevel, _nlogLogger.Name, message)
         {
             Exception = exception
@@ -111,13 +111,13 @@ public class ProductionLogger : IProductionLogger
     {
         var logLevel = success ? Microsoft.Extensions.Logging.LogLevel.Information : Microsoft.Extensions.Logging.LogLevel.Warning;
         var nlogLevel = ConvertLogLevel(logLevel);
-        
-        var message = success 
-            ? "Operation completed successfully: {Operation} in {Duration}ms" 
+
+        var message = success
+            ? "Operation completed successfully: {Operation} in {Duration}ms"
             : "Operation completed with issues: {Operation} in {Duration}ms";
 
         var logEvent = new LogEventInfo(nlogLevel, _nlogLogger.Name, message);
-        
+
         // Add performance properties
         logEvent.Properties["ServiceName"] = serviceName;
         logEvent.Properties["Operation"] = operation;
@@ -141,9 +141,9 @@ public class ProductionLogger : IProductionLogger
 
         var nlogLevel = ConvertLogLevel(logLevel);
         var logMessage = message ?? "Window operation: {Operation} on window {WindowHandle}";
-        
+
         var logEvent = new LogEventInfo(nlogLevel, _nlogLogger.Name, logMessage);
-        
+
         // Add service name if available
         if (!string.IsNullOrEmpty(_serviceName))
         {
@@ -154,7 +154,7 @@ public class ProductionLogger : IProductionLogger
         logEvent.Properties["Operation"] = operation;
         logEvent.Properties["WindowHandle"] = $"0x{windowHandle:X}";
         logEvent.Properties["LogType"] = "WindowOperation";
-        
+
         if (!string.IsNullOrEmpty(windowTitle))
         {
             logEvent.Properties["WindowTitle"] = windowTitle;
@@ -176,7 +176,7 @@ public class ProductionLogger : IProductionLogger
 
         var nlogLevel = ConvertLogLevel(logLevel);
         var logEvent = new LogEventInfo(nlogLevel, _nlogLogger.Name, message);
-        
+
         // Add service name if available
         if (!string.IsNullOrEmpty(_serviceName))
         {
@@ -205,11 +205,11 @@ public class ProductionLogger : IProductionLogger
         // Create a new logger with the service name appended
         var serviceLoggerName = $"{_nlogLogger.Name}.{serviceName}";
         var nlogServiceLogger = LogManager.GetLogger(serviceLoggerName);
-        
+
         // Create a corresponding Microsoft Extensions logger using the factory
         var loggerFactory = new NLogLoggerFactory();
         var extensionsServiceLogger = loggerFactory.CreateLogger(serviceLoggerName);
-        
+
         return new ProductionLogger(nlogServiceLogger, extensionsServiceLogger, serviceName);
     }
 
@@ -264,7 +264,7 @@ internal class PerformanceScope : IPerformanceScope
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _serviceName = serviceName ?? throw new ArgumentNullException(nameof(serviceName));
         _operation = operation ?? throw new ArgumentNullException(nameof(operation));
-        
+
         _context = new Dictionary<string, object>();
         foreach (var (key, value) in additionalContext)
         {
@@ -284,7 +284,7 @@ internal class PerformanceScope : IPerformanceScope
     {
         if (string.IsNullOrEmpty(key))
             throw new ArgumentException("Context key cannot be null or empty", nameof(key));
-        
+
         _context[key] = value;
     }
 
@@ -297,7 +297,7 @@ internal class PerformanceScope : IPerformanceScope
 
         // Prepare additional context including failure reason if applicable
         var contextArray = _context.Select(kvp => (kvp.Key, kvp.Value)).ToList();
-        
+
         if (_failed && !string.IsNullOrEmpty(_failureReason))
         {
             contextArray.Add(("FailureReason", _failureReason!));

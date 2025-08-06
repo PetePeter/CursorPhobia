@@ -138,7 +138,7 @@ namespace CursorPhobia.Tests
             // Arrange
             var primaryManager = CreateManager();
             var secondaryManager = CreateManager();
-            
+
             await primaryManager.TryAcquireLockAsync();
             await primaryManager.InitializeAsync();
 
@@ -162,7 +162,7 @@ namespace CursorPhobia.Tests
             Assert.True(result, "Activation request should succeed");
             Assert.NotNull(receivedArgs);
             Assert.Equal(testArgs, receivedArgs!.Arguments);
-            Assert.True(Math.Abs((DateTime.UtcNow - receivedArgs.RequestTime).TotalSeconds) < 5, 
+            Assert.True(Math.Abs((DateTime.UtcNow - receivedArgs.RequestTime).TotalSeconds) < 5,
                 "Request time should be recent");
         }
 
@@ -172,7 +172,7 @@ namespace CursorPhobia.Tests
             // Arrange
             var primaryManager = CreateManager();
             var secondaryManager = CreateManager();
-            
+
             await primaryManager.TryAcquireLockAsync();
             await primaryManager.InitializeAsync();
 
@@ -199,16 +199,16 @@ namespace CursorPhobia.Tests
             // Arrange
             var manager1 = CreateManager();
             var manager2 = CreateManager();
-            
+
             await manager1.TryAcquireLockAsync();
             await manager1.InitializeAsync();
 
             // Act
             await manager1.ShutdownAsync();
-            
+
             // Give the shutdown a moment to complete
             await Task.Delay(100);
-            
+
             var result = await manager2.TryAcquireLockAsync();
 
             // Assert
@@ -227,7 +227,7 @@ namespace CursorPhobia.Tests
 
             // Act & Assert - Should not throw
             manager.Dispose();
-            
+
             // Verify state is cleaned up
             Assert.False(manager.IsOwner, "Manager should no longer be owner after disposal");
             Assert.False(manager.IsInitialized, "Manager should no longer be initialized after disposal");
@@ -257,7 +257,7 @@ namespace CursorPhobia.Tests
         {
             // Arrange
             var tasks = new List<Task<(SingleInstanceManager Manager, bool Success)>>();
-            
+
             // Create multiple managers and try to acquire lock concurrently
             for (int i = 0; i < 5; i++)
             {
@@ -275,7 +275,7 @@ namespace CursorPhobia.Tests
             // Assert
             var successCount = results.Count(r => r.Success);
             Assert.Equal(1, successCount);
-            
+
             var ownerCount = results.Count(r => r.Manager.IsOwner);
             Assert.Equal(1, ownerCount);
         }
@@ -304,7 +304,7 @@ namespace CursorPhobia.Tests
             // Assert
             Assert.True(result1, "First manager should acquire lock");
             Assert.False(result2, "Second manager should be blocked (proving they use same mutex name)");
-            
+
             // Verify mutex names are generated (can't directly test SID without user context, but ensure no exceptions)
             Assert.True(true, "Mutex name generation completed without exceptions");
         }

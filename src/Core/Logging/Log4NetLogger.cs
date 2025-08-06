@@ -62,7 +62,7 @@ public class Log4NetLogger : CursorPhobia.Core.Utilities.ILogger, Microsoft.Exte
 
         // Create logging event with properties
         var loggingEvent = new LoggingEvent(_logger.GetType(), _logger.Repository, _categoryName, log4netLevel, message, exception);
-        
+
         // Add event ID properties if provided
         if (eventId.Id != 0)
         {
@@ -149,7 +149,7 @@ public class Log4NetLogger : CursorPhobia.Core.Utilities.ILogger, Microsoft.Exte
 
         var log4netLevel = ConvertLogLevel(logLevel);
         var loggingEvent = new LoggingEvent(_logger.GetType(), _logger.Repository, _categoryName, log4netLevel, message, exception);
-        
+
         // Add contextual properties
         foreach (var (key, value) in properties)
         {
@@ -165,17 +165,17 @@ public class Log4NetLogger : CursorPhobia.Core.Utilities.ILogger, Microsoft.Exte
     public void LogPerformance(string serviceName, string operation, TimeSpan duration, bool success = true, params (string Key, object Value)[] additionalContext)
     {
         var logLevel = success ? Microsoft.Extensions.Logging.LogLevel.Information : Microsoft.Extensions.Logging.LogLevel.Warning;
-        
+
         if (!IsEnabled(logLevel))
             return;
 
-        var message = success 
+        var message = success
             ? $"Operation completed successfully: {operation} in {duration.TotalMilliseconds:F2}ms"
             : $"Operation completed with issues: {operation} in {duration.TotalMilliseconds:F2}ms";
 
         var log4netLevel = ConvertLogLevel(logLevel);
         var loggingEvent = new LoggingEvent(_logger.GetType(), _logger.Repository, _categoryName, log4netLevel, message, null);
-        
+
         // Add performance properties
         loggingEvent.Properties["ServiceName"] = serviceName;
         loggingEvent.Properties["Operation"] = operation;
@@ -201,13 +201,13 @@ public class Log4NetLogger : CursorPhobia.Core.Utilities.ILogger, Microsoft.Exte
         var logMessage = message ?? $"Window operation: {operation} on window {windowHandle:X}";
         var log4netLevel = ConvertLogLevel(logLevel);
         var loggingEvent = new LoggingEvent(_logger.GetType(), _logger.Repository, _categoryName, log4netLevel, logMessage, null);
-        
+
         // Add window-specific properties
         loggingEvent.Properties["Operation"] = operation;
         loggingEvent.Properties["WindowHandle"] = $"0x{windowHandle:X}";
         loggingEvent.Properties["LogType"] = "WindowOperation";
         loggingEvent.Properties["shortdate"] = DateTime.Now.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture);
-        
+
         if (!string.IsNullOrEmpty(windowTitle))
         {
             loggingEvent.Properties["WindowTitle"] = windowTitle;
@@ -229,7 +229,7 @@ public class Log4NetLogger : CursorPhobia.Core.Utilities.ILogger, Microsoft.Exte
 
         var log4netLevel = ConvertLogLevel(logLevel);
         var loggingEvent = new LoggingEvent(_logger.GetType(), _logger.Repository, _categoryName, log4netLevel, message, null);
-        
+
         // Add system event properties
         loggingEvent.Properties["SystemComponent"] = systemComponent;
         loggingEvent.Properties["Event"] = @event;
@@ -253,7 +253,7 @@ public class Log4NetLogger : CursorPhobia.Core.Utilities.ILogger, Microsoft.Exte
         // Create a new logger with the service name appended
         var serviceLoggerName = $"{_categoryName}.{serviceName}";
         var log4netServiceLogger = LogManager.GetLogger(serviceLoggerName);
-        
+
         return new Log4NetLogger(log4netServiceLogger, serviceLoggerName);
     }
 
@@ -332,7 +332,7 @@ internal class Log4NetPerformanceScope : IPerformanceScope
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _serviceName = serviceName ?? throw new ArgumentNullException(nameof(serviceName));
         _operation = operation ?? throw new ArgumentNullException(nameof(operation));
-        
+
         _context = new Dictionary<string, object>();
         foreach (var (key, value) in additionalContext)
         {
@@ -352,7 +352,7 @@ internal class Log4NetPerformanceScope : IPerformanceScope
     {
         if (string.IsNullOrEmpty(key))
             throw new ArgumentException("Context key cannot be null or empty", nameof(key));
-        
+
         _context[key] = value;
     }
 
@@ -365,7 +365,7 @@ internal class Log4NetPerformanceScope : IPerformanceScope
 
         // Prepare additional context including failure reason if applicable
         var contextArray = _context.Select(kvp => (kvp.Key, kvp.Value)).ToList();
-        
+
         if (_failed && !string.IsNullOrEmpty(_failureReason))
         {
             contextArray.Add(("FailureReason", _failureReason!));

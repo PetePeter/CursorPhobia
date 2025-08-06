@@ -93,9 +93,9 @@ public class PerMonitorIntegrationTests
     public void CursorPhobiaEngine_UsesPerMonitorSettings_WhenAvailable()
     {
         // Arrange
-        var primaryMonitor = new MonitorInfo(IntPtr.Zero, new Rectangle(0, 0, 1920, 1080), 
+        var primaryMonitor = new MonitorInfo(IntPtr.Zero, new Rectangle(0, 0, 1920, 1080),
             new Rectangle(0, 0, 1920, 1040), true, @"\\.\DISPLAY1");
-        var secondaryMonitor = new MonitorInfo(IntPtr.Zero, new Rectangle(1920, 0, 1920, 1080), 
+        var secondaryMonitor = new MonitorInfo(IntPtr.Zero, new Rectangle(1920, 0, 1920, 1080),
             new Rectangle(1920, 0, 1920, 1040), false, @"\\.\DISPLAY2");
 
         var config = CursorPhobiaConfiguration.CreateDefault();
@@ -174,9 +174,9 @@ public class PerMonitorIntegrationTests
         // Arrange
         var migrator = new PerMonitorSettingsMigrator(_mockLogger.Object);
 
-        var oldMonitor = new MonitorInfo(IntPtr.Zero, new Rectangle(0, 0, 1920, 1080), 
+        var oldMonitor = new MonitorInfo(IntPtr.Zero, new Rectangle(0, 0, 1920, 1080),
             new Rectangle(0, 0, 1920, 1040), true, @"\\.\DISPLAY1", "DELL", "U2720Q", "ABC123");
-        var newMonitor = new MonitorInfo(IntPtr.Zero, new Rectangle(0, 0, 1920, 1080), 
+        var newMonitor = new MonitorInfo(IntPtr.Zero, new Rectangle(0, 0, 1920, 1080),
             new Rectangle(0, 0, 1920, 1040), true, @"\\.\DISPLAY1", "DELL", "U2720Q", "ABC123");
 
         var oldMonitors = new List<MonitorInfo> { oldMonitor };
@@ -219,15 +219,15 @@ public class PerMonitorIntegrationTests
         // Arrange
         var migrator = new PerMonitorSettingsMigrator(_mockLogger.Object);
 
-        var oldMonitor = new MonitorInfo(IntPtr.Zero, new Rectangle(0, 0, 1920, 1080), 
+        var oldMonitor = new MonitorInfo(IntPtr.Zero, new Rectangle(0, 0, 1920, 1080),
             new Rectangle(0, 0, 1920, 1040), true, @"\\.\DISPLAY1", "DELL", "U2720Q", "ABC123");
 
         // New monitor with same specs but different device name (simulating driver update)
-        var newMonitor1 = new MonitorInfo(IntPtr.Zero, new Rectangle(0, 0, 1920, 1080), 
+        var newMonitor1 = new MonitorInfo(IntPtr.Zero, new Rectangle(0, 0, 1920, 1080),
             new Rectangle(0, 0, 1920, 1040), true, @"\\.\DISPLAY_DELL_001", "DELL", "U2720Q", "ABC123");
 
         // Different monitor
-        var newMonitor2 = new MonitorInfo(IntPtr.Zero, new Rectangle(1920, 0, 1920, 1080), 
+        var newMonitor2 = new MonitorInfo(IntPtr.Zero, new Rectangle(1920, 0, 1920, 1080),
             new Rectangle(1920, 0, 1920, 1040), false, @"\\.\DISPLAY2", "ASUS", "VG248QE", "XYZ789");
 
         var newMonitors = new List<MonitorInfo> { newMonitor1, newMonitor2 };
@@ -245,7 +245,7 @@ public class PerMonitorIntegrationTests
         // Arrange
         var migrator = new PerMonitorSettingsMigrator(_mockLogger.Object);
 
-        var existingMonitor = new MonitorInfo(IntPtr.Zero, new Rectangle(0, 0, 1920, 1080), 
+        var existingMonitor = new MonitorInfo(IntPtr.Zero, new Rectangle(0, 0, 1920, 1080),
             new Rectangle(0, 0, 1920, 1040), true, @"\\.\DISPLAY1");
         var orphanedMonitorKey = "ORPHANED_MONITOR_KEY";
 
@@ -280,9 +280,9 @@ public class PerMonitorIntegrationTests
         var migrator = new PerMonitorSettingsMigrator(_mockLogger.Object);
 
         // Setup monitors with different DPI
-        var lowDpiMonitor = new MonitorInfo(IntPtr.Zero, new Rectangle(0, 0, 1920, 1080), 
+        var lowDpiMonitor = new MonitorInfo(IntPtr.Zero, new Rectangle(0, 0, 1920, 1080),
             new Rectangle(0, 0, 1920, 1040), true, @"\\.\DISPLAY1");
-        var highDpiMonitor = new MonitorInfo(IntPtr.Zero, new Rectangle(1920, 0, 3840, 2160), 
+        var highDpiMonitor = new MonitorInfo(IntPtr.Zero, new Rectangle(1920, 0, 3840, 2160),
             new Rectangle(1920, 0, 3840, 2120), false, @"\\.\DISPLAY2");
 
         var monitors = new List<MonitorInfo> { lowDpiMonitor, highDpiMonitor };
@@ -323,15 +323,15 @@ public class PerMonitorIntegrationTests
 
         var oldMonitors = new List<MonitorInfo>
         {
-            new MonitorInfo(IntPtr.Zero, new Rectangle(0, 0, 1920, 1080), 
+            new MonitorInfo(IntPtr.Zero, new Rectangle(0, 0, 1920, 1080),
                 new Rectangle(0, 0, 1920, 1040), true, @"\\.\DISPLAY1")
         };
 
         var newMonitors = new List<MonitorInfo>
         {
-            new MonitorInfo(IntPtr.Zero, new Rectangle(0, 0, 1920, 1080), 
+            new MonitorInfo(IntPtr.Zero, new Rectangle(0, 0, 1920, 1080),
                 new Rectangle(0, 0, 1920, 1040), true, @"\\.\DISPLAY1"),
-            new MonitorInfo(IntPtr.Zero, new Rectangle(1920, 0, 1920, 1080), 
+            new MonitorInfo(IntPtr.Zero, new Rectangle(1920, 0, 1920, 1080),
                 new Rectangle(1920, 0, 1920, 1040), false, @"\\.\DISPLAY2")
         };
 
@@ -358,7 +358,7 @@ public class PerMonitorIntegrationTests
         // Trigger the private event handler by reflection (for testing purposes)
         var eventInfo = typeof(IMonitorConfigurationWatcher).GetEvent("MonitorConfigurationChanged");
         var handlerField = typeof(PerMonitorConfigurationManager)
-            .GetField("OnMonitorConfigurationChanged", 
+            .GetField("OnMonitorConfigurationChanged",
                 System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
 
         // This is a simplified test - in practice, the event would be raised by the monitor watcher

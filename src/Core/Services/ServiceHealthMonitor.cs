@@ -18,42 +18,42 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
     private bool _running = false;
     private DateTime _startTime;
     private SystemHealthStatus _currentSystemHealth = SystemHealthStatus.Unknown;
-    
+
     /// <summary>
     /// Event raised when a service health status changes
     /// </summary>
     public event EventHandler<ServiceHealthChangedEventArgs>? ServiceHealthChanged;
-    
+
     /// <summary>
     /// Event raised when a critical service becomes unhealthy
     /// </summary>
     public event EventHandler<CriticalServiceUnhealthyEventArgs>? CriticalServiceUnhealthy;
-    
+
     /// <summary>
     /// Event raised when overall system health changes
     /// </summary>
     public event EventHandler<SystemHealthChangedEventArgs>? SystemHealthChanged;
-    
+
     /// <summary>
     /// Event raised when a service restart is recommended
     /// </summary>
     public event EventHandler<ServiceRestartRecommendedEventArgs>? ServiceRestartRecommended;
-    
+
     /// <summary>
     /// Gets whether the health monitor is currently running
     /// </summary>
     public bool IsRunning => _running && !_disposed;
-    
+
     /// <summary>
     /// Gets the current overall system health status
     /// </summary>
     public SystemHealthStatus SystemHealth => _currentSystemHealth;
-    
+
     /// <summary>
     /// Gets or sets the monitoring interval for health checks
     /// </summary>
     public TimeSpan MonitoringInterval { get; set; } = TimeSpan.FromSeconds(30);
-    
+
     /// <summary>
     /// Creates a new ServiceHealthMonitor instance
     /// </summary>
@@ -63,11 +63,11 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _trayManager = trayManager;
-        
+
         // Initialize monitoring timer (not started)
         _monitoringTimer = new System.Threading.Timer(PerformHealthChecks, null, Timeout.Infinite, Timeout.Infinite);
     }
-    
+
     /// <summary>
     /// Starts the health monitoring service
     /// </summary>
@@ -79,26 +79,26 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
             _logger.LogWarning("Cannot start disposed ServiceHealthMonitor");
             return false;
         }
-        
+
         if (_running)
         {
             _logger.LogDebug("ServiceHealthMonitor is already running");
             return true;
         }
-        
+
         try
         {
             _logger.LogInformation("Starting service health monitor...");
-            
+
             _startTime = DateTime.UtcNow;
             _running = true;
-            
+
             // Start monitoring timer
             _monitoringTimer.Change(TimeSpan.Zero, MonitoringInterval);
-            
+
             _logger.LogInformation("Service health monitor started with {ServiceCount} registered services (interval: {Interval})",
                 _services.Count, MonitoringInterval);
-            
+
             return true;
         }
         catch (Exception ex)
@@ -107,10 +107,10 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
             _running = false;
             return false;
         }
-        
+
         await Task.CompletedTask;
     }
-    
+
     /// <summary>
     /// Stops the health monitoring service
     /// </summary>
@@ -121,19 +121,19 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
         {
             return true;
         }
-        
+
         try
         {
             _logger.LogInformation("Stopping service health monitor...");
-            
+
             // Stop monitoring timer
             _monitoringTimer.Change(Timeout.Infinite, Timeout.Infinite);
-            
+
             _running = false;
             _currentSystemHealth = SystemHealthStatus.Unknown;
-            
+
             _logger.LogInformation("Service health monitor stopped");
-            
+
             return true;
         }
         catch (Exception ex)
@@ -141,10 +141,10 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
             _logger.LogError(ex, "Error stopping service health monitor");
             return false;
         }
-        
+
         await Task.CompletedTask;
     }
-    
+
     /// <summary>
     /// Registers a service for health monitoring
     /// </summary>
@@ -159,19 +159,19 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
             _logger.LogWarning("Cannot register service with null or empty name");
             return false;
         }
-        
+
         if (healthCheck == null)
         {
             _logger.LogWarning("Cannot register service '{ServiceName}' with null health check function", serviceName);
             return false;
         }
-        
+
         if (_disposed)
         {
             _logger.LogWarning("Cannot register service with disposed ServiceHealthMonitor");
             return false;
         }
-        
+
         try
         {
             var effectiveOptions = options ?? new ServiceMonitoringOptions();
@@ -183,7 +183,7 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
                 Status = ServiceHealthStatus.Unknown,
                 RegistrationTime = DateTime.UtcNow
             };
-            
+
             _services.AddOrUpdate(serviceName, service, (key, existing) =>
             {
                 _logger.LogInformation("Updating existing service registration: {ServiceName}", serviceName);
@@ -191,16 +191,16 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
                 existing.Options = effectiveOptions;
                 return existing;
             });
-            
+
             _logger.LogInformation("Registered service for health monitoring: {ServiceName} (Critical: {IsCritical}, Interval: {Interval})",
                 serviceName, effectiveOptions.IsCritical, effectiveOptions.CheckInterval);
-            
+
             // Perform initial health check
             if (_running)
             {
                 _ = Task.Run(async () => await CheckSingleServiceHealthAsync(service));
             }
-            
+
             return true;
         }
         catch (Exception ex)
@@ -208,10 +208,10 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
             _logger.LogError(ex, "Failed to register service: {ServiceName}", serviceName);
             return false;
         }
-        
+
         await Task.CompletedTask;
     }
-    
+
     /// <summary>
     /// Unregisters a service from health monitoring
     /// </summary>
@@ -223,22 +223,22 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
         {
             return false;
         }
-        
+
         try
         {
             if (_services.TryRemove(serviceName, out var service))
             {
                 _logger.LogInformation("Unregistered service from health monitoring: {ServiceName}", serviceName);
-                
+
                 // Update system health after service removal
                 if (_running)
                 {
                     await UpdateSystemHealthAsync();
                 }
-                
+
                 return true;
             }
-            
+
             _logger.LogDebug("Service not found for unregistration: {ServiceName}", serviceName);
             return false;
         }
@@ -247,10 +247,10 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
             _logger.LogError(ex, "Failed to unregister service: {ServiceName}", serviceName);
             return false;
         }
-        
+
         await Task.CompletedTask;
     }
-    
+
     /// <summary>
     /// Gets the current health status of a specific service
     /// </summary>
@@ -262,10 +262,10 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
         {
             return null;
         }
-        
+
         return service.Status;
     }
-    
+
     /// <summary>
     /// Gets detailed health information for a specific service
     /// </summary>
@@ -277,7 +277,7 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
         {
             return null;
         }
-        
+
         return new ServiceHealthInfo
         {
             ServiceName = serviceName,
@@ -295,7 +295,7 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
             LastRestartTime = service.LastRestartTime
         };
     }
-    
+
     /// <summary>
     /// Gets health information for all monitored services
     /// </summary>
@@ -303,7 +303,7 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
     public IReadOnlyDictionary<string, ServiceHealthInfo> GetAllServiceHealth()
     {
         var result = new Dictionary<string, ServiceHealthInfo>();
-        
+
         foreach (var kvp in _services)
         {
             var healthInfo = GetServiceHealthInfo(kvp.Key);
@@ -312,10 +312,10 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
                 result[kvp.Key] = healthInfo;
             }
         }
-        
+
         return result;
     }
-    
+
     /// <summary>
     /// Performs an immediate health check on a specific service
     /// </summary>
@@ -332,10 +332,10 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
                 ResponseTime = TimeSpan.Zero
             };
         }
-        
+
         return await CheckSingleServiceHealthAsync(service);
     }
-    
+
     /// <summary>
     /// Performs an immediate health check on all registered services
     /// </summary>
@@ -348,7 +348,7 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
             CheckTime = DateTime.UtcNow,
             ServiceResults = new Dictionary<string, ServiceHealthResult>()
         };
-        
+
         try
         {
             var tasks = _services.Values.Select(async service =>
@@ -356,22 +356,22 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
                 var healthResult = await CheckSingleServiceHealthAsync(service);
                 return new { ServiceName = service.Name, Result = healthResult };
             });
-            
+
             var serviceResults = await Task.WhenAll(tasks);
-            
+
             foreach (var serviceResult in serviceResults)
             {
                 result.ServiceResults[serviceResult.ServiceName] = serviceResult.Result;
             }
-            
+
             // Determine system health based on service results
             result.SystemStatus = DetermineSystemHealth(result.ServiceResults.Values);
             result.CheckDuration = stopwatch.Elapsed;
             result.Summary = GenerateHealthSummary(result);
-            
+
             // Update current system health
             await UpdateSystemHealthAsync(result.SystemStatus);
-            
+
             return result;
         }
         catch (Exception ex)
@@ -383,7 +383,7 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
             return result;
         }
     }
-    
+
     /// <summary>
     /// Gets a list of all registered service names
     /// </summary>
@@ -392,7 +392,7 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
     {
         return _services.Keys.ToList();
     }
-    
+
     /// <summary>
     /// Gets health monitoring statistics
     /// </summary>
@@ -400,14 +400,14 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
     public HealthMonitoringStatistics GetStatistics()
     {
         var services = _services.Values.ToList();
-        
+
         return new HealthMonitoringStatistics
         {
             TotalServices = services.Count,
             CriticalServices = services.Count(s => s.Options.IsCritical),
             TotalHealthChecks = services.Sum(s => s.TotalChecks),
             TotalFailures = services.Sum(s => s.TotalFailures),
-            AverageResponseTime = services.Count > 0 
+            AverageResponseTime = services.Count > 0
                 ? TimeSpan.FromMilliseconds(services.Average(s => s.AverageResponseTime.TotalMilliseconds))
                 : TimeSpan.Zero,
             MonitoringStartTime = _startTime,
@@ -415,7 +415,7 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
             TotalRestarts = services.Sum(s => s.RestartAttempts)
         };
     }
-    
+
     /// <summary>
     /// Resets health statistics for a specific service
     /// </summary>
@@ -427,7 +427,7 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
         {
             return false;
         }
-        
+
         try
         {
             service.TotalChecks = 0;
@@ -440,7 +440,7 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
             service.LastRestartTime = null;
             service.AverageResponseTime = TimeSpan.Zero;
             service.ResponseTimes.Clear();
-            
+
             _logger.LogInformation("Reset health statistics for service: {ServiceName}", serviceName);
             return true;
         }
@@ -449,10 +449,10 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
             _logger.LogError(ex, "Error resetting statistics for service: {ServiceName}", serviceName);
             return false;
         }
-        
+
         await Task.CompletedTask;
     }
-    
+
     /// <summary>
     /// Updates the monitoring configuration for a service
     /// </summary>
@@ -465,7 +465,7 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
         {
             return false;
         }
-        
+
         try
         {
             service.Options = options ?? new ServiceMonitoringOptions();
@@ -477,10 +477,10 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
             _logger.LogError(ex, "Error updating monitoring options for service: {ServiceName}", serviceName);
             return false;
         }
-        
+
         await Task.CompletedTask;
     }
-    
+
     /// <summary>
     /// Performs health checks on all services (timer callback)
     /// </summary>
@@ -488,7 +488,7 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
     {
         if (_disposed || !_running)
             return;
-        
+
         try
         {
             await CheckAllServicesHealthAsync();
@@ -498,7 +498,7 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
             _logger.LogError(ex, "Error during periodic health checks");
         }
     }
-    
+
     /// <summary>
     /// Performs health check on a single service
     /// </summary>
@@ -506,15 +506,15 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
     {
         var stopwatch = System.Diagnostics.Stopwatch.StartNew();
         ServiceHealthResult result;
-        
+
         try
         {
             // Use timeout for health check
             using var cancellationTokenSource = new CancellationTokenSource(service.Options.CheckTimeout);
-            
+
             result = await service.HealthCheck();
             result.ResponseTime = stopwatch.Elapsed;
-            
+
             if (result.CheckTime == default)
             {
                 result.CheckTime = DateTime.UtcNow;
@@ -540,21 +540,21 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
                 Exception = ex
             };
         }
-        
+
         // Update service statistics
         service.TotalChecks++;
         service.LastCheckResult = result;
         service.UpdateAverageResponseTime(result.ResponseTime);
-        
+
         var previousStatus = service.Status;
         var isHealthy = result.Status == ServiceHealthStatus.Healthy;
-        
+
         if (isHealthy)
         {
             service.ConsecutiveSuccesses++;
             service.ConsecutiveFailures = 0;
             service.LastHealthyTime = DateTime.UtcNow;
-            
+
             // Update status if we have enough consecutive successes
             if (service.ConsecutiveSuccesses >= service.Options.RecoveryThreshold)
             {
@@ -567,20 +567,20 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
             service.ConsecutiveFailures++;
             service.ConsecutiveSuccesses = 0;
             service.LastUnhealthyTime = DateTime.UtcNow;
-            
+
             // Update status if we have enough consecutive failures
             if (service.ConsecutiveFailures >= service.Options.FailureThreshold)
             {
                 service.Status = result.Status;
             }
         }
-        
+
         // Check for status change
         if (service.Status != previousStatus)
         {
             _logger.LogInformation("Service health status changed: {ServiceName} {PreviousStatus} -> {NewStatus}",
                 service.Name, previousStatus, service.Status);
-            
+
             // Raise service health changed event
             ServiceHealthChanged?.Invoke(this, new ServiceHealthChangedEventArgs
             {
@@ -590,13 +590,13 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
                 CheckResult = result,
                 IsCritical = service.Options.IsCritical
             });
-            
+
             // Handle critical service becoming unhealthy
             if (service.Options.IsCritical && service.Status != ServiceHealthStatus.Healthy)
             {
                 await HandleCriticalServiceUnhealthyAsync(service, result);
             }
-            
+
             // Show notification if enabled
             if (service.Options.EnableNotifications && _trayManager != null)
             {
@@ -605,10 +605,10 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
                     $"Service '{service.Name}' is now {service.Status}", isError);
             }
         }
-        
+
         return result;
     }
-    
+
     /// <summary>
     /// Handles critical service becoming unhealthy
     /// </summary>
@@ -616,7 +616,7 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
     {
         _logger.LogWarning("Critical service '{ServiceName}' is unhealthy: {Description}",
             service.Name, result.Description);
-        
+
         // Raise critical service unhealthy event
         var eventArgs = new CriticalServiceUnhealthyEventArgs
         {
@@ -625,9 +625,9 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
             ConsecutiveFailures = service.ConsecutiveFailures,
             RestartRecommended = result.RecommendRestart || service.Options.EnableAutoRestart
         };
-        
+
         CriticalServiceUnhealthy?.Invoke(this, eventArgs);
-        
+
         // Handle automatic restart if enabled
         if (service.Options.EnableAutoRestart && service.RestartAttempts < service.Options.MaxRestartAttempts)
         {
@@ -646,7 +646,7 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
             });
         }
     }
-    
+
     /// <summary>
     /// Attempts to restart a service
     /// </summary>
@@ -656,13 +656,13 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
         {
             service.RestartAttempts++;
             service.LastRestartTime = DateTime.UtcNow;
-            
+
             _logger.LogInformation("Attempting automatic restart of service '{ServiceName}' (attempt {Attempt}/{MaxAttempts})",
                 service.Name, service.RestartAttempts, service.Options.MaxRestartAttempts);
-            
+
             // Wait before restart attempt
             await Task.Delay(service.Options.RestartDelay);
-            
+
             // Raise restart event
             ServiceRestartRecommended?.Invoke(this, new ServiceRestartRecommendedEventArgs
             {
@@ -672,17 +672,17 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
                 IsAutomatic = true,
                 Priority = service.Options.IsCritical ? 10 : 5
             });
-            
+
             // Note: Actual restart implementation would depend on the specific service type
             // This is a placeholder for restart logic that would be implemented by the service itself
-            
+
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error during automatic restart attempt for service: {ServiceName}", service.Name);
         }
     }
-    
+
     /// <summary>
     /// Determines overall system health based on individual service results
     /// </summary>
@@ -693,36 +693,36 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
         {
             return SystemHealthStatus.Unknown;
         }
-        
+
         var criticalCount = results.Count(r => r.Status == ServiceHealthStatus.Critical);
         var unhealthyCount = results.Count(r => r.Status == ServiceHealthStatus.Unhealthy);
         var warningCount = results.Count(r => r.Status == ServiceHealthStatus.Warning);
         var healthyCount = results.Count(r => r.Status == ServiceHealthStatus.Healthy);
-        
+
         // Determine system health based on service distribution
         if (criticalCount > 0)
         {
             return SystemHealthStatus.Unhealthy;
         }
-        
+
         if (unhealthyCount > 0)
         {
             return SystemHealthStatus.Unhealthy;
         }
-        
+
         if (warningCount > 0)
         {
             return SystemHealthStatus.Degraded;
         }
-        
+
         if (healthyCount == results.Count)
         {
             return SystemHealthStatus.Healthy;
         }
-        
+
         return SystemHealthStatus.Degraded;
     }
-    
+
     /// <summary>
     /// Generates a health summary for system health check results
     /// </summary>
@@ -731,14 +731,14 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
         return $"{result.HealthyServices}/{result.TotalServices} services healthy, " +
                $"{result.WarningServices} warnings, {result.UnhealthyServices} unhealthy, {result.CriticalServices} critical";
     }
-    
+
     /// <summary>
     /// Updates the current system health status
     /// </summary>
     private async Task UpdateSystemHealthAsync(SystemHealthStatus? newStatus = null)
     {
         SystemHealthStatus systemHealth;
-        
+
         if (newStatus.HasValue)
         {
             systemHealth = newStatus.Value;
@@ -749,15 +749,15 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
             var serviceStates = _services.Values.Select(s => new ServiceHealthResult { Status = s.Status });
             systemHealth = DetermineSystemHealth(serviceStates);
         }
-        
+
         if (systemHealth != _currentSystemHealth)
         {
             var previousHealth = _currentSystemHealth;
             _currentSystemHealth = systemHealth;
-            
+
             _logger.LogInformation("System health status changed: {PreviousHealth} -> {NewHealth}",
                 previousHealth, systemHealth);
-            
+
             // Raise system health changed event
             SystemHealthChanged?.Invoke(this, new SystemHealthChangedEventArgs
             {
@@ -767,10 +767,10 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
                 Description = $"System health changed to {systemHealth}"
             });
         }
-        
+
         await Task.CompletedTask;
     }
-    
+
     /// <summary>
     /// Disposes the service health monitor
     /// </summary>
@@ -778,7 +778,7 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
     {
         if (_disposed)
             return;
-        
+
         try
         {
             _monitoringTimer?.Dispose();
@@ -790,7 +790,7 @@ public class ServiceHealthMonitor : IServiceHealthMonitor
         {
             _logger.LogError(ex, "Error during ServiceHealthMonitor disposal");
         }
-        
+
         GC.SuppressFinalize(this);
     }
 }
@@ -815,19 +815,19 @@ internal class MonitoredService
     public int RestartAttempts { get; set; }
     public DateTime? LastRestartTime { get; set; }
     public DateTime RegistrationTime { get; set; }
-    
+
     public readonly List<TimeSpan> ResponseTimes = new();
-    
+
     public void UpdateAverageResponseTime(TimeSpan responseTime)
     {
         ResponseTimes.Add(responseTime);
-        
+
         // Keep only the last 100 response times to prevent memory bloat
         if (ResponseTimes.Count > 100)
         {
             ResponseTimes.RemoveAt(0);
         }
-        
+
         AverageResponseTime = TimeSpan.FromMilliseconds(ResponseTimes.Average(t => t.TotalMilliseconds));
     }
 }

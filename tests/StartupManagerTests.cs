@@ -9,7 +9,7 @@ public class StartupManagerTests : IDisposable
 {
     private const string TEST_REGISTRY_KEY = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
     private const string APP_NAME = "CursorPhobia";
-    
+
     private StartupManager _startupManager;
     private TestLogger _logger;
 
@@ -17,7 +17,7 @@ public class StartupManagerTests : IDisposable
     {
         _logger = new TestLogger();
         _startupManager = new StartupManager(_logger);
-        
+
         // Clean up any existing test entries
         CleanupRegistryEntry();
     }
@@ -32,10 +32,10 @@ public class StartupManagerTests : IDisposable
     {
         // Arrange - ensure no registry entry exists
         CleanupRegistryEntry();
-        
+
         // Act
         var result = await _startupManager.IsAutoStartEnabledAsync();
-        
+
         // Assert
         Assert.False(result);
     }
@@ -45,14 +45,14 @@ public class StartupManagerTests : IDisposable
     {
         // Act
         var result = await _startupManager.EnableAutoStartAsync();
-        
+
         // Assert
         Assert.True(result);
-        
+
         // Verify registry entry was created
         using var key = Registry.CurrentUser.OpenSubKey(TEST_REGISTRY_KEY, false);
         var value = key?.GetValue(APP_NAME)?.ToString();
-        
+
         Assert.NotNull(value);
         Assert.Contains("CursorPhobia", value);
         Assert.Contains("--tray", value);
@@ -65,13 +65,13 @@ public class StartupManagerTests : IDisposable
         await _startupManager.EnableAutoStartAsync();
         var wasEnabled = await _startupManager.IsAutoStartEnabledAsync();
         Assert.True(wasEnabled);
-        
+
         // Act
         var result = await _startupManager.DisableAutoStartAsync();
-        
+
         // Assert
         Assert.True(result);
-        
+
         // Verify registry entry was removed
         var isStillEnabled = await _startupManager.IsAutoStartEnabledAsync();
         Assert.False(isStillEnabled);
@@ -82,10 +82,10 @@ public class StartupManagerTests : IDisposable
     {
         // Arrange
         await _startupManager.EnableAutoStartAsync();
-        
+
         // Act
         var command = await _startupManager.GetAutoStartCommandAsync();
-        
+
         // Assert
         Assert.NotNull(command);
         Assert.Contains("CursorPhobia", command);
@@ -97,7 +97,7 @@ public class StartupManagerTests : IDisposable
     {
         // Act
         var command = await _startupManager.GetAutoStartCommandAsync();
-        
+
         // Assert
         Assert.NotNull(command);
         Assert.NotEmpty(command);
@@ -109,7 +109,7 @@ public class StartupManagerTests : IDisposable
     {
         // Act
         var isValid = await _startupManager.ValidatePermissionsAsync();
-        
+
         // Assert
         Assert.True(isValid);
     }
@@ -120,11 +120,11 @@ public class StartupManagerTests : IDisposable
         // Arrange - enable auto-start first
         await _startupManager.EnableAutoStartAsync();
         var command1 = await _startupManager.GetAutoStartCommandAsync();
-        
+
         // Act - enable again
         var result = await _startupManager.EnableAutoStartAsync();
         var command2 = await _startupManager.GetAutoStartCommandAsync();
-        
+
         // Assert
         Assert.True(result);
         Assert.NotNull(command1);
@@ -137,10 +137,10 @@ public class StartupManagerTests : IDisposable
     {
         // Arrange - ensure auto-start is disabled
         await _startupManager.DisableAutoStartAsync();
-        
+
         // Act - disable again
         var result = await _startupManager.DisableAutoStartAsync();
-        
+
         // Assert
         Assert.True(result); // Should still succeed
     }

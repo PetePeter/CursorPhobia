@@ -16,7 +16,7 @@ public enum LoggingProvider
     /// Use log4net as the logging provider (recommended for production)
     /// </summary>
     Log4Net,
-    
+
     /// <summary>
     /// Use NLog as the logging provider (legacy support)
     /// </summary>
@@ -229,20 +229,20 @@ public static class LoggingConfiguration
     private static string FindProjectRoot(string startDirectory)
     {
         var currentDir = new DirectoryInfo(startDirectory);
-        
+
         while (currentDir != null)
         {
             // Look for solution file or NLog.config in current directory
-            if (currentDir.GetFiles("*.sln").Any() || 
+            if (currentDir.GetFiles("*.sln").Any() ||
                 currentDir.GetFiles("NLog.config").Any() ||
                 currentDir.GetFiles("CursorPhobia.sln").Any())
             {
                 return currentDir.FullName;
             }
-            
+
             currentDir = currentDir.Parent;
         }
-        
+
         // Fallback to start directory if no project root found
         return startDirectory;
     }
@@ -260,11 +260,11 @@ public static class LoggingConfiguration
                 {
                     // Shutdown both providers
                     Log4NetConfiguration.ShutdownLogging();
-                    
+
                     var logger = LogManager.GetCurrentClassLogger();
                     logger.Info("Shutting down production logging system");
                     LogManager.Shutdown();
-                    
+
                     _initialized = false;
                 }
                 catch (Exception ex)
@@ -302,7 +302,7 @@ public static class LoggingConfiguration
             CursorPhobia.Core.Utilities.LoggerFactory.Initialize(nlogLoggerFactory);
 
             _initialized = true;
-            
+
             // Log successful initialization
             var logger = LogManager.GetCurrentClassLogger();
             logger.Info("NLog production logging system initialized successfully");

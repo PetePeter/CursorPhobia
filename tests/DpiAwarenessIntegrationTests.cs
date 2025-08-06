@@ -22,13 +22,13 @@ public class DpiAwarenessIntegrationTests
     }
 
     [Theory]
-    [InlineData(96, 96, 50, 50)] // 100% scaling - no change
-    [InlineData(120, 120, 50, 63)] // 125% scaling
-    [InlineData(144, 144, 50, 75)] // 150% scaling
-    [InlineData(192, 192, 50, 100)] // 200% scaling
-    [InlineData(288, 288, 50, 150)] // 300% scaling
+    [InlineData(96, 96, 50)] // 100% scaling - no change
+    [InlineData(120, 120, 50)] // 125% scaling
+    [InlineData(144, 144, 50)] // 150% scaling
+    [InlineData(192, 192, 50)] // 200% scaling
+    [InlineData(288, 288, 50)] // 300% scaling
     public void ProximityDetector_ScalesThresholdCorrectly_ForDifferentDpi(
-        int dpiX, int dpiY, int logicalThreshold, int expectedPhysicalThreshold)
+        int dpiX, int dpiY, int logicalThreshold)
     {
         // Arrange
         var dpiInfo = new DpiInfo((uint)dpiX, (uint)dpiY);
@@ -52,11 +52,11 @@ public class DpiAwarenessIntegrationTests
     }
 
     [Theory]
-    [InlineData(96, 96, 100, 100)] // 100% scaling
-    [InlineData(144, 144, 100, 150)] // 150% scaling
-    [InlineData(192, 192, 100, 200)] // 200% scaling
+    [InlineData(96, 96, 100)] // 100% scaling
+    [InlineData(144, 144, 100)] // 150% scaling
+    [InlineData(192, 192, 100)] // 200% scaling
     public void ProximityDetector_ScalesPushDistanceCorrectly_ForDifferentDpi(
-        int dpiX, int dpiY, int logicalDistance, int expectedPhysicalDistance)
+        int dpiX, int dpiY, int logicalDistance)
     {
         // Arrange
         var dpiInfo = new DpiInfo((uint)dpiX, (uint)dpiY);
@@ -123,9 +123,9 @@ public class DpiAwarenessIntegrationTests
     public void CursorPhobiaEngine_HandlesPerMonitorDpiSettings_Correctly()
     {
         // Arrange
-        var monitor1 = new MonitorInfo(IntPtr.Zero, new Rectangle(0, 0, 1920, 1080), 
+        var monitor1 = new MonitorInfo(IntPtr.Zero, new Rectangle(0, 0, 1920, 1080),
             new Rectangle(0, 0, 1920, 1040), true, @"\\.\DISPLAY1");
-        var monitor2 = new MonitorInfo(IntPtr.Zero, new Rectangle(1920, 0, 3840, 2160), 
+        var monitor2 = new MonitorInfo(IntPtr.Zero, new Rectangle(1920, 0, 3840, 2160),
             new Rectangle(1920, 0, 3840, 2120), false, @"\\.\DISPLAY2");
 
         // Setup different DPI for each monitor
@@ -296,11 +296,11 @@ public class DpiAwarenessIntegrationTests
         // Arrange - Simulate a monitor DPI change (e.g., user changed display scaling)
         var migrator = new PerMonitorSettingsMigrator(_mockLogger.Object);
 
-        var oldMonitor = new MonitorInfo(IntPtr.Zero, new Rectangle(0, 0, 1920, 1080), 
+        var oldMonitor = new MonitorInfo(IntPtr.Zero, new Rectangle(0, 0, 1920, 1080),
             new Rectangle(0, 0, 1920, 1040), true, @"\\.\DISPLAY1", "DELL", "U2720Q", "ABC123");
 
         // Same monitor but system might report it differently after DPI change
-        var newMonitor = new MonitorInfo(IntPtr.Zero, new Rectangle(0, 0, 1920, 1080), 
+        var newMonitor = new MonitorInfo(IntPtr.Zero, new Rectangle(0, 0, 1920, 1080),
             new Rectangle(0, 0, 1920, 1040), true, @"\\.\DISPLAY1", "DELL", "U2720Q", "ABC123");
 
         var config = CursorPhobiaConfiguration.CreateDefault();
@@ -318,8 +318,8 @@ public class DpiAwarenessIntegrationTests
         };
 
         // Act
-        var migratedConfig = migrator.MigrateSettings(config, 
-            new List<MonitorInfo> { oldMonitor }, 
+        var migratedConfig = migrator.MigrateSettings(config,
+            new List<MonitorInfo> { oldMonitor },
             new List<MonitorInfo> { newMonitor });
 
         // Assert - Settings should be preserved

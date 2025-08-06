@@ -14,7 +14,7 @@ namespace CursorPhobia.Core.Services;
 public class WindowDetectionService : IWindowDetectionService
 {
     private readonly ILogger _logger;
-    
+
     /// <summary>
     /// Creates a new WindowDetectionService instance
     /// </summary>
@@ -23,7 +23,7 @@ public class WindowDetectionService : IWindowDetectionService
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
-    
+
     /// <summary>
     /// Gets all windows that have the topmost flag set
     /// </summary>
@@ -31,10 +31,10 @@ public class WindowDetectionService : IWindowDetectionService
     public List<WindowInfo> GetAllTopMostWindows()
     {
         _logger.LogDebug("Starting enumeration of all topmost windows");
-        
+
         var topMostWindows = new List<WindowInfo>();
         var allWindows = EnumerateVisibleWindows();
-        
+
         foreach (var window in allWindows)
         {
             if (IsWindowAlwaysOnTop(window.WindowHandle))
@@ -42,13 +42,13 @@ public class WindowDetectionService : IWindowDetectionService
                 topMostWindows.Add(window);
             }
         }
-        
-        _logger.LogInformation("Found {Count} topmost windows out of {Total} visible windows", 
+
+        _logger.LogInformation("Found {Count} topmost windows out of {Total} visible windows",
             topMostWindows.Count, allWindows.Count);
-        
+
         return topMostWindows;
     }
-    
+
     /// <summary>
     /// Determines if a window has the always-on-top (topmost) flag set
     /// </summary>
@@ -61,13 +61,13 @@ public class WindowDetectionService : IWindowDetectionService
             _logger.LogWarning("Invalid window handle provided to IsWindowAlwaysOnTop");
             return false;
         }
-        
+
         try
         {
             // Get the extended window styles
             var exStyle = User32.GetWindowLongPtrSafe(hWnd, GWL_EXSTYLE);
             var isTopmost = (exStyle.ToInt64() & WS_EX_TOPMOST) == WS_EX_TOPMOST;
-            
+
             _logger.LogDebug("Window {Handle:X} topmost status: {IsTopmost}", hWnd.ToInt64(), isTopmost);
             return isTopmost;
         }
@@ -77,7 +77,7 @@ public class WindowDetectionService : IWindowDetectionService
             return false;
         }
     }
-    
+
     /// <summary>
     /// Gets comprehensive information about a specific window
     /// </summary>
@@ -90,7 +90,7 @@ public class WindowDetectionService : IWindowDetectionService
             _logger.LogWarning("Invalid window handle provided to GetWindowInformation");
             return null;
         }
-        
+
         try
         {
             // Get basic window properties
@@ -99,19 +99,19 @@ public class WindowDetectionService : IWindowDetectionService
             var isVisible = User32.IsWindowVisible(hWnd);
             var isMinimized = User32.IsIconic(hWnd);
             var isTopmost = IsWindowAlwaysOnTop(hWnd);
-            
+
             // Get window bounds
             if (!User32.GetWindowRect(hWnd, out var rect))
             {
                 _logger.LogWarning("Failed to get window rectangle for window {Handle:X}", hWnd.ToInt64());
                 return null;
             }
-            
+
             var bounds = rect.ToRectangle();
-            
+
             // Get process and thread information
             var threadId = User32.GetWindowThreadProcessId(hWnd, out var processId);
-            
+
             var windowInfo = new WindowInfo
             {
                 WindowHandle = hWnd,
@@ -124,10 +124,10 @@ public class WindowDetectionService : IWindowDetectionService
                 IsTopmost = isTopmost,
                 IsMinimized = isMinimized
             };
-            
-            _logger.LogDebug("Retrieved information for window {Handle:X}: '{Title}' ({ClassName})", 
+
+            _logger.LogDebug("Retrieved information for window {Handle:X}: '{Title}' ({ClassName})",
                 hWnd.ToInt64(), Title, className);
-            
+
             return windowInfo;
         }
         catch (Exception ex)
@@ -136,7 +136,7 @@ public class WindowDetectionService : IWindowDetectionService
             return null;
         }
     }
-    
+
     /// <summary>
     /// Enumerates all visible windows on the system
     /// </summary>
@@ -144,10 +144,10 @@ public class WindowDetectionService : IWindowDetectionService
     public List<WindowInfo> EnumerateVisibleWindows()
     {
         _logger.LogDebug("Starting enumeration of all visible windows");
-        
+
         var windows = new List<WindowInfo>();
         var WindowHandles = new List<IntPtr>();
-        
+
         try
         {
             // First pass: collect all window handles
@@ -159,9 +159,9 @@ public class WindowDetectionService : IWindowDetectionService
                 }
                 return true; // Continue enumeration
             }, IntPtr.Zero);
-            
+
             _logger.LogDebug("Found {Count} visible window handles", WindowHandles.Count);
-            
+
             // Second pass: get detailed information for each window
             foreach (var hWnd in WindowHandles)
             {
@@ -171,10 +171,10 @@ public class WindowDetectionService : IWindowDetectionService
                     windows.Add(windowInfo);
                 }
             }
-            
+
             // Filter out windows that shouldn't be included
             var filteredWindows = FilterRelevantWindows(windows);
-            
+
             _logger.LogInformation("Enumerated {Count} visible windows after filtering", filteredWindows.Count);
             return filteredWindows;
         }
@@ -184,7 +184,7 @@ public class WindowDetectionService : IWindowDetectionService
             return new List<WindowInfo>();
         }
     }
-    
+
     /// <summary>
     /// Filters the window list to remove irrelevant windows (like hidden system windows)
     /// </summary>
@@ -199,23 +199,23 @@ public class WindowDetectionService : IWindowDetectionService
             {
                 return false;
             }
-            
+
             // Skip very small windows (likely system windows)
             if (window.Bounds.Width < 50 || window.Bounds.Height < 50)
             {
                 return false;
             }
-            
+
             // Skip windows positioned far off-screen (negative coordinates beyond reasonable bounds)
             if (window.Bounds.X < -1000 || window.Bounds.Y < -1000)
             {
                 return false;
             }
-            
+
             return true;
         }).ToList();
     }
-    
+
     /// <summary>
     /// Determines if a window class name represents a system window that should be filtered out
     /// </summary>
@@ -225,7 +225,7 @@ public class WindowDetectionService : IWindowDetectionService
     {
         if (string.IsNullOrEmpty(className))
             return false;
-            
+
         var systemClasses = new[]
         {
             "Shell_TrayWnd",           // Taskbar
@@ -242,8 +242,8 @@ public class WindowDetectionService : IWindowDetectionService
             "Chrome_RenderWidgetHostHWND", // Chrome internal windows
             "Intermediate D3D Window" // Graphics subsystem windows
         };
-        
-        return systemClasses.Any(sysClass => 
+
+        return systemClasses.Any(sysClass =>
             className.Equals(sysClass, StringComparison.OrdinalIgnoreCase) ||
             className.StartsWith(sysClass, StringComparison.OrdinalIgnoreCase));
     }
@@ -259,21 +259,21 @@ public interface IWindowDetectionService
     /// </summary>
     /// <returns>List of topmost windows</returns>
     List<WindowInfo> GetAllTopMostWindows();
-    
+
     /// <summary>
     /// Determines if a window has the always-on-top (topmost) flag set
     /// </summary>
     /// <param name="hWnd">Handle to the window to check</param>
     /// <returns>True if the window is always on top, false otherwise</returns>
     bool IsWindowAlwaysOnTop(IntPtr hWnd);
-    
+
     /// <summary>
     /// Gets comprehensive information about a specific window
     /// </summary>
     /// <param name="hWnd">Handle to the window</param>
     /// <returns>WindowInfo object with details about the window, or null if failed</returns>
     WindowInfo? GetWindowInformation(IntPtr hWnd);
-    
+
     /// <summary>
     /// Enumerates all visible windows on the system
     /// </summary>

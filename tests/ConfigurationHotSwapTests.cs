@@ -90,8 +90,8 @@ public class ConfigurationHotSwapTests : IDisposable
         // Assert
         Assert.True(result.Success);
         Assert.False(result.ChangeAnalysis.HasChanges);
-        Assert.Equal(0, result.AppliedChanges.Count);
-        Assert.Equal(0, result.QueuedForRestart.Count);
+        Assert.Empty(result.AppliedChanges);
+        Assert.Empty(result.QueuedForRestart);
         Assert.False(result.RequiresRestart);
     }
 
@@ -130,19 +130,19 @@ public class ConfigurationHotSwapTests : IDisposable
         Assert.True(result.Success);
         Assert.True(result.ChangeAnalysis.HasChanges);
         Assert.Equal(9, result.AppliedChanges.Count); // All hot-swappable changes
-        Assert.Equal(0, result.QueuedForRestart.Count);
+        Assert.Empty(result.QueuedForRestart);
         Assert.False(result.RequiresRestart);
 
         // Verify specific changes were applied
-        Assert.True(result.AppliedChanges.Contains(nameof(CursorPhobiaConfiguration.ProximityThreshold)));
-        Assert.True(result.AppliedChanges.Contains(nameof(CursorPhobiaConfiguration.PushDistance)));
-        Assert.True(result.AppliedChanges.Contains(nameof(CursorPhobiaConfiguration.EnableCtrlOverride)));
-        Assert.True(result.AppliedChanges.Contains(nameof(CursorPhobiaConfiguration.ScreenEdgeBuffer)));
-        Assert.True(result.AppliedChanges.Contains(nameof(CursorPhobiaConfiguration.AnimationDurationMs)));
-        Assert.True(result.AppliedChanges.Contains(nameof(CursorPhobiaConfiguration.EnableAnimations)));
-        Assert.True(result.AppliedChanges.Contains(nameof(CursorPhobiaConfiguration.AnimationEasing)));
-        Assert.True(result.AppliedChanges.Contains(nameof(CursorPhobiaConfiguration.HoverTimeoutMs)));
-        Assert.True(result.AppliedChanges.Contains(nameof(CursorPhobiaConfiguration.EnableHoverTimeout)));
+        Assert.Contains(nameof(CursorPhobiaConfiguration.ProximityThreshold), result.AppliedChanges);
+        Assert.Contains(nameof(CursorPhobiaConfiguration.PushDistance), result.AppliedChanges);
+        Assert.Contains(nameof(CursorPhobiaConfiguration.EnableCtrlOverride), result.AppliedChanges);
+        Assert.Contains(nameof(CursorPhobiaConfiguration.ScreenEdgeBuffer), result.AppliedChanges);
+        Assert.Contains(nameof(CursorPhobiaConfiguration.AnimationDurationMs), result.AppliedChanges);
+        Assert.Contains(nameof(CursorPhobiaConfiguration.EnableAnimations), result.AppliedChanges);
+        Assert.Contains(nameof(CursorPhobiaConfiguration.AnimationEasing), result.AppliedChanges);
+        Assert.Contains(nameof(CursorPhobiaConfiguration.HoverTimeoutMs), result.AppliedChanges);
+        Assert.Contains(nameof(CursorPhobiaConfiguration.EnableHoverTimeout), result.AppliedChanges);
 
         // Verify event was fired
         Assert.True(configUpdatedEventFired);
@@ -176,14 +176,14 @@ public class ConfigurationHotSwapTests : IDisposable
         // Assert
         Assert.True(result.Success);
         Assert.True(result.ChangeAnalysis.HasChanges);
-        Assert.Equal(0, result.AppliedChanges.Count);
+        Assert.Empty(result.AppliedChanges);
         Assert.Equal(3, result.QueuedForRestart.Count);
         Assert.True(result.RequiresRestart);
 
         // Verify specific changes were queued for restart
-        Assert.True(result.QueuedForRestart.Contains(nameof(CursorPhobiaConfiguration.UpdateIntervalMs)));
-        Assert.True(result.QueuedForRestart.Contains(nameof(CursorPhobiaConfiguration.MaxUpdateIntervalMs)));
-        Assert.True(result.QueuedForRestart.Contains(nameof(CursorPhobiaConfiguration.ApplyToAllWindows)));
+        Assert.Contains(nameof(CursorPhobiaConfiguration.UpdateIntervalMs), result.QueuedForRestart);
+        Assert.Contains(nameof(CursorPhobiaConfiguration.MaxUpdateIntervalMs), result.QueuedForRestart);
+        Assert.Contains(nameof(CursorPhobiaConfiguration.ApplyToAllWindows), result.QueuedForRestart);
     }
 
     [Fact]
@@ -274,7 +274,7 @@ public class ConfigurationHotSwapTests : IDisposable
     {
         // Arrange
         await _engine.StartAsync();
-        
+
         var windowInfo = new WindowInfo
         {
             WindowHandle = new IntPtr(12345),
@@ -286,11 +286,11 @@ public class ConfigurationHotSwapTests : IDisposable
         _mockWindowDetectionService
             .Setup(x => x.GetAllTopMostWindows())
             .Returns(new List<WindowInfo> { windowInfo });
-            
+
         _mockCursorTracker
             .Setup(x => x.StartTracking())
             .Returns(true);
-        
+
         // Let the engine process the window
         await _engine.RefreshTrackedWindowsAsync();
 
@@ -315,8 +315,8 @@ public class ConfigurationHotSwapTests : IDisposable
 
         // Assert
         Assert.True(result.Success);
-        Assert.True(result.AppliedChanges.Contains(nameof(CursorPhobiaConfiguration.EnableHoverTimeout)));
-        
+        Assert.Contains(nameof(CursorPhobiaConfiguration.EnableHoverTimeout), result.AppliedChanges);
+
         await _engine.StopAsync();
     }
 
@@ -347,17 +347,17 @@ public class ConfigurationHotSwapTests : IDisposable
         Assert.True(analysis.HasChanges);
         Assert.False(analysis.RequiresRestart);
         Assert.Equal(9, analysis.HotSwappableChanges.Count);
-        Assert.Equal(0, analysis.RestartRequiredChanges.Count);
+        Assert.Empty(analysis.RestartRequiredChanges);
 
-        Assert.True(analysis.HotSwappableChanges.Contains(nameof(CursorPhobiaConfiguration.ProximityThreshold)));
-        Assert.True(analysis.HotSwappableChanges.Contains(nameof(CursorPhobiaConfiguration.PushDistance)));
-        Assert.True(analysis.HotSwappableChanges.Contains(nameof(CursorPhobiaConfiguration.EnableCtrlOverride)));
-        Assert.True(analysis.HotSwappableChanges.Contains(nameof(CursorPhobiaConfiguration.ScreenEdgeBuffer)));
-        Assert.True(analysis.HotSwappableChanges.Contains(nameof(CursorPhobiaConfiguration.AnimationDurationMs)));
-        Assert.True(analysis.HotSwappableChanges.Contains(nameof(CursorPhobiaConfiguration.EnableAnimations)));
-        Assert.True(analysis.HotSwappableChanges.Contains(nameof(CursorPhobiaConfiguration.AnimationEasing)));
-        Assert.True(analysis.HotSwappableChanges.Contains(nameof(CursorPhobiaConfiguration.HoverTimeoutMs)));
-        Assert.True(analysis.HotSwappableChanges.Contains(nameof(CursorPhobiaConfiguration.EnableHoverTimeout)));
+        Assert.Contains(nameof(CursorPhobiaConfiguration.ProximityThreshold), analysis.HotSwappableChanges);
+        Assert.Contains(nameof(CursorPhobiaConfiguration.PushDistance), analysis.HotSwappableChanges);
+        Assert.Contains(nameof(CursorPhobiaConfiguration.EnableCtrlOverride), analysis.HotSwappableChanges);
+        Assert.Contains(nameof(CursorPhobiaConfiguration.ScreenEdgeBuffer), analysis.HotSwappableChanges);
+        Assert.Contains(nameof(CursorPhobiaConfiguration.AnimationDurationMs), analysis.HotSwappableChanges);
+        Assert.Contains(nameof(CursorPhobiaConfiguration.EnableAnimations), analysis.HotSwappableChanges);
+        Assert.Contains(nameof(CursorPhobiaConfiguration.AnimationEasing), analysis.HotSwappableChanges);
+        Assert.Contains(nameof(CursorPhobiaConfiguration.HoverTimeoutMs), analysis.HotSwappableChanges);
+        Assert.Contains(nameof(CursorPhobiaConfiguration.EnableHoverTimeout), analysis.HotSwappableChanges);
     }
 
     [Fact]
@@ -386,12 +386,12 @@ public class ConfigurationHotSwapTests : IDisposable
         // Assert
         Assert.True(analysis.HasChanges);
         Assert.True(analysis.RequiresRestart);
-        Assert.Equal(0, analysis.HotSwappableChanges.Count);
+        Assert.Empty(analysis.HotSwappableChanges);
         Assert.Equal(3, analysis.RestartRequiredChanges.Count);
 
-        Assert.True(analysis.RestartRequiredChanges.Contains(nameof(CursorPhobiaConfiguration.UpdateIntervalMs)));
-        Assert.True(analysis.RestartRequiredChanges.Contains(nameof(CursorPhobiaConfiguration.MaxUpdateIntervalMs)));
-        Assert.True(analysis.RestartRequiredChanges.Contains(nameof(CursorPhobiaConfiguration.ApplyToAllWindows)));
+        Assert.Contains(nameof(CursorPhobiaConfiguration.UpdateIntervalMs), analysis.RestartRequiredChanges);
+        Assert.Contains(nameof(CursorPhobiaConfiguration.MaxUpdateIntervalMs), analysis.RestartRequiredChanges);
+        Assert.Contains(nameof(CursorPhobiaConfiguration.ApplyToAllWindows), analysis.RestartRequiredChanges);
     }
 
     [Fact]
@@ -420,8 +420,8 @@ public class ConfigurationHotSwapTests : IDisposable
         // Assert
         Assert.False(analysis.HasChanges);
         Assert.False(analysis.RequiresRestart);
-        Assert.Equal(0, analysis.HotSwappableChanges.Count);
-        Assert.Equal(0, analysis.RestartRequiredChanges.Count);
+        Assert.Empty(analysis.HotSwappableChanges);
+        Assert.Empty(analysis.RestartRequiredChanges);
     }
 
     [Fact]
@@ -441,7 +441,7 @@ public class ConfigurationHotSwapTests : IDisposable
         Assert.Equal(2, result.AppliedChanges.Count);
         Assert.Equal(1, result.QueuedForRestart.Count);
         Assert.True(result.RequiresRestart);
-        Assert.Equal(0, result.ValidationErrors.Count);
+        Assert.Empty(result.ValidationErrors);
     }
 
     [Fact]
@@ -457,10 +457,10 @@ public class ConfigurationHotSwapTests : IDisposable
         // Assert
         Assert.False(result.Success);
         Assert.Equal(errorMessage, result.ErrorMessage);
-        Assert.Equal(0, result.AppliedChanges.Count);
-        Assert.Equal(0, result.QueuedForRestart.Count);
+        Assert.Empty(result.AppliedChanges);
+        Assert.Empty(result.QueuedForRestart);
         Assert.False(result.RequiresRestart);
-        Assert.Equal(0, result.ValidationErrors.Count);
+        Assert.Empty(result.ValidationErrors);
     }
 
     [Fact]
@@ -476,8 +476,8 @@ public class ConfigurationHotSwapTests : IDisposable
         // Assert
         Assert.False(result.Success);
         Assert.True(result.ErrorMessage?.Contains("validation failed"));
-        Assert.Equal(0, result.AppliedChanges.Count);
-        Assert.Equal(0, result.QueuedForRestart.Count);
+        Assert.Empty(result.AppliedChanges);
+        Assert.Empty(result.QueuedForRestart);
         Assert.False(result.RequiresRestart);
         Assert.Equal(2, result.ValidationErrors.Count);
     }

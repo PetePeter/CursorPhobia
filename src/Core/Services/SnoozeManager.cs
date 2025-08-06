@@ -41,7 +41,7 @@ public class SnoozeManager : ISnoozeManager
         get
         {
             if (!IsSnoozing) return null;
-            
+
             var remaining = _snoozeEndTime!.Value - DateTime.Now;
             return remaining > TimeSpan.Zero ? remaining : TimeSpan.Zero;
         }
@@ -70,7 +70,7 @@ public class SnoozeManager : ISnoozeManager
             {
                 // Remember if the engine was running before snooze
                 _wasEngineRunningBeforeSnooze = _engine.IsRunning;
-                
+
                 // Stop the engine if it's running
                 if (_engine.IsRunning)
                 {
@@ -79,8 +79,8 @@ public class SnoozeManager : ISnoozeManager
 
                 _snoozeEndTime = DateTime.Now.Add(duration);
                 _countdownTimer.Start();
-                
-                _logger.LogInformation("Started snooze period until {EndTime} (duration: {Duration})", 
+
+                _logger.LogInformation("Started snooze period until {EndTime} (duration: {Duration})",
                     _snoozeEndTime, duration);
             }
 
@@ -207,14 +207,14 @@ public class SnoozeManager : ISnoozeManager
     public void Dispose()
     {
         if (_disposed) return;
-        
+
         _disposed = true;
-        
+
         try
         {
             _countdownTimer?.Stop();
             _countdownTimer?.Dispose();
-            
+
             // End any active snooze
             if (IsSnoozing)
             {

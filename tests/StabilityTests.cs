@@ -34,7 +34,7 @@ public class StabilityTests
         var operationCount = 0;
         var lastMemoryCheck = DateTime.UtcNow;
         var initialMemory = GC.GetTotalMemory(true);
-        
+
         _logger.LogInformation($"Starting stability test for {testDuration.TotalMinutes} minutes");
 
         // Act
@@ -52,14 +52,14 @@ public class StabilityTests
                     {
                         var firstMonitor = monitors.First();
                         var dpiInfo = monitorManager.GetMonitorDpi(firstMonitor);
-                        
+
                         var primary = monitorManager.GetPrimaryMonitor();
                         var adjacent = monitorManager.GetAdjacentMonitors(firstMonitor);
-                        
+
                         // Test point and rectangle queries
                         var testPoint = new Point(firstMonitor.monitorBounds.X + 100, firstMonitor.monitorBounds.Y + 100);
                         var containingMonitor = monitorManager.GetMonitorContaining(testPoint);
-                        
+
                         var testRect = new Rectangle(testPoint.X, testPoint.Y, 200, 200);
                         var rectMonitor = monitorManager.GetMonitorContaining(testRect);
                     }
@@ -69,16 +69,16 @@ public class StabilityTests
                     {
                         var currentMemory = GC.GetTotalMemory(false);
                         var memoryIncrease = currentMemory - initialMemory;
-                        
+
                         // Log memory usage
                         _logger.LogInformation($"Memory usage: {currentMemory / 1024}KB (increase: {memoryIncrease / 1024}KB), Operations: {operationCount}");
-                        
+
                         // Warn if memory usage is growing too fast
                         if (memoryIncrease > 50 * 1024 * 1024) // 50MB
                         {
                             _logger.LogWarning($"High memory usage detected: {memoryIncrease / 1024 / 1024}MB increase");
                         }
-                        
+
                         lastMemoryCheck = DateTime.UtcNow;
                     }
 
@@ -99,18 +99,18 @@ public class StabilityTests
         GC.Collect();
         GC.WaitForPendingFinalizers();
         GC.Collect();
-        
+
         var finalMemory = GC.GetTotalMemory(false);
         var totalMemoryIncrease = finalMemory - initialMemory;
 
         // Assert
-        Assert.False(exceptions.Any(), 
+        Assert.False(exceptions.Any(),
             $"Exceptions occurred during stability test: {string.Join("; ", exceptions.Select(e => e.Message))}");
-        
+
         Assert.True(operationCount > 0, "No operations were performed during stability test");
-        
+
         // Memory should not grow unbounded
-        Assert.True(totalMemoryIncrease < 100 * 1024 * 1024, 
+        Assert.True(totalMemoryIncrease < 100 * 1024 * 1024,
             $"Memory usage grew too much: {totalMemoryIncrease / 1024 / 1024}MB");
 
         // Performance should remain consistent
@@ -118,7 +118,7 @@ public class StabilityTests
         if (stats.ContainsKey("MonitorManager.GetAllMonitors"))
         {
             var getAllStats = stats["MonitorManager.GetAllMonitors"];
-            Assert.True(getAllStats.AverageDuration.TotalMilliseconds < 50, 
+            Assert.True(getAllStats.AverageDuration.TotalMilliseconds < 50,
                 $"Average operation duration too high: {getAllStats.AverageDuration.TotalMilliseconds}ms");
         }
 
@@ -189,7 +189,7 @@ public class StabilityTests
                     var stats = _performanceMonitor.GetStatistics();
                     var memoryUsage = _performanceMonitor.GetMemoryUsage();
                     var gcCounts = _performanceMonitor.GetGCCounts();
-                    
+
                     await Task.Delay(TimeSpan.FromSeconds(10));
                 }
                 catch (Exception ex)
@@ -221,9 +221,9 @@ public class StabilityTests
         var totalDuration = DateTime.UtcNow - startTime;
 
         // Assert
-        Assert.False(exceptions.Any(), 
+        Assert.False(exceptions.Any(),
             $"Exceptions occurred during extended performance test: {string.Join("; ", exceptions.Select(e => e.Message))}");
-        
+
         Assert.True(metricCount > 0, "No metrics were recorded during extended test");
         Assert.True(counterCount > 0, "No counters were incremented during extended test");
 
@@ -268,7 +268,7 @@ public class StabilityTests
                     // Simulate cache invalidation by creating new MonitorManager instances
                     using var tempManager = new MonitorManager();
                     var monitors = tempManager.GetAllMonitors();
-                    
+
                     await Task.Delay(10);
                 }
                 catch (Exception ex)
@@ -281,7 +281,7 @@ public class StabilityTests
         await Task.WhenAll(tasks);
 
         // Assert
-        Assert.False(exceptions.Any(), 
+        Assert.False(exceptions.Any(),
             $"Exceptions occurred during rapid invalidation test: {string.Join("; ", exceptions.Select(e => e.Message))}");
 
         var stats = _performanceMonitor.GetStatistics();
@@ -305,13 +305,13 @@ public class StabilityTests
             using (var monitorManager = new MonitorManager())
             {
                 var monitors = monitorManager.GetAllMonitors();
-                
+
                 if (monitors.Any())
                 {
                     var dpiInfo = monitorManager.GetMonitorDpi(monitors.First());
                 }
             }
-            
+
             // Force cleanup every 10 iterations
             if (i % 10 == 0)
             {
@@ -329,7 +329,7 @@ public class StabilityTests
         var handleIncrease = finalHandleCount - initialHandleCount;
 
         // Assert
-        Assert.True(handleIncrease < 50, 
+        Assert.True(handleIncrease < 50,
             $"Handle count increased by {handleIncrease}, potential handle leak");
 
         _logger.LogInformation($"Resource cleanup test - Initial handles: {initialHandleCount}, Final: {finalHandleCount}, Increase: {handleIncrease}");

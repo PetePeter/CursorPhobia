@@ -31,22 +31,22 @@ public class CursorPhobiaEngineTests
         _mockSafetyManager = new Mock<ISafetyManager>();
         _mockMonitorManager = new Mock<IMonitorManager>();
         _defaultConfig = CursorPhobiaConfiguration.CreateDefault();
-        
+
         // Setup default mock behaviors
         _mockCursorTracker.Setup(x => x.StartTracking()).Returns(true);
         _mockCursorTracker.Setup(x => x.GetCurrentCursorPosition()).Returns(new Point(100, 100));
         _mockCursorTracker.Setup(x => x.IsCtrlKeyPressed()).Returns(false);
         _mockWindowDetectionService.Setup(x => x.GetAllTopMostWindows()).Returns(new List<WindowInfo>());
-        
+
         // Critical: Window pusher should never report windows as animating in tests
         _mockWindowPusher.Setup(x => x.IsWindowAnimating(It.IsAny<IntPtr>())).Returns(false);
         _mockWindowPusher.Setup(x => x.PushWindowAsync(It.IsAny<IntPtr>(), It.IsAny<Point>(), It.IsAny<int>()))
             .ReturnsAsync(true);
         _mockWindowPusher.Setup(x => x.CancelAllAnimations());
-            
+
         // Monitor manager mock setup - return null to use global settings
         _mockMonitorManager.Setup(x => x.GetMonitorContaining(It.IsAny<Rectangle>())).Returns((MonitorInfo)null!);
-        
+
         // Safety manager mock setup
         _mockSafetyManager.Setup(x => x.IsPositionSafe(It.IsAny<Rectangle>())).Returns(true);
     }
@@ -136,7 +136,7 @@ public class CursorPhobiaEngineTests
         Assert.True(engine.IsRunning);
         Assert.True(eventRaised);
         _mockCursorTracker.Verify(x => x.StartTracking(), Times.Once);
-        
+
         // Cleanup
         await engine.StopAsync();
         engine.Dispose();
@@ -155,7 +155,7 @@ public class CursorPhobiaEngineTests
         // Assert
         Assert.False(result);
         Assert.False(engine.IsRunning);
-        
+
         engine.Dispose();
     }
 
@@ -172,7 +172,7 @@ public class CursorPhobiaEngineTests
         // Assert
         Assert.True(result);
         Assert.True(engine.IsRunning);
-        
+
         // Cleanup
         await engine.StopAsync();
         engine.Dispose();
@@ -195,7 +195,7 @@ public class CursorPhobiaEngineTests
         Assert.True(eventRaised);
         _mockCursorTracker.Verify(x => x.StopTracking(), Times.Once);
         _mockWindowPusher.Verify(x => x.CancelAllAnimations(), Times.Once);
-        
+
         engine.Dispose();
     }
 
@@ -210,7 +210,7 @@ public class CursorPhobiaEngineTests
 
         // Assert
         Assert.False(engine.IsRunning);
-        
+
         engine.Dispose();
     }
 
@@ -227,10 +227,10 @@ public class CursorPhobiaEngineTests
             IsTopmost = true,
             IsMinimized = false
         };
-        
+
         _mockWindowDetectionService.Setup(x => x.GetAllTopMostWindows())
             .Returns(new List<WindowInfo> { testWindow });
-        
+
         var engine = CreateEngine();
 
         // Act
@@ -238,7 +238,7 @@ public class CursorPhobiaEngineTests
 
         // Assert
         Assert.Equal(1, engine.TrackedWindowCount);
-        
+
         engine.Dispose();
     }
 
@@ -255,10 +255,10 @@ public class CursorPhobiaEngineTests
             IsTopmost = true,
             IsMinimized = true // This should be skipped
         };
-        
+
         _mockWindowDetectionService.Setup(x => x.GetAllTopMostWindows())
             .Returns(new List<WindowInfo> { minimizedWindow });
-        
+
         var engine = CreateEngine();
 
         // Act
@@ -266,7 +266,7 @@ public class CursorPhobiaEngineTests
 
         // Assert
         Assert.Equal(0, engine.TrackedWindowCount);
-        
+
         engine.Dispose();
     }
 
@@ -283,19 +283,19 @@ public class CursorPhobiaEngineTests
             IsTopmost = true,
             IsMinimized = false
         };
-        
+
         _mockWindowDetectionService.Setup(x => x.GetAllTopMostWindows())
             .Returns(new List<WindowInfo> { testWindow });
         _mockCursorTracker.Setup(x => x.IsCtrlKeyPressed()).Returns(true);
         _mockProximityDetector.Setup(x => x.IsWithinProximity(It.IsAny<Point>(), It.IsAny<Rectangle>(), It.IsAny<int>()))
             .Returns(true);
-        
+
         var config = new CursorPhobiaConfiguration
         {
             EnableCtrlOverride = true,
             UpdateIntervalMs = 10 // Fast updates for testing
         };
-        
+
         var engine = CreateEngine(config);
         await engine.StartAsync();
         await engine.RefreshTrackedWindowsAsync();
@@ -304,10 +304,10 @@ public class CursorPhobiaEngineTests
         await Task.Delay(50);
 
         // Assert
-        _mockWindowPusher.Verify(x => x.PushWindowAsync(It.IsAny<IntPtr>(), It.IsAny<Point>(), It.IsAny<int>()), 
+        _mockWindowPusher.Verify(x => x.PushWindowAsync(It.IsAny<IntPtr>(), It.IsAny<Point>(), It.IsAny<int>()),
             Times.Never);
         _mockWindowPusher.Verify(x => x.CancelAllAnimations(), Times.AtLeastOnce);
-        
+
         // Cleanup
         await engine.StopAsync();
         engine.Dispose();
@@ -326,35 +326,35 @@ public class CursorPhobiaEngineTests
             IsTopmost = true,
             IsMinimized = false
         };
-        
+
         _mockWindowDetectionService.Setup(x => x.GetAllTopMostWindows())
             .Returns(new List<WindowInfo> { testWindow });
         _mockProximityDetector.Setup(x => x.IsWithinProximity(It.IsAny<Point>(), It.IsAny<Rectangle>(), It.IsAny<int>()))
             .Returns(true);
-        
+
         var config = new CursorPhobiaConfiguration
         {
             EnableHoverTimeout = true,
             HoverTimeoutMs = 150, // Longer timeout to allow initial push
             UpdateIntervalMs = 10
         };
-        
+
         var engine = CreateEngine(config);
         await engine.StartAsync();
         await engine.RefreshTrackedWindowsAsync();
 
         // Act - Wait for initial push, then wait for timeout
         await Task.Delay(50); // Allow initial push
-        
+
         // Should have pushed at least once initially
-        _mockWindowPusher.Verify(x => x.PushWindowAsync(testWindow.WindowHandle, It.IsAny<Point>(), It.IsAny<int>()), 
+        _mockWindowPusher.Verify(x => x.PushWindowAsync(testWindow.WindowHandle, It.IsAny<Point>(), It.IsAny<int>()),
             Times.AtLeastOnce);
-        
+
         // Wait for hover timeout to trigger
         await Task.Delay(200); // Wait beyond timeout threshold
-        
+
         // The system should still have pushed (this test mainly verifies no exceptions occur with timeout logic)
-        
+
         // Cleanup
         await engine.StopAsync();
         engine.Dispose();
@@ -373,22 +373,22 @@ public class CursorPhobiaEngineTests
             IsTopmost = true,
             IsMinimized = false
         };
-        
+
         _mockWindowDetectionService.Setup(x => x.GetAllTopMostWindows())
             .Returns(new List<WindowInfo> { testWindow });
         _mockProximityDetector.Setup(x => x.IsWithinProximity(It.IsAny<Point>(), It.IsAny<Rectangle>(), It.IsAny<int>()))
             .Returns(true);
-        
+
         var config = new CursorPhobiaConfiguration
         {
             EnableHoverTimeout = false, // Disable hover timeout for this test
             UpdateIntervalMs = 10
         };
-        
+
         var engine = CreateEngine(config);
         var windowPushedEvents = new List<WindowPushEventArgs>();
         engine.WindowPushed += (s, e) => windowPushedEvents.Add(e);
-        
+
         await engine.StartAsync();
         await engine.RefreshTrackedWindowsAsync();
 
@@ -396,10 +396,10 @@ public class CursorPhobiaEngineTests
         await Task.Delay(50);
 
         // Assert
-        _mockWindowPusher.Verify(x => x.PushWindowAsync(testWindow.WindowHandle, It.IsAny<Point>(), It.IsAny<int>()), 
+        _mockWindowPusher.Verify(x => x.PushWindowAsync(testWindow.WindowHandle, It.IsAny<Point>(), It.IsAny<int>()),
             Times.AtLeastOnce);
         Assert.True(windowPushedEvents.Count > 0);
-        
+
         // Cleanup
         await engine.StopAsync();
         engine.Dispose();
@@ -418,18 +418,18 @@ public class CursorPhobiaEngineTests
             IsTopmost = true,
             IsMinimized = false
         };
-        
+
         _mockWindowDetectionService.Setup(x => x.GetAllTopMostWindows())
             .Returns(new List<WindowInfo> { testWindow });
         _mockProximityDetector.Setup(x => x.IsWithinProximity(It.IsAny<Point>(), It.IsAny<Rectangle>(), It.IsAny<int>()))
             .Returns(true);
         _mockWindowPusher.Setup(x => x.IsWindowAnimating(testWindow.WindowHandle)).Returns(true);
-        
+
         var config = new CursorPhobiaConfiguration
         {
             UpdateIntervalMs = 10
         };
-        
+
         var engine = CreateEngine(config);
         await engine.StartAsync();
         await engine.RefreshTrackedWindowsAsync();
@@ -438,9 +438,9 @@ public class CursorPhobiaEngineTests
         await Task.Delay(50);
 
         // Assert
-        _mockWindowPusher.Verify(x => x.PushWindowAsync(testWindow.WindowHandle, It.IsAny<Point>(), It.IsAny<int>()), 
+        _mockWindowPusher.Verify(x => x.PushWindowAsync(testWindow.WindowHandle, It.IsAny<Point>(), It.IsAny<int>()),
             Times.Never);
-        
+
         // Cleanup
         await engine.StopAsync();
         engine.Dispose();
@@ -461,7 +461,7 @@ public class CursorPhobiaEngineTests
         Assert.Equal(0, stats.UpdateCount);
         Assert.Equal(0, stats.TrackedWindowCount);
         Assert.Equal(_defaultConfig.UpdateIntervalMs, stats.ConfiguredUpdateIntervalMs);
-        
+
         engine.Dispose();
     }
 
@@ -478,7 +478,7 @@ public class CursorPhobiaEngineTests
         // Assert
         Assert.True(stats.IsRunning);
         Assert.True(stats.UptimeMs >= 0);
-        
+
         // Cleanup
         await engine.StopAsync();
         engine.Dispose();
@@ -495,7 +495,7 @@ public class CursorPhobiaEngineTests
 
         // Assert
         Assert.False(engine.IsRunning);
-        
+
         // Should not throw when disposed again
         engine.Dispose();
     }
@@ -513,7 +513,7 @@ public class CursorPhobiaEngineTests
 
         // Assert - Should not crash or throw exceptions
         Assert.True(engine.IsRunning);
-        
+
         // Cleanup
         await engine.StopAsync();
         engine.Dispose();
@@ -532,7 +532,7 @@ public class CursorPhobiaEngineTests
             ProximityThreshold = 75,
             PushDistance = 150
         };
-        
+
         var engine = CreateEngine(customConfig);
 
         // Act
@@ -540,7 +540,7 @@ public class CursorPhobiaEngineTests
 
         // Assert
         Assert.Equal(50, stats.ConfiguredUpdateIntervalMs);
-        
+
         engine.Dispose();
     }
 

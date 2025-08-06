@@ -12,7 +12,7 @@ public class StartupManager : IStartupManager
 {
     private const string REGISTRY_KEY = @"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
     private const string APP_NAME = "CursorPhobia";
-    
+
     private readonly ILogger _logger;
 
     public StartupManager(ILogger logger)
@@ -32,7 +32,7 @@ public class StartupManager : IStartupManager
         try
         {
             await Task.CompletedTask;
-            
+
             using var key = Registry.CurrentUser.OpenSubKey(REGISTRY_KEY, false);
             if (key == null)
             {
@@ -42,7 +42,7 @@ public class StartupManager : IStartupManager
 
             var value = key.GetValue(APP_NAME) as string;
             var isEnabled = !string.IsNullOrEmpty(value);
-            
+
             _logger.LogDebug("Auto-start status: {IsEnabled}, Value: {Value}", isEnabled, value ?? "null");
             return isEnabled;
         }
@@ -64,7 +64,7 @@ public class StartupManager : IStartupManager
         try
         {
             var command = await GetAutoStartCommandAsync();
-            
+
             using var key = Registry.CurrentUser.OpenSubKey(REGISTRY_KEY, true);
             if (key == null)
             {
@@ -73,7 +73,7 @@ public class StartupManager : IStartupManager
             }
 
             key.SetValue(APP_NAME, command, RegistryValueKind.String);
-            
+
             _logger.LogInformation("Auto-start enabled with command: {Command}", command);
             return true;
         }
@@ -100,7 +100,7 @@ public class StartupManager : IStartupManager
         try
         {
             await Task.CompletedTask;
-            
+
             using var key = Registry.CurrentUser.OpenSubKey(REGISTRY_KEY, true);
             if (key == null)
             {
@@ -117,7 +117,7 @@ public class StartupManager : IStartupManager
             {
                 _logger.LogDebug("Auto-start was already disabled");
             }
-            
+
             return true;
         }
         catch (SecurityException ex)
@@ -143,10 +143,10 @@ public class StartupManager : IStartupManager
         try
         {
             await Task.CompletedTask;
-            
+
             // Get the current executable path
             var exePath = Assembly.GetExecutingAssembly().Location;
-            
+
             // If it's a .dll (published as framework-dependent), we need to use dotnet.exe
             if (Path.GetExtension(exePath).Equals(".dll", StringComparison.OrdinalIgnoreCase))
             {
@@ -156,22 +156,22 @@ public class StartupManager : IStartupManager
                     return $"\"{dotnetPath}\" \"{exePath}\" --tray";
                 }
             }
-            
+
             // For self-contained deployment or .exe, use the executable directly
             if (Path.GetExtension(exePath).Equals(".exe", StringComparison.OrdinalIgnoreCase))
             {
                 return $"\"{exePath}\" --tray";
             }
-            
+
             // Fallback: try to find the console executable
             var currentDirectory = Path.GetDirectoryName(exePath);
             var consoleExe = Path.Combine(currentDirectory ?? "", "CursorPhobia.Console.exe");
-            
+
             if (File.Exists(consoleExe))
             {
                 return $"\"{consoleExe}\" --tray";
             }
-            
+
             // Last resort: cannot create a reliable startup command
             _logger.LogWarning("Cannot create auto-start command: no suitable executable found");
             return "";
@@ -239,7 +239,7 @@ public class StartupManager : IStartupManager
         try
         {
             await Task.CompletedTask;
-            
+
             // Try to open the registry key for writing
             using var key = Registry.CurrentUser.OpenSubKey(REGISTRY_KEY, true);
             return key != null;

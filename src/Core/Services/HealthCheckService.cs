@@ -20,7 +20,7 @@ namespace CursorPhobia.Core.Services
         private readonly System.Threading.Timer _healthCheckTimer;
         private readonly object _lockObject = new object();
         private readonly DateTime _startTime;
-        
+
         private volatile bool _isDisposed;
         private volatile bool _isMonitoring;
         private SystemHealthStatus _currentSystemHealth;
@@ -45,7 +45,7 @@ namespace CursorPhobia.Core.Services
             _startTime = DateTime.UtcNow;
             _currentSystemHealth = SystemHealthStatus.Unknown;
             _healthChanges = new List<DateTime>();
-            
+
             _logger.LogInformation("HealthCheckService initialized");
         }
 
@@ -72,7 +72,7 @@ namespace CursorPhobia.Core.Services
                 return new Dictionary<string, ComponentHealthStatus>();
 
             var result = new Dictionary<string, ComponentHealthStatus>();
-            
+
             foreach (var kvp in _components)
             {
                 var component = kvp.Value;
@@ -110,7 +110,7 @@ namespace CursorPhobia.Core.Services
 
                 _isMonitoring = true;
                 _healthCheckTimer.Change(TimeSpan.Zero, checkInterval);
-                
+
                 _logger.LogInformation("Health monitoring started with interval: {CheckInterval}", checkInterval);
             }
 
@@ -133,7 +133,7 @@ namespace CursorPhobia.Core.Services
 
                 _isMonitoring = false;
                 _healthCheckTimer.Change(Timeout.Infinite, Timeout.Infinite);
-                
+
                 _logger.LogInformation("Health monitoring stopped");
             }
 
@@ -160,7 +160,7 @@ namespace CursorPhobia.Core.Services
                 {
                     var componentName = kvp.Key;
                     var componentInfo = kvp.Value;
-                    
+
                     healthCheckTasks.Add(CheckComponentHealthAsync(componentName, componentInfo));
                 }
 
@@ -169,11 +169,11 @@ namespace CursorPhobia.Core.Services
 
                 // Calculate overall system health
                 var newSystemHealth = CalculateSystemHealth();
-                
+
                 lock (_lockObject)
                 {
                     _totalHealthChecks++;
-                    
+
                     if (newSystemHealth != _currentSystemHealth)
                     {
                         var oldHealth = _currentSystemHealth;
@@ -189,13 +189,13 @@ namespace CursorPhobia.Core.Services
                             Description = $"System health changed from {oldHealth} to {newSystemHealth}"
                         });
 
-                        _logger.LogWarning("System health changed from {OldHealth} to {NewHealth}", 
+                        _logger.LogWarning("System health changed from {OldHealth} to {NewHealth}",
                             oldHealth, newSystemHealth);
                     }
                 }
 
                 stopwatch.Stop();
-                _logger.LogDebug("Health check completed in {Duration}ms. System health: {SystemHealth}", 
+                _logger.LogDebug("Health check completed in {Duration}ms. System health: {SystemHealth}",
                     stopwatch.ElapsedMilliseconds, _currentSystemHealth);
 
                 return _currentSystemHealth;
@@ -247,7 +247,7 @@ namespace CursorPhobia.Core.Services
                 return existing;
             });
 
-            _logger.LogInformation("Registered component '{ComponentName}' for health monitoring (Critical: {IsCritical})", 
+            _logger.LogInformation("Registered component '{ComponentName}' for health monitoring (Critical: {IsCritical})",
                 componentName, isCritical);
         }
 
@@ -333,7 +333,7 @@ namespace CursorPhobia.Core.Services
             try
             {
                 var isHealthy = await componentInfo.HealthCheckFunc();
-                
+
                 stopwatch.Stop();
                 var duration = stopwatch.ElapsedMilliseconds;
 
@@ -352,8 +352,8 @@ namespace CursorPhobia.Core.Services
                     componentInfo.IsHealthy = false;
                     componentInfo.ConsecutiveFailures++;
                     componentInfo.StatusDescription = $"Unhealthy (consecutive failures: {componentInfo.ConsecutiveFailures})";
-                    
-                    _logger.LogWarning("Component '{ComponentName}' health check failed. Consecutive failures: {ConsecutiveFailures}", 
+
+                    _logger.LogWarning("Component '{ComponentName}' health check failed. Consecutive failures: {ConsecutiveFailures}",
                         componentName, componentInfo.ConsecutiveFailures);
                 }
             }
@@ -367,7 +367,7 @@ namespace CursorPhobia.Core.Services
                 componentInfo.StatusDescription = $"Health check exception: {ex.Message}";
                 componentInfo.AdditionalData["LastCheckDurationMs"] = stopwatch.ElapsedMilliseconds;
 
-                _logger.LogError(ex, "Exception during health check for component '{ComponentName}'. Consecutive failures: {ConsecutiveFailures}", 
+                _logger.LogError(ex, "Exception during health check for component '{ComponentName}'. Consecutive failures: {ConsecutiveFailures}",
                     componentName, componentInfo.ConsecutiveFailures);
 
                 lock (_lockObject)
@@ -429,7 +429,7 @@ namespace CursorPhobia.Core.Services
             {
                 _healthCheckTimer?.Dispose();
                 _components.Clear();
-                
+
                 _logger.LogInformation("HealthCheckService disposed");
             }
             catch (Exception ex)

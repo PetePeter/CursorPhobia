@@ -21,14 +21,14 @@ public partial class CustomSnoozeDialog : Form
     {
         var hours = (int)hoursNumeric.Value;
         var minutes = (int)minutesNumeric.Value;
-        
+
         if (hours == 0 && minutes == 0)
         {
-            MessageBox.Show("Please enter a valid duration.", "Invalid Duration", 
+            MessageBox.Show("Please enter a valid duration.", "Invalid Duration",
                 MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
-        
+
         SnoozeDuration = TimeSpan.FromHours(hours) + TimeSpan.FromMinutes(minutes);
         DialogResult = DialogResult.OK;
         Close();

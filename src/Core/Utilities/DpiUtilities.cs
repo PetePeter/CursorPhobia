@@ -20,7 +20,7 @@ public static class DpiUtilities
         var dpiInfo = monitorManager.GetDpiForPoint(logicalPoint);
         return dpiInfo.LogicalToPhysical(logicalPoint);
     }
-    
+
     /// <summary>
     /// Converts a physical point to logical coordinates using the monitor's DPI
     /// </summary>
@@ -32,7 +32,7 @@ public static class DpiUtilities
         var dpiInfo = monitorManager.GetDpiForPoint(physicalPoint);
         return dpiInfo.PhysicalToLogical(physicalPoint);
     }
-    
+
     /// <summary>
     /// Converts a logical rectangle to physical coordinates using the monitor's DPI
     /// </summary>
@@ -44,7 +44,7 @@ public static class DpiUtilities
         var dpiInfo = monitorManager.GetDpiForRectangle(logicalRect);
         return dpiInfo.LogicalToPhysical(logicalRect);
     }
-    
+
     /// <summary>
     /// Converts a physical rectangle to logical coordinates using the monitor's DPI
     /// </summary>
@@ -56,7 +56,7 @@ public static class DpiUtilities
         var dpiInfo = monitorManager.GetDpiForRectangle(physicalRect);
         return dpiInfo.PhysicalToLogical(physicalRect);
     }
-    
+
     /// <summary>
     /// Scales a distance value from logical to physical coordinates
     /// </summary>
@@ -69,7 +69,7 @@ public static class DpiUtilities
         var dpiInfo = monitorManager.GetDpiForPoint(referencePoint);
         return dpiInfo.ScaleDistance(logicalDistance);
     }
-    
+
     /// <summary>
     /// Scales a distance value from physical to logical coordinates
     /// </summary>
@@ -82,7 +82,7 @@ public static class DpiUtilities
         var dpiInfo = monitorManager.GetDpiForPoint(referencePoint);
         return dpiInfo.UnscaleDistance(physicalDistance);
     }
-    
+
     /// <summary>
     /// Converts coordinates between different DPI contexts
     /// </summary>
@@ -96,7 +96,7 @@ public static class DpiUtilities
         var logicalPoint = sourceDpi.PhysicalToLogical(point);
         return targetDpi.LogicalToPhysical(logicalPoint);
     }
-    
+
     /// <summary>
     /// Converts a rectangle between different DPI contexts
     /// </summary>
@@ -110,7 +110,7 @@ public static class DpiUtilities
         var logicalRect = sourceDpi.PhysicalToLogical(rectangle);
         return targetDpi.LogicalToPhysical(logicalRect);
     }
-    
+
     /// <summary>
     /// Checks if two DPI values are significantly different (threshold for triggering DPI-aware adjustments)
     /// </summary>
@@ -123,7 +123,7 @@ public static class DpiUtilities
         var scaleDiff = Math.Abs(dpi1.ScaleFactor - dpi2.ScaleFactor);
         return scaleDiff > threshold;
     }
-    
+
     /// <summary>
     /// Gets the maximum scale factor among all monitors
     /// </summary>
@@ -133,16 +133,16 @@ public static class DpiUtilities
     {
         var monitors = monitorManager.GetAllMonitors();
         double maxScaleFactor = 1.0;
-        
+
         foreach (var monitor in monitors)
         {
             var dpiInfo = monitorManager.GetMonitorDpi(monitor);
             maxScaleFactor = Math.Max(maxScaleFactor, dpiInfo.ScaleFactor);
         }
-        
+
         return maxScaleFactor;
     }
-    
+
     /// <summary>
     /// Gets the minimum scale factor among all monitors
     /// </summary>
@@ -152,16 +152,16 @@ public static class DpiUtilities
     {
         var monitors = monitorManager.GetAllMonitors();
         double minScaleFactor = double.MaxValue;
-        
+
         foreach (var monitor in monitors)
         {
             var dpiInfo = monitorManager.GetMonitorDpi(monitor);
             minScaleFactor = Math.Min(minScaleFactor, dpiInfo.ScaleFactor);
         }
-        
+
         return minScaleFactor == double.MaxValue ? 1.0 : minScaleFactor;
     }
-    
+
     /// <summary>
     /// Determines if the system has mixed DPI monitors (different scale factors)
     /// </summary>
@@ -172,9 +172,9 @@ public static class DpiUtilities
     {
         var monitors = monitorManager.GetAllMonitors();
         if (monitors.Count <= 1) return false;
-        
+
         var firstDpi = monitorManager.GetMonitorDpi(monitors[0]);
-        
+
         for (int i = 1; i < monitors.Count; i++)
         {
             var currentDpi = monitorManager.GetMonitorDpi(monitors[i]);
@@ -183,7 +183,7 @@ public static class DpiUtilities
                 return true;
             }
         }
-        
+
         return false;
     }
 }

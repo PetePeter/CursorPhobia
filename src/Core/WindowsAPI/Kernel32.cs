@@ -8,41 +8,41 @@ namespace CursorPhobia.Core.WindowsAPI;
 public static class Kernel32
 {
     private const string Kernel32Dll = "kernel32.dll";
-    
+
     #region Error Handling
-    
+
     /// <summary>
     /// Retrieves the calling thread's last-error code value
     /// </summary>
     /// <returns>The last error code</returns>
     [DllImport(Kernel32Dll, SetLastError = true)]
     public static extern uint GetLastError();
-    
+
     /// <summary>
     /// Sets the last-error code for the calling thread
     /// </summary>
     /// <param name="dwErrCode">The last-error code for the thread</param>
     [DllImport(Kernel32Dll, SetLastError = true)]
     public static extern void SetLastError(uint dwErrCode);
-    
+
     #endregion
-    
+
     #region Process Information
-    
+
     /// <summary>
     /// Retrieves the process identifier of the calling process
     /// </summary>
     /// <returns>The process identifier of the calling process</returns>
     [DllImport(Kernel32Dll, SetLastError = true)]
     public static extern uint GetCurrentProcessId();
-    
+
     /// <summary>
     /// Retrieves the thread identifier of the calling thread
     /// </summary>
     /// <returns>The thread identifier of the calling thread</returns>
     [DllImport(Kernel32Dll, SetLastError = true)]
     public static extern uint GetCurrentThreadId();
-    
+
     /// <summary>
     /// Opens an existing local process object
     /// </summary>
@@ -52,7 +52,7 @@ public static class Kernel32
     /// <returns>An open handle to the specified process</returns>
     [DllImport(Kernel32Dll, SetLastError = true)]
     public static extern IntPtr OpenProcess(uint dwDesiredAccess, bool bInheritHandle, uint dwProcessId);
-    
+
     /// <summary>
     /// Closes an open object handle
     /// </summary>
@@ -61,11 +61,11 @@ public static class Kernel32
     [DllImport(Kernel32Dll, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool CloseHandle(IntPtr hObject);
-    
+
     #endregion
-    
+
     #region Module Information
-    
+
     /// <summary>
     /// Retrieves a module handle for the specified module
     /// </summary>
@@ -73,7 +73,7 @@ public static class Kernel32
     /// <returns>A handle to the specified module</returns>
     [DllImport(Kernel32Dll, SetLastError = true, CharSet = CharSet.Unicode)]
     public static extern IntPtr GetModuleHandle(string? lpModuleName);
-    
+
     /// <summary>
     /// Retrieves the address of an exported function or variable from the specified dynamic-link library (DLL)
     /// </summary>
@@ -82,11 +82,11 @@ public static class Kernel32
     /// <returns>The address of the exported function or variable</returns>
     [DllImport(Kernel32Dll, SetLastError = true, CharSet = CharSet.Ansi)]
     public static extern IntPtr GetProcAddress(IntPtr hModule, string lpProcName);
-    
+
     #endregion
-    
+
     #region Memory Management
-    
+
     /// <summary>
     /// Allocates memory from the heap
     /// </summary>
@@ -96,7 +96,7 @@ public static class Kernel32
     /// <returns>Pointer to the allocated memory block</returns>
     [DllImport(Kernel32Dll, SetLastError = true)]
     public static extern IntPtr HeapAlloc(IntPtr hHeap, uint dwFlags, UIntPtr dwBytes);
-    
+
     /// <summary>
     /// Frees a memory block allocated from a heap
     /// </summary>
@@ -107,18 +107,18 @@ public static class Kernel32
     [DllImport(Kernel32Dll, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool HeapFree(IntPtr hHeap, uint dwFlags, IntPtr lpMem);
-    
+
     /// <summary>
     /// Retrieves a handle to the default heap of the calling process
     /// </summary>
     /// <returns>Handle to the calling process's heap</returns>
     [DllImport(Kernel32Dll, SetLastError = true)]
     public static extern IntPtr GetProcessHeap();
-    
+
     #endregion
-    
+
     #region Performance Counter
-    
+
     /// <summary>
     /// Retrieves the current value of the performance counter
     /// </summary>
@@ -127,7 +127,7 @@ public static class Kernel32
     [DllImport(Kernel32Dll, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool QueryPerformanceCounter(out long lpPerformanceCount);
-    
+
     /// <summary>
     /// Retrieves the frequency of the performance counter
     /// </summary>
@@ -136,20 +136,20 @@ public static class Kernel32
     [DllImport(Kernel32Dll, SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool QueryPerformanceFrequency(out long lpFrequency);
-    
+
     #endregion
-    
+
     #region Constants
-    
+
     // Process access rights
     public const uint PROCESS_QUERY_INFORMATION = 0x0400;
     public const uint PROCESS_VM_READ = 0x0010;
     public const uint PROCESS_ALL_ACCESS = 0x1F0FFF;
-    
+
     // Heap flags
     public const uint HEAP_ZERO_MEMORY = 0x00000008;
     public const uint HEAP_NO_SERIALIZE = 0x00000001;
-    
+
     // Common error codes
     public const uint ERROR_SUCCESS = 0;
     public const uint ERROR_FILE_NOT_FOUND = 2;
@@ -158,11 +158,11 @@ public static class Kernel32
     public const uint ERROR_NOT_ENOUGH_MEMORY = 8;
     public const uint ERROR_INVALID_PARAMETER = 87;
     public const uint ERROR_INSUFFICIENT_BUFFER = 122;
-    
+
     #endregion
-    
+
     #region Helper Methods
-    
+
     /// <summary>
     /// Helper method to get the last Win32 error as a formatted string
     /// </summary>
@@ -170,11 +170,11 @@ public static class Kernel32
     public static string GetLastErrorMessage()
     {
         uint errorCode = GetLastError();
-        return errorCode == ERROR_SUCCESS 
-            ? "No error" 
+        return errorCode == ERROR_SUCCESS
+            ? "No error"
             : $"Win32 Error {errorCode}: {GetErrorMessage(errorCode)}";
     }
-    
+
     /// <summary>
     /// Helper method to get a user-friendly error message for common error codes
     /// </summary>
@@ -194,6 +194,6 @@ public static class Kernel32
             _ => "Unknown error"
         };
     }
-    
+
     #endregion
 }

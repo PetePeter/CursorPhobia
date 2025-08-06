@@ -39,7 +39,7 @@ public class SettingsViewModelTests
         var config = CursorPhobiaConfiguration.CreateDefault();
         var viewModel = new SettingsViewModel(config);
         var changedProperties = new List<string>();
-        
+
         viewModel.PropertyChanged += (s, e) => changedProperties.Add(e.PropertyName!);
 
         // Act
@@ -61,7 +61,7 @@ public class SettingsViewModelTests
         var config = CursorPhobiaConfiguration.CreateDefault();
         var viewModel = new SettingsViewModel(config);
         var changedProperties = new List<string>();
-        
+
         viewModel.PropertyChanged += (s, e) => changedProperties.Add(e.PropertyName!);
 
         // Act
@@ -82,7 +82,7 @@ public class SettingsViewModelTests
         var config = CursorPhobiaConfiguration.CreateDefault();
         var viewModel = new SettingsViewModel(config);
         var changedProperties = new List<string>();
-        
+
         viewModel.PropertyChanged += (s, e) => changedProperties.Add(e.PropertyName!);
 
         // Act
@@ -102,7 +102,7 @@ public class SettingsViewModelTests
         var config = CursorPhobiaConfiguration.CreateDefault();
         var viewModel = new SettingsViewModel(config);
         var changedProperties = new List<string>();
-        
+
         viewModel.PropertyChanged += (s, e) => changedProperties.Add(e.PropertyName!);
 
         // Act
@@ -122,7 +122,7 @@ public class SettingsViewModelTests
         var config = CursorPhobiaConfiguration.CreateDefault();
         var viewModel = new SettingsViewModel(config);
         var changedProperties = new List<string>();
-        
+
         viewModel.PropertyChanged += (s, e) => changedProperties.Add(e.PropertyName!);
 
         // Act
@@ -142,7 +142,7 @@ public class SettingsViewModelTests
         var config = CursorPhobiaConfiguration.CreateDefault();
         var viewModel = new SettingsViewModel(config);
         var changedProperties = new List<string>();
-        
+
         viewModel.PropertyChanged += (s, e) => changedProperties.Add(e.PropertyName!);
 
         // Act
@@ -163,7 +163,7 @@ public class SettingsViewModelTests
         var config = CursorPhobiaConfiguration.CreateDefault();
         var viewModel = new SettingsViewModel(config);
         var changedProperties = new List<string>();
-        
+
         viewModel.PropertyChanged += (s, e) => changedProperties.Add(e.PropertyName!);
 
         // Act
@@ -184,7 +184,7 @@ public class SettingsViewModelTests
         var config = CursorPhobiaConfiguration.CreateDefault();
         var viewModel = new SettingsViewModel(config);
         var changedProperties = new List<string>();
-        
+
         viewModel.PropertyChanged += (s, e) => changedProperties.Add(e.PropertyName!);
 
         // Act
@@ -204,7 +204,7 @@ public class SettingsViewModelTests
         var config = CursorPhobiaConfiguration.CreateDefault();
         var viewModel = new SettingsViewModel(config);
         var changedProperties = new List<string>();
-        
+
         viewModel.PropertyChanged += (s, e) => changedProperties.Add(e.PropertyName!);
 
         // Act
@@ -225,7 +225,7 @@ public class SettingsViewModelTests
         var config = CursorPhobiaConfiguration.CreateDefault();
         var viewModel = new SettingsViewModel(config);
         var changedProperties = new List<string>();
-        
+
         viewModel.PropertyChanged += (s, e) => changedProperties.Add(e.PropertyName!);
 
         // Act
@@ -262,7 +262,7 @@ public class SettingsViewModelTests
         config.ProximityThreshold = 999; // Change from default
         var viewModel = new SettingsViewModel(config);
         var changedProperties = new List<string>();
-        
+
         viewModel.PropertyChanged += (s, e) => changedProperties.Add(e.PropertyName!);
 
         // Act
@@ -282,7 +282,7 @@ public class SettingsViewModelTests
         var config = CursorPhobiaConfiguration.CreateDefault();
         var viewModel = new SettingsViewModel(config);
         var changedProperties = new List<string>();
-        
+
         viewModel.PropertyChanged += (s, e) => changedProperties.Add(e.PropertyName!);
 
         // Act
@@ -302,7 +302,7 @@ public class SettingsViewModelTests
         var config = CursorPhobiaConfiguration.CreateDefault();
         var viewModel = new SettingsViewModel(config);
         var changedProperties = new List<string>();
-        
+
         viewModel.PropertyChanged += (s, e) => changedProperties.Add(e.PropertyName!);
 
         // Act
@@ -333,7 +333,7 @@ public class SettingsViewModelTests
         var config1 = CursorPhobiaConfiguration.CreateDefault();
         var config2 = CursorPhobiaConfiguration.CreatePerformanceOptimized();
         var viewModel = new SettingsViewModel(config1);
-        
+
         var propertyChanges = new List<string>();
         viewModel.PropertyChanged += (s, e) => propertyChanges.Add(e.PropertyName!);
 

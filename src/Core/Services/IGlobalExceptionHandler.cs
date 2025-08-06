@@ -11,33 +11,33 @@ public interface IGlobalExceptionHandler : IDisposable
     /// Event raised when a recoverable exception is handled gracefully
     /// </summary>
     event EventHandler<ExceptionHandledEventArgs>? ExceptionHandled;
-    
+
     /// <summary>
     /// Event raised when a critical exception occurs that may require application restart
     /// </summary>
     event EventHandler<CriticalExceptionEventArgs>? CriticalExceptionOccurred;
-    
+
     /// <summary>
     /// Gets whether the global exception handler is currently active
     /// </summary>
     bool IsActive { get; }
-    
+
     /// <summary>
     /// Gets the total number of exceptions handled since initialization
     /// </summary>
     int TotalExceptionsHandled { get; }
-    
+
     /// <summary>
     /// Gets the number of critical exceptions that have occurred
     /// </summary>
     int CriticalExceptionsCount { get; }
-    
+
     /// <summary>
     /// Initializes the global exception handler and hooks into system exception events
     /// </summary>
     /// <returns>True if initialization was successful, false otherwise</returns>
     Task<bool> InitializeAsync();
-    
+
     /// <summary>
     /// Handles an exception with appropriate recovery strategies
     /// </summary>
@@ -46,7 +46,7 @@ public interface IGlobalExceptionHandler : IDisposable
     /// <param name="canRecover">Whether recovery is possible for this exception</param>
     /// <returns>True if the exception was handled successfully, false if the application should terminate</returns>
     Task<bool> HandleExceptionAsync(Exception exception, string context, bool canRecover = true);
-    
+
     /// <summary>
     /// Shows a user-friendly error message without technical details
     /// </summary>
@@ -54,7 +54,7 @@ public interface IGlobalExceptionHandler : IDisposable
     /// <param name="title">Dialog title</param>
     /// <param name="isCritical">Whether this is a critical error</param>
     Task ShowUserErrorAsync(string message, string title = "CursorPhobia Error", bool isCritical = false);
-    
+
     /// <summary>
     /// Attempts to recover from a service failure by restarting the service
     /// </summary>
@@ -62,7 +62,7 @@ public interface IGlobalExceptionHandler : IDisposable
     /// <param name="restartAction">Action to restart the service</param>
     /// <returns>True if recovery was successful, false otherwise</returns>
     Task<bool> AttemptServiceRecoveryAsync(string serviceName, Func<Task<bool>> restartAction);
-    
+
     /// <summary>
     /// Shuts down the global exception handler and unhooks from system events
     /// </summary>
@@ -78,22 +78,22 @@ public class ExceptionHandledEventArgs : EventArgs
     /// The exception that was handled
     /// </summary>
     public Exception Exception { get; }
-    
+
     /// <summary>
     /// Context information about where the exception occurred
     /// </summary>
     public string Context { get; }
-    
+
     /// <summary>
     /// Whether recovery was successful
     /// </summary>
     public bool RecoverySuccessful { get; }
-    
+
     /// <summary>
     /// Timestamp when the exception was handled
     /// </summary>
     public DateTime Timestamp { get; }
-    
+
     /// <summary>
     /// Creates new exception handled event arguments
     /// </summary>
@@ -118,22 +118,22 @@ public class CriticalExceptionEventArgs : EventArgs
     /// The critical exception that occurred
     /// </summary>
     public Exception Exception { get; }
-    
+
     /// <summary>
     /// Context information about where the exception occurred
     /// </summary>
     public string Context { get; }
-    
+
     /// <summary>
     /// Whether the application is terminating due to this exception
     /// </summary>
     public bool IsTerminating { get; }
-    
+
     /// <summary>
     /// Timestamp when the critical exception occurred
     /// </summary>
     public DateTime Timestamp { get; }
-    
+
     /// <summary>
     /// Creates new critical exception event arguments
     /// </summary>

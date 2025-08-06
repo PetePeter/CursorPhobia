@@ -13,41 +13,41 @@ public class MonitorConfigurationWatcher : IMonitorConfigurationWatcher
     private readonly IMonitorManager _monitorManager;
     private readonly ILogger _logger;
     private readonly object _lockObject = new();
-    
+
     private bool _isMonitoring;
     private bool _disposed;
     private List<MonitorInfo> _lastKnownConfiguration = new();
-    
+
     /// <summary>
     /// Event raised when monitor configuration changes are detected
     /// </summary>
     public event EventHandler<MonitorChangeEventArgs>? MonitorConfigurationChanged;
-    
+
     /// <summary>
     /// Gets whether the watcher is currently monitoring for changes
     /// </summary>
-    public bool IsMonitoring 
-    { 
-        get 
-        { 
-            lock (_lockObject) 
-            { 
-                return _isMonitoring && !_disposed; 
-            } 
-        } 
+    public bool IsMonitoring
+    {
+        get
+        {
+            lock (_lockObject)
+            {
+                return _isMonitoring && !_disposed;
+            }
+        }
     }
-    
+
     /// <summary>
     /// Gets the time when the last change was detected
     /// </summary>
     public DateTime? LastChangeDetected { get; private set; }
-    
+
     /// <summary>
     /// Gets the interval (in milliseconds) at which changes are checked.
     /// Returns null since this implementation uses event-driven detection.
     /// </summary>
     public int? PollingIntervalMs => null;
-    
+
     /// <summary>
     /// Creates a new monitor configuration watcher
     /// </summary>
@@ -59,7 +59,7 @@ public class MonitorConfigurationWatcher : IMonitorConfigurationWatcher
         _monitorManager = monitorManager ?? throw new ArgumentNullException(nameof(monitorManager));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
-    
+
     /// <summary>
     /// Starts monitoring for display configuration changes
     /// </summary>
@@ -69,18 +69,18 @@ public class MonitorConfigurationWatcher : IMonitorConfigurationWatcher
         {
             if (_disposed)
                 throw new ObjectDisposedException(nameof(MonitorConfigurationWatcher));
-                
+
             if (_isMonitoring)
                 return;
-            
+
             try
             {
                 // Store initial configuration
                 UpdateLastKnownConfiguration();
-                
+
                 // Subscribe to Windows system events
                 SystemEvents.DisplaySettingsChanged += OnDisplaySettingsChanged;
-                
+
                 _isMonitoring = true;
                 _logger.LogInformation("MonitorConfigurationWatcher started monitoring");
             }
@@ -91,7 +91,7 @@ public class MonitorConfigurationWatcher : IMonitorConfigurationWatcher
             }
         }
     }
-    
+
     /// <summary>
     /// Stops monitoring for display configuration changes
     /// </summary>
@@ -101,12 +101,12 @@ public class MonitorConfigurationWatcher : IMonitorConfigurationWatcher
         {
             if (!_isMonitoring || _disposed)
                 return;
-            
+
             try
             {
                 // Unsubscribe from Windows system events
                 SystemEvents.DisplaySettingsChanged -= OnDisplaySettingsChanged;
-                
+
                 _isMonitoring = false;
                 _logger.LogInformation("MonitorConfigurationWatcher stopped monitoring");
             }
@@ -116,7 +116,7 @@ public class MonitorConfigurationWatcher : IMonitorConfigurationWatcher
             }
         }
     }
-    
+
     /// <summary>
     /// Manually triggers a check for configuration changes
     /// </summary>
@@ -127,23 +127,23 @@ public class MonitorConfigurationWatcher : IMonitorConfigurationWatcher
         {
             if (_disposed)
                 return false;
-                
+
             try
             {
                 var currentConfiguration = _monitorManager.GetAllMonitors();
                 var changeArgs = AnalyzeConfigurationChange(_lastKnownConfiguration, currentConfiguration);
-                
+
                 if (changeArgs != null)
                 {
                     _lastKnownConfiguration = new List<MonitorInfo>(currentConfiguration);
                     LastChangeDetected = DateTime.UtcNow;
-                    
+
                     // Raise event on a background thread to avoid blocking
                     Task.Run(() => RaiseConfigurationChanged(changeArgs));
-                    
+
                     return true;
                 }
-                
+
                 return false;
             }
             catch (Exception ex)
@@ -153,7 +153,7 @@ public class MonitorConfigurationWatcher : IMonitorConfigurationWatcher
             }
         }
     }
-    
+
     /// <summary>
     /// Event handler for Windows display settings changes
     /// </summary>
@@ -162,7 +162,7 @@ public class MonitorConfigurationWatcher : IMonitorConfigurationWatcher
         try
         {
             _logger.LogDebug("Display settings changed event received");
-            
+
             // Add a small delay to ensure Windows has finished updating
             Task.Delay(100).ContinueWith(_ => CheckForChanges());
         }
@@ -171,7 +171,7 @@ public class MonitorConfigurationWatcher : IMonitorConfigurationWatcher
             _logger.LogError($"Error handling display settings change: {ex.Message}");
         }
     }
-    
+
     /// <summary>
     /// Updates the last known configuration with current monitor setup
     /// </summary>
@@ -188,7 +188,7 @@ public class MonitorConfigurationWatcher : IMonitorConfigurationWatcher
             _lastKnownConfiguration = new List<MonitorInfo>();
         }
     }
-    
+
     /// <summary>
     /// Analyzes changes between two monitor configurations
     /// </summary>
@@ -196,19 +196,19 @@ public class MonitorConfigurationWatcher : IMonitorConfigurationWatcher
     /// <param name="current">Current configuration</param>
     /// <returns>Change event args if changes detected, null otherwise</returns>
     private static MonitorChangeEventArgs? AnalyzeConfigurationChange(
-        List<MonitorInfo> previous, 
+        List<MonitorInfo> previous,
         List<MonitorInfo> current)
     {
         // Quick check - if counts are different, definitely a change
         bool countChanged = previous.Count != current.Count;
-        
+
         // Check for added/removed monitors
         var previousHandles = previous.Select(m => m.monitorHandle).ToHashSet();
         var currentHandles = current.Select(m => m.monitorHandle).ToHashSet();
-        
+
         var addedHandles = currentHandles.Except(previousHandles).ToList();
         var removedHandles = previousHandles.Except(currentHandles).ToList();
-        
+
         // Check for modified monitors (same handle, different properties)
         var modifiedMonitors = new List<(MonitorInfo Previous, MonitorInfo Current)>();
         foreach (var currentMonitor in current)
@@ -219,53 +219,53 @@ public class MonitorConfigurationWatcher : IMonitorConfigurationWatcher
                 modifiedMonitors.Add((previousMonitor, currentMonitor));
             }
         }
-        
+
         // Check for primary monitor changes
         var previousPrimary = previous.FirstOrDefault(m => m.isPrimary);
         var currentPrimary = current.FirstOrDefault(m => m.isPrimary);
         bool primaryChanged = previousPrimary?.monitorHandle != currentPrimary?.monitorHandle;
-        
+
         // Determine if any changes occurred
-        bool hasChanges = countChanged || addedHandles.Count > 0 || removedHandles.Count > 0 || 
+        bool hasChanges = countChanged || addedHandles.Count > 0 || removedHandles.Count > 0 ||
                          modifiedMonitors.Count > 0 || primaryChanged;
-        
+
         if (!hasChanges)
             return null;
-        
+
         // Determine change type
-        var changeType = DetermineChangeType(addedHandles.Count > 0, removedHandles.Count > 0, 
+        var changeType = DetermineChangeType(addedHandles.Count > 0, removedHandles.Count > 0,
                                            modifiedMonitors.Count > 0, primaryChanged);
-        
+
         return new MonitorChangeEventArgs(changeType, previous.AsReadOnly(), current.AsReadOnly());
     }
-    
+
     /// <summary>
     /// Determines the type of monitor configuration change
     /// </summary>
-    private static MonitorChangeType DetermineChangeType(bool hasAdded, bool hasRemoved, 
+    private static MonitorChangeType DetermineChangeType(bool hasAdded, bool hasRemoved,
                                                        bool hasModified, bool primaryChanged)
     {
-        int changeCount = (hasAdded ? 1 : 0) + (hasRemoved ? 1 : 0) + 
+        int changeCount = (hasAdded ? 1 : 0) + (hasRemoved ? 1 : 0) +
                          (hasModified ? 1 : 0) + (primaryChanged ? 1 : 0);
-        
+
         if (changeCount > 1)
             return MonitorChangeType.ComplexChange;
-        
+
         if (hasAdded)
             return MonitorChangeType.MonitorsAdded;
-        
+
         if (hasRemoved)
             return MonitorChangeType.MonitorsRemoved;
-        
+
         if (primaryChanged)
             return MonitorChangeType.PrimaryMonitorChanged;
-        
+
         if (hasModified)
             return MonitorChangeType.MonitorsRepositioned;
-        
+
         return MonitorChangeType.Unknown;
     }
-    
+
     /// <summary>
     /// Checks if two monitor configurations are equal
     /// </summary>
@@ -276,7 +276,7 @@ public class MonitorConfigurationWatcher : IMonitorConfigurationWatcher
                monitor1.workAreaBounds == monitor2.workAreaBounds &&
                monitor1.isPrimary == monitor2.isPrimary;
     }
-    
+
     /// <summary>
     /// Raises the MonitorConfigurationChanged event safely
     /// </summary>
@@ -292,7 +292,7 @@ public class MonitorConfigurationWatcher : IMonitorConfigurationWatcher
             _logger.LogError($"Error raising MonitorConfigurationChanged event: {ex.Message}");
         }
     }
-    
+
     /// <summary>
     /// Disposes the monitor configuration watcher
     /// </summary>
@@ -301,7 +301,7 @@ public class MonitorConfigurationWatcher : IMonitorConfigurationWatcher
         Dispose(true);
         GC.SuppressFinalize(this);
     }
-    
+
     /// <summary>
     /// Protected dispose method
     /// </summary>
@@ -309,7 +309,7 @@ public class MonitorConfigurationWatcher : IMonitorConfigurationWatcher
     {
         if (_disposed)
             return;
-        
+
         if (disposing)
         {
             lock (_lockObject)
@@ -322,12 +322,12 @@ public class MonitorConfigurationWatcher : IMonitorConfigurationWatcher
                 {
                     _logger.LogError($"Error during MonitorConfigurationWatcher disposal: {ex.Message}");
                 }
-                
+
                 _disposed = true;
             }
         }
     }
-    
+
     /// <summary>
     /// Finalizer to ensure resources are cleaned up
     /// </summary>

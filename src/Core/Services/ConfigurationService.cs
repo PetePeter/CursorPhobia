@@ -14,7 +14,7 @@ public class ConfigurationService : IConfigurationService
     private const string TempFileExtension = ".tmp";
     private const string DefaultConfigFileName = "config.json";
     private const string ApplicationDirectoryName = "CursorPhobia";
-    
+
     // Path validation constants
     private static readonly string[] ForbiddenPathElements = { ".." };
     private static readonly char[] InvalidPathChars = Path.GetInvalidPathChars();
@@ -22,7 +22,7 @@ public class ConfigurationService : IConfigurationService
     private readonly ILogger _logger;
     private readonly JsonSerializerOptions _jsonOptions;
     private readonly IConfigurationBackupService? _backupService;
-    
+
     /// <summary>
     /// Creates a new ConfigurationService instance
     /// </summary>
@@ -30,7 +30,7 @@ public class ConfigurationService : IConfigurationService
     public ConfigurationService(ILogger logger) : this(logger, null)
     {
     }
-    
+
     /// <summary>
     /// Creates a new ConfigurationService instance with backup support
     /// </summary>
@@ -40,7 +40,7 @@ public class ConfigurationService : IConfigurationService
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _backupService = backupService;
-        
+
         // Configure JSON serialization options for human-readable output
         _jsonOptions = new JsonSerializerOptions
         {
@@ -49,7 +49,7 @@ public class ConfigurationService : IConfigurationService
             PropertyNameCaseInsensitive = true
         };
     }
-    
+
     /// <summary>
     /// Loads configuration from the specified file path
     /// Returns default configuration if file doesn't exist or is corrupt
@@ -63,7 +63,7 @@ public class ConfigurationService : IConfigurationService
             _logger.LogError("LoadConfigurationAsync called with null or empty filePath");
             return GetDefaultConfiguration();
         }
-        
+
         try
         {
             // Check if file exists
@@ -71,14 +71,14 @@ public class ConfigurationService : IConfigurationService
             {
                 _logger.LogInformation("Configuration file does not exist: {FilePath}. Creating default configuration.", filePath);
                 var defaultConfig = GetDefaultConfiguration();
-                
+
                 // Save default configuration to the file
                 await SaveConfigurationAsync(defaultConfig, filePath);
                 return defaultConfig;
             }
-            
+
             _logger.LogDebug("Loading configuration from: {FilePath}", filePath);
-            
+
             // Read and deserialize the configuration file
             string jsonContent;
             using (var fileStream = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.Read))
@@ -86,30 +86,30 @@ public class ConfigurationService : IConfigurationService
             {
                 jsonContent = await reader.ReadToEndAsync();
             }
-            
+
             if (string.IsNullOrWhiteSpace(jsonContent))
             {
                 _logger.LogWarning("Configuration file is empty: {FilePath}. Using default configuration.", filePath);
                 return GetDefaultConfiguration();
             }
-            
+
             var configuration = JsonSerializer.Deserialize<CursorPhobiaConfiguration>(jsonContent, _jsonOptions);
-            
+
             if (configuration == null)
             {
                 _logger.LogWarning("Failed to deserialize configuration from {FilePath}. Using default configuration.", filePath);
                 return GetDefaultConfiguration();
             }
-            
+
             // Validate the loaded configuration
             var validationErrors = configuration.Validate();
             if (validationErrors.Count > 0)
             {
-                _logger.LogWarning("Loaded configuration has validation errors: {Errors}. Using default configuration.", 
+                _logger.LogWarning("Loaded configuration has validation errors: {Errors}. Using default configuration.",
                     string.Join(", ", validationErrors));
                 return GetDefaultConfiguration();
             }
-            
+
             _logger.LogInformation("Successfully loaded configuration from: {FilePath}", filePath);
             return configuration;
         }
@@ -139,7 +139,7 @@ public class ConfigurationService : IConfigurationService
             return GetDefaultConfiguration();
         }
     }
-    
+
     /// <summary>
     /// Saves configuration to the specified file path using atomic writes
     /// Creates directories as needed and handles write failures gracefully
@@ -153,12 +153,12 @@ public class ConfigurationService : IConfigurationService
         {
             throw new ArgumentNullException(nameof(config));
         }
-        
+
         if (string.IsNullOrWhiteSpace(filePath))
         {
             throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
         }
-        
+
         try
         {
             // Validate configuration before saving
@@ -167,9 +167,9 @@ public class ConfigurationService : IConfigurationService
             {
                 throw new ArgumentException($"Invalid configuration: {string.Join(", ", validationErrors)}");
             }
-            
+
             _logger.LogDebug("Saving configuration to: {FilePath}", filePath);
-            
+
             // Ensure the directory exists
             var directory = Path.GetDirectoryName(filePath);
             if (!string.IsNullOrEmpty(directory) && !Directory.Exists(directory))
@@ -177,10 +177,10 @@ public class ConfigurationService : IConfigurationService
                 Directory.CreateDirectory(directory);
                 _logger.LogDebug("Created directory: {Directory}", directory);
             }
-            
+
             // Validate the file path to prevent directory traversal attacks
             ValidateConfigurationPath(filePath);
-            
+
             // Create backup if backup service is available and the file already exists
             if (_backupService != null && File.Exists(filePath))
             {
@@ -199,15 +199,15 @@ public class ConfigurationService : IConfigurationService
                     _logger.LogWarning("Failed to create backup before saving configuration, continuing with save operation. Exception: {Exception}", backupEx.Message);
                 }
             }
-            
+
             // Use atomic write: write to temp file first, then rename
             var tempFilePath = filePath + TempFileExtension;
-            
+
             try
             {
                 // Serialize configuration to JSON
                 var jsonContent = JsonSerializer.Serialize(config, _jsonOptions);
-                
+
                 // Write to temporary file
                 using (var fileStream = new FileStream(tempFilePath, FileMode.Create, FileAccess.Write, FileShare.None))
                 using (var writer = new StreamWriter(fileStream))
@@ -215,7 +215,7 @@ public class ConfigurationService : IConfigurationService
                     await writer.WriteAsync(jsonContent);
                     await writer.FlushAsync();
                 }
-                
+
                 // Atomic replacement - this ensures we never have a partially written config file
                 // Use File.Replace for true atomic operation that handles existing files correctly
                 if (File.Exists(filePath))
@@ -228,7 +228,7 @@ public class ConfigurationService : IConfigurationService
                     // If target doesn't exist, just move the temp file
                     File.Move(tempFilePath, filePath);
                 }
-                
+
                 _logger.LogInformation("Successfully saved configuration to: {FilePath}", filePath);
             }
             catch
@@ -245,7 +245,7 @@ public class ConfigurationService : IConfigurationService
                 {
                     _logger.LogWarning("Failed to clean up temporary file: {TempFile}. Exception: {Exception}", tempFilePath, cleanupEx.Message);
                 }
-                
+
                 throw; // Re-throw the original exception
             }
         }
@@ -270,7 +270,7 @@ public class ConfigurationService : IConfigurationService
             throw;
         }
     }
-    
+
     /// <summary>
     /// Gets a default configuration instance with recommended settings
     /// </summary>
@@ -280,7 +280,7 @@ public class ConfigurationService : IConfigurationService
         _logger.LogDebug("Creating default configuration");
         return CursorPhobiaConfiguration.CreateDefault();
     }
-    
+
     /// <summary>
     /// Gets the default configuration file path (%APPDATA%\CursorPhobia\config.json)
     /// </summary>
@@ -289,7 +289,7 @@ public class ConfigurationService : IConfigurationService
     {
         return await Task.FromResult(GetDefaultConfigurationPath());
     }
-    
+
     /// <summary>
     /// Gets the default configuration file path (%APPDATA%\CursorPhobia\config.json)
     /// This is a synchronous operation since no async work is performed
@@ -305,10 +305,10 @@ public class ConfigurationService : IConfigurationService
                 _logger.LogWarning("Could not determine APPDATA folder path. Using current directory.");
                 appDataPath = Environment.CurrentDirectory;
             }
-                
+
             var cursorPhobiaDirectory = Path.Combine(appDataPath, ApplicationDirectoryName);
             var configFilePath = Path.Combine(cursorPhobiaDirectory, DefaultConfigFileName);
-            
+
             _logger.LogDebug("Default configuration path: {ConfigPath}", configFilePath);
             return configFilePath;
         }
@@ -318,7 +318,7 @@ public class ConfigurationService : IConfigurationService
             return Path.Combine(Environment.CurrentDirectory, ApplicationDirectoryName, DefaultConfigFileName);
         }
     }
-    
+
     /// <summary>
     /// Validates a configuration file path to prevent directory traversal attacks and ensure path safety
     /// </summary>
@@ -330,7 +330,7 @@ public class ConfigurationService : IConfigurationService
         {
             throw new ArgumentException("File path cannot be null or empty", nameof(filePath));
         }
-        
+
         try
         {
             // Check for directory traversal patterns
@@ -339,7 +339,7 @@ public class ConfigurationService : IConfigurationService
             {
                 throw new ArgumentException($"Path contains directory traversal patterns: {filePath}", nameof(filePath));
             }
-            
+
             // Check for invalid path characters (but allow drive colons on Windows)
             var pathToCheck = filePath;
             if (Path.IsPathRooted(filePath) && filePath.Length >= 2 && filePath[1] == ':')
@@ -347,42 +347,42 @@ public class ConfigurationService : IConfigurationService
                 // Skip the drive letter part for Windows paths (e.g., "C:" part)
                 pathToCheck = filePath.Substring(2);
             }
-            
+
             if (pathToCheck.IndexOfAny(InvalidPathChars) >= 0)
             {
                 throw new ArgumentException($"Path contains invalid characters: {filePath}", nameof(filePath));
             }
-            
+
             // Check filename for invalid characters
             var fileName = Path.GetFileName(filePath);
             if (!string.IsNullOrEmpty(fileName) && fileName.IndexOfAny(InvalidFileNameChars) >= 0)
             {
                 throw new ArgumentException($"Filename contains invalid characters: {fileName}", nameof(filePath));
             }
-            
+
             // Get the full path to check for suspicious absolute paths
             var fullPath = Path.GetFullPath(filePath);
-            
+
             // Prevent access to system directories (basic check)
             var systemPath = Environment.GetFolderPath(Environment.SpecialFolder.System);
             var windowsPath = Environment.GetFolderPath(Environment.SpecialFolder.Windows);
             var programFilesPath = Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles);
-            
+
             if (!string.IsNullOrEmpty(systemPath) && fullPath.StartsWith(systemPath, StringComparison.OrdinalIgnoreCase))
             {
                 throw new ArgumentException($"Access to system directory not allowed: {fullPath}", nameof(filePath));
             }
-            
+
             if (!string.IsNullOrEmpty(windowsPath) && fullPath.StartsWith(windowsPath, StringComparison.OrdinalIgnoreCase))
             {
                 throw new ArgumentException($"Access to Windows directory not allowed: {fullPath}", nameof(filePath));
             }
-            
+
             if (!string.IsNullOrEmpty(programFilesPath) && fullPath.StartsWith(programFilesPath, StringComparison.OrdinalIgnoreCase))
             {
                 throw new ArgumentException($"Access to Program Files directory not allowed: {fullPath}", nameof(filePath));
             }
-            
+
             _logger.LogDebug("Path validation successful for: {FilePath}", filePath);
         }
         catch (Exception ex) when (!(ex is ArgumentException))

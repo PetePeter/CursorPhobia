@@ -12,7 +12,7 @@ public class PerformanceMonitoringService : IPerformanceMonitoringService
     private readonly ConcurrentDictionary<string, PerformanceMetricStats> _metrics = new();
     private readonly ILogger? _logger;
     private readonly object _resetLock = new();
-    
+
     /// <summary>
     /// Creates a new performance monitoring service
     /// </summary>
@@ -21,7 +21,7 @@ public class PerformanceMonitoringService : IPerformanceMonitoringService
     {
         _logger = logger;
     }
-    
+
     /// <summary>
     /// Starts tracking a performance metric with the given name
     /// </summary>
@@ -31,7 +31,7 @@ public class PerformanceMonitoringService : IPerformanceMonitoringService
     {
         return new MetricTracker(this, metricName);
     }
-    
+
     /// <summary>
     /// Records a metric value with the given name and duration
     /// </summary>
@@ -41,10 +41,10 @@ public class PerformanceMonitoringService : IPerformanceMonitoringService
     {
         if (string.IsNullOrWhiteSpace(metricName))
             return;
-            
+
         try
         {
-            _metrics.AddOrUpdate(metricName, 
+            _metrics.AddOrUpdate(metricName,
                 // Add new metric
                 _ => new PerformanceMetricStats
                 {
@@ -78,7 +78,7 @@ public class PerformanceMonitoringService : IPerformanceMonitoringService
             _logger?.LogWarning($"Error recording metric '{metricName}': {ex.Message}");
         }
     }
-    
+
     /// <summary>
     /// Records a counter metric (increments by 1)
     /// </summary>
@@ -87,7 +87,7 @@ public class PerformanceMonitoringService : IPerformanceMonitoringService
     {
         IncrementCounter(counterName, 1);
     }
-    
+
     /// <summary>
     /// Records a counter metric with a specific value
     /// </summary>
@@ -97,7 +97,7 @@ public class PerformanceMonitoringService : IPerformanceMonitoringService
     {
         if (string.IsNullOrWhiteSpace(counterName))
             return;
-            
+
         try
         {
             _metrics.AddOrUpdate(counterName,
@@ -132,7 +132,7 @@ public class PerformanceMonitoringService : IPerformanceMonitoringService
             _logger?.LogWarning($"Error incrementing counter '{counterName}': {ex.Message}");
         }
     }
-    
+
     /// <summary>
     /// Gets the current statistics for all tracked metrics
     /// </summary>
@@ -149,7 +149,7 @@ public class PerformanceMonitoringService : IPerformanceMonitoringService
             return new Dictionary<string, PerformanceMetricStats>();
         }
     }
-    
+
     /// <summary>
     /// Gets statistics for a specific metric
     /// </summary>
@@ -159,10 +159,10 @@ public class PerformanceMonitoringService : IPerformanceMonitoringService
     {
         if (string.IsNullOrWhiteSpace(metricName))
             return null;
-            
+
         return _metrics.TryGetValue(metricName, out var stats) ? stats : null;
     }
-    
+
     /// <summary>
     /// Resets all performance statistics
     /// </summary>
@@ -181,7 +181,7 @@ public class PerformanceMonitoringService : IPerformanceMonitoringService
             }
         }
     }
-    
+
     /// <summary>
     /// Gets the current memory usage in bytes
     /// </summary>
@@ -198,7 +198,7 @@ public class PerformanceMonitoringService : IPerformanceMonitoringService
             return 0;
         }
     }
-    
+
     /// <summary>
     /// Gets the current GC generation counts
     /// </summary>
@@ -220,7 +220,7 @@ public class PerformanceMonitoringService : IPerformanceMonitoringService
             return new int[3];
         }
     }
-    
+
     /// <summary>
     /// Internal metric tracker that records duration on disposal
     /// </summary>
@@ -230,19 +230,19 @@ public class PerformanceMonitoringService : IPerformanceMonitoringService
         private readonly string _metricName;
         private readonly Stopwatch _stopwatch;
         private bool _disposed;
-        
+
         public MetricTracker(PerformanceMonitoringService service, string metricName)
         {
             _service = service;
             _metricName = metricName;
             _stopwatch = Stopwatch.StartNew();
         }
-        
+
         public void Dispose()
         {
             if (_disposed)
                 return;
-                
+
             _stopwatch.Stop();
             _service.RecordMetric(_metricName, _stopwatch.Elapsed);
             _disposed = true;

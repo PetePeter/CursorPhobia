@@ -18,7 +18,7 @@ public interface IWindowPusher
     /// <param name="pushDistance">Distance to push the window</param>
     /// <returns>True if the push was initiated successfully</returns>
     Task<bool> PushWindowAsync(IntPtr windowHandle, Point cursorPosition, int pushDistance);
-    
+
     /// <summary>
     /// Pushes a window to a specific target position with animation
     /// </summary>
@@ -26,20 +26,20 @@ public interface IWindowPusher
     /// <param name="targetPosition">Target position for the window</param>
     /// <returns>True if the push was initiated successfully</returns>
     Task<bool> PushWindowToPositionAsync(IntPtr windowHandle, Point targetPosition);
-    
+
     /// <summary>
     /// Checks if a window is currently being animated
     /// </summary>
     /// <param name="windowHandle">Handle to the window</param>
     /// <returns>True if the window is currently being animated</returns>
     bool IsWindowAnimating(IntPtr windowHandle);
-    
+
     /// <summary>
     /// Cancels any ongoing animation for a specific window
     /// </summary>
     /// <param name="windowHandle">Handle to the window</param>
     void CancelWindowAnimation(IntPtr windowHandle);
-    
+
     /// <summary>
     /// Cancels all ongoing window animations
     /// </summary>
@@ -62,13 +62,13 @@ public class WindowPusher : IWindowPusher, IDisposable
     private readonly EdgeWrapHandler _edgeWrapHandler;
     private readonly IErrorRecoveryManager? _errorRecoveryManager;
     private readonly ISystemTrayManager? _trayManager;
-    
+
     // Animation tracking
     private readonly Dictionary<IntPtr, WindowAnimation> _activeAnimations;
     private readonly object _animationLock = new();
     private readonly CancellationTokenSource _cancellationTokenSource;
     private bool _disposed = false;
-    
+
     // Phase 3 WI#8: Hook recovery tracking
     private readonly object _hookRecoveryLock = new();
     private DateTime _lastHookFailure = DateTime.MinValue;
@@ -76,7 +76,7 @@ public class WindowPusher : IWindowPusher, IDisposable
     private bool _hookRecoveryInProgress = false;
     private const int MaxConsecutiveHookFailures = 3;
     private const int HookRecoveryTimeoutMs = 5000; // 5 seconds
-    
+
     /// <summary>
     /// Creates a new WindowPusher instance
     /// </summary>
@@ -112,26 +112,26 @@ public class WindowPusher : IWindowPusher, IDisposable
         _config = config ?? CursorPhobiaConfiguration.CreateDefault();
         _errorRecoveryManager = errorRecoveryManager;
         _trayManager = trayManager;
-        
+
         var validationErrors = _config.Validate();
         if (validationErrors.Count > 0)
         {
             throw new ArgumentException($"Invalid configuration: {string.Join(", ", validationErrors)}");
         }
-        
+
         _activeAnimations = new Dictionary<IntPtr, WindowAnimation>();
         _cancellationTokenSource = new CancellationTokenSource();
-        
+
         // Phase 3 WI#8: Register with error recovery manager for hook failures
         if (_errorRecoveryManager != null)
         {
             Task.Run(async () => await RegisterForErrorRecoveryAsync());
         }
-        
+
         _logger.LogDebug("WindowPusher initialized with animations {Enabled}, duration {Duration}ms, easing {Easing}, hook recovery {HookRecovery}",
             _config.EnableAnimations, _config.AnimationDurationMs, _config.AnimationEasing, _errorRecoveryManager != null);
     }
-    
+
     /// <summary>
     /// Pushes a window away from the cursor with smooth animation
     /// </summary>
@@ -146,22 +146,22 @@ public class WindowPusher : IWindowPusher, IDisposable
             _logger.LogWarning("Invalid window handle provided to PushWindowAsync");
             return false;
         }
-        
+
         if (pushDistance <= 0)
         {
             _logger.LogWarning("Invalid push distance: {Distance}. Must be greater than 0", pushDistance);
             return false;
         }
-        
+
         // Phase 2 WI#8: Performance logging for window push operations
-        using var perfScope = _logger is Logger loggerWithPerf ? 
-            loggerWithPerf.BeginPerformanceScope("PushWindow", 
+        using var perfScope = _logger is Logger loggerWithPerf ?
+            loggerWithPerf.BeginPerformanceScope("PushWindow",
                 ("WindowHandle", $"0x{windowHandle:X}"),
                 ("CursorX", cursorPosition.X),
                 ("CursorY", cursorPosition.Y),
                 ("PushDistance", pushDistance)) :
             null;
-        
+
         try
         {
             // Get current window bounds
@@ -172,12 +172,12 @@ public class WindowPusher : IWindowPusher, IDisposable
                 _logger.LogWarning("Could not get bounds for window {Handle:X}", windowHandle.ToInt64());
                 return false;
             }
-            
+
             (perfScope as IPerformanceScope)?.AddContext("CurrentX", currentBounds.X);
             (perfScope as IPerformanceScope)?.AddContext("CurrentY", currentBounds.Y);
             (perfScope as IPerformanceScope)?.AddContext("WindowWidth", currentBounds.Width);
             (perfScope as IPerformanceScope)?.AddContext("WindowHeight", currentBounds.Height);
-            
+
             // Calculate push vector using proximity detector
             var pushVector = _proximityDetector.CalculatePushVector(cursorPosition, currentBounds, pushDistance);
             if (pushVector.IsEmpty)
@@ -186,19 +186,19 @@ public class WindowPusher : IWindowPusher, IDisposable
                 _logger.LogWarning("Could not calculate push vector for window {Handle:X}", windowHandle.ToInt64());
                 return false;
             }
-            
+
             (perfScope as IPerformanceScope)?.AddContext("PushVectorX", pushVector.X);
             (perfScope as IPerformanceScope)?.AddContext("PushVectorY", pushVector.Y);
-            
+
             // Calculate target position
             var targetPosition = new Point(
                 currentBounds.X + pushVector.X,
                 currentBounds.Y + pushVector.Y
             );
-            
+
             // Check if this is an always-on-top window
             bool isTopmost = _windowDetectionService.IsWindowAlwaysOnTop(windowHandle);
-            
+
             // Check for edge wrapping
             var wrapBehavior = new WrapBehavior
             {
@@ -206,12 +206,12 @@ public class WindowPusher : IWindowPusher, IDisposable
                 PreferredBehavior = isTopmost ? WrapPreference.Opposite : (_config.MultiMonitor?.PreferredWrapBehavior ?? WrapPreference.Smart),
                 RespectTaskbarAreas = _config.MultiMonitor?.RespectTaskbarAreas ?? true
             };
-            
+
             if (isTopmost)
             {
                 _logger.LogDebug("Always-on-top window {Handle:X} - enabling opposite edge teleportation", windowHandle.ToInt64());
             }
-            
+
             var wrapDestination = _edgeWrapHandler.CalculateWrapDestination(currentBounds, pushVector, wrapBehavior);
             if (wrapDestination.HasValue && _edgeWrapHandler.IsWrapSafe(currentBounds.Location, wrapDestination.Value, currentBounds.Size))
             {
@@ -219,10 +219,10 @@ public class WindowPusher : IWindowPusher, IDisposable
                     windowHandle.ToInt64(), currentBounds.X, currentBounds.Y, wrapDestination.Value.X, wrapDestination.Value.Y);
                 targetPosition = wrapDestination.Value;
             }
-            
+
             // Validate the target position with safety manager
             var safePosition = _safetyManager.ValidateWindowPosition(currentBounds, targetPosition);
-            
+
             // Check if the window was constrained by safety manager (hit an edge and can't move further)
             if (!targetPosition.Equals(safePosition))
             {
@@ -230,9 +230,9 @@ public class WindowPusher : IWindowPusher, IDisposable
                 var constrainedEdge = DetectConstrainedEdge(currentBounds, targetPosition, safePosition);
                 if (constrainedEdge != EdgeType.None)
                 {
-                    _logger.LogDebug("Window {Handle:X} constrained at {Edge} edge, attempting wrap", 
+                    _logger.LogDebug("Window {Handle:X} constrained at {Edge} edge, attempting wrap",
                         windowHandle.ToInt64(), constrainedEdge);
-                    
+
                     // Try to wrap to opposite edge
                     var constrainedWrapBehavior = new WrapBehavior
                     {
@@ -240,30 +240,30 @@ public class WindowPusher : IWindowPusher, IDisposable
                         PreferredBehavior = WrapPreference.Opposite, // Force opposite edge wrap
                         RespectTaskbarAreas = _config.MultiMonitor?.RespectTaskbarAreas ?? true
                     };
-                    
+
                     var constrainedWrapDestination = _edgeWrapHandler.CalculateWrapDestinationForConstrainedWindow(
                         currentBounds, constrainedEdge, constrainedWrapBehavior);
-                    
-                    if (constrainedWrapDestination.HasValue && 
+
+                    if (constrainedWrapDestination.HasValue &&
                         _edgeWrapHandler.IsWrapSafe(currentBounds.Location, constrainedWrapDestination.Value, currentBounds.Size))
                     {
                         _logger.LogDebug("Edge constraint wrap detected for window {Handle:X} from ({CurrentX},{CurrentY}) to ({WrapX},{WrapY})",
-                            windowHandle.ToInt64(), currentBounds.X, currentBounds.Y, 
+                            windowHandle.ToInt64(), currentBounds.X, currentBounds.Y,
                             constrainedWrapDestination.Value.X, constrainedWrapDestination.Value.Y);
                         safePosition = constrainedWrapDestination.Value;
                     }
                 }
             }
-            
+
             _logger.LogDebug("Pushing window {Handle:X} from ({CurrentX},{CurrentY}) to ({TargetX},{TargetY}) -> ({SafeX},{SafeY})",
-                windowHandle.ToInt64(), currentBounds.X, currentBounds.Y, 
+                windowHandle.ToInt64(), currentBounds.X, currentBounds.Y,
                 targetPosition.X, targetPosition.Y, safePosition.X, safePosition.Y);
-            
+
             (perfScope as IPerformanceScope)?.AddContext("TargetX", targetPosition.X);
             (perfScope as IPerformanceScope)?.AddContext("TargetY", targetPosition.Y);
             (perfScope as IPerformanceScope)?.AddContext("SafeX", safePosition.X);
             (perfScope as IPerformanceScope)?.AddContext("SafeY", safePosition.Y);
-            
+
             var result = await PushWindowToPositionAsync(windowHandle, safePosition);
             if (!result)
             {
@@ -274,7 +274,7 @@ public class WindowPusher : IWindowPusher, IDisposable
                 // Phase 3 WI#8: Report successful hook operation
                 await ReportHookSuccessAsync();
             }
-            
+
             return result;
         }
         catch (Exception ex)
@@ -282,14 +282,14 @@ public class WindowPusher : IWindowPusher, IDisposable
             (perfScope as IPerformanceScope)?.MarkAsFailed(ex.Message);
             _logger.LogError("Error pushing window {Handle:X} away from cursor ({CursorX},{CursorY}): {Message}",
                 windowHandle.ToInt64(), cursorPosition.X, cursorPosition.Y, ex.Message);
-            
+
             // Phase 3 WI#8: Report hook failure for recovery
             await ReportHookFailureAsync("PushWindowAsync", ex);
-            
+
             return false;
         }
     }
-    
+
     /// <summary>
     /// Pushes a window to a specific target position with animation
     /// </summary>
@@ -303,16 +303,16 @@ public class WindowPusher : IWindowPusher, IDisposable
             _logger.LogWarning("Invalid window handle provided to PushWindowToPositionAsync");
             return false;
         }
-        
+
         // Phase 2 WI#8: Performance logging for window positioning
-        using var perfScope = _logger is Logger loggerWithPerf ? 
-            loggerWithPerf.BeginPerformanceScope("PushWindowToPosition", 
+        using var perfScope = _logger is Logger loggerWithPerf ?
+            loggerWithPerf.BeginPerformanceScope("PushWindowToPosition",
                 ("WindowHandle", $"0x{windowHandle:X}"),
                 ("TargetX", targetPosition.X),
                 ("TargetY", targetPosition.Y),
                 ("AnimationsEnabled", _config.EnableAnimations)) :
             null;
-        
+
         try
         {
             // Get current window bounds
@@ -323,12 +323,12 @@ public class WindowPusher : IWindowPusher, IDisposable
                 _logger.LogWarning("Could not get bounds for window {Handle:X}", windowHandle.ToInt64());
                 return false;
             }
-            
+
             (perfScope as IPerformanceScope)?.AddContext("CurrentX", currentBounds.X);
             (perfScope as IPerformanceScope)?.AddContext("CurrentY", currentBounds.Y);
-            
+
             var currentPosition = new Point(currentBounds.X, currentBounds.Y);
-            
+
             // Check if we're already at the target position
             if (currentPosition.Equals(targetPosition))
             {
@@ -336,7 +336,7 @@ public class WindowPusher : IWindowPusher, IDisposable
                     windowHandle.ToInt64(), targetPosition.X, targetPosition.Y);
                 return true;
             }
-            
+
             // If animations are disabled, move immediately
             if (!_config.EnableAnimations || _config.AnimationDurationMs <= 0)
             {
@@ -348,10 +348,10 @@ public class WindowPusher : IWindowPusher, IDisposable
                 }
                 return moveResult;
             }
-            
+
             // Cancel any existing animation for this window
             CancelWindowAnimation(windowHandle);
-            
+
             // Create and start new animation
             var animation = new WindowAnimation(
                 windowHandle,
@@ -360,34 +360,34 @@ public class WindowPusher : IWindowPusher, IDisposable
                 _config.AnimationDurationMs,
                 _config.AnimationEasing
             );
-            
+
             lock (_animationLock)
             {
                 _activeAnimations[windowHandle] = animation;
             }
-            
+
             _logger.LogDebug("Starting animation for window {Handle:X} from ({StartX},{StartY}) to ({EndX},{EndY}) over {Duration}ms",
-                windowHandle.ToInt64(), currentPosition.X, currentPosition.Y, 
+                windowHandle.ToInt64(), currentPosition.X, currentPosition.Y,
                 targetPosition.X, targetPosition.Y, _config.AnimationDurationMs);
-            
+
             // Phase 2 WI#8: Window operation logging with log4net
-            _logger.LogWindowOperation(Microsoft.Extensions.Logging.LogLevel.Information, 
-                "StartAnimation", windowHandle, null, 
+            _logger.LogWindowOperation(Microsoft.Extensions.Logging.LogLevel.Information,
+                "StartAnimation", windowHandle, null,
                 $"Starting animated push from ({currentPosition.X},{currentPosition.Y}) to ({targetPosition.X},{targetPosition.Y})",
                 ("AnimationDuration", _config.AnimationDurationMs),
                 ("AnimationEasing", _config.AnimationEasing.ToString()));
-            
+
             (perfScope as IPerformanceScope)?.AddContext("AnimationType", "Animated");
             (perfScope as IPerformanceScope)?.AddContext("AnimationDuration", _config.AnimationDurationMs);
             (perfScope as IPerformanceScope)?.AddContext("AnimationEasing", _config.AnimationEasing.ToString());
-            
+
             // Run the animation
             var animationResult = await RunAnimationAsync(animation, _cancellationTokenSource.Token);
             if (!animationResult)
             {
                 (perfScope as IPerformanceScope)?.MarkAsFailed("Animation failed or was cancelled");
             }
-            
+
             return animationResult;
         }
         catch (Exception ex)
@@ -395,14 +395,14 @@ public class WindowPusher : IWindowPusher, IDisposable
             (perfScope as IPerformanceScope)?.MarkAsFailed(ex.Message);
             _logger.LogError("Error pushing window {Handle:X} to position ({X},{Y}): {Message}",
                 windowHandle.ToInt64(), targetPosition.X, targetPosition.Y, ex.Message);
-            
+
             // Phase 3 WI#8: Report hook failure for recovery
             await ReportHookFailureAsync("PushWindowToPositionAsync", ex);
-            
+
             return false;
         }
     }
-    
+
     /// <summary>
     /// Checks if a window is currently being animated
     /// </summary>
@@ -412,11 +412,11 @@ public class WindowPusher : IWindowPusher, IDisposable
     {
         lock (_animationLock)
         {
-            return _activeAnimations.ContainsKey(windowHandle) && 
+            return _activeAnimations.ContainsKey(windowHandle) &&
                    _activeAnimations[windowHandle].IsActive;
         }
     }
-    
+
     /// <summary>
     /// Cancels any ongoing animation for a specific window
     /// </summary>
@@ -433,7 +433,7 @@ public class WindowPusher : IWindowPusher, IDisposable
             }
         }
     }
-    
+
     /// <summary>
     /// Cancels all ongoing window animations
     /// </summary>
@@ -449,7 +449,7 @@ public class WindowPusher : IWindowPusher, IDisposable
             _logger.LogDebug("Cancelled all window animations ({Count} animations)", _activeAnimations.Count);
         }
     }
-    
+
     /// <summary>
     /// Runs an animation to completion
     /// </summary>
@@ -459,64 +459,64 @@ public class WindowPusher : IWindowPusher, IDisposable
         {
             var stopwatch = Stopwatch.StartNew();
             var frameTime = Math.Max(8, _config.UpdateIntervalMs); // Minimum 8ms per frame (~120fps max)
-            
+
             while (!animation.IsComplete && !cancellationToken.IsCancellationRequested)
             {
                 var elapsed = stopwatch.ElapsedMilliseconds;
                 var progress = Math.Min(1.0, elapsed / (double)animation.DurationMs);
-                
+
                 // Apply easing function
                 var easedProgress = ApplyEasing(progress, animation.Easing);
-                
+
                 // Calculate current position
-                var currentX = (int)Math.Round(animation.StartPosition.X + 
+                var currentX = (int)Math.Round(animation.StartPosition.X +
                     (animation.EndPosition.X - animation.StartPosition.X) * easedProgress);
-                var currentY = (int)Math.Round(animation.StartPosition.Y + 
+                var currentY = (int)Math.Round(animation.StartPosition.Y +
                     (animation.EndPosition.Y - animation.StartPosition.Y) * easedProgress);
-                
+
                 // Move the window
                 if (!_windowService.MoveWindow(animation.WindowHandle, currentX, currentY))
                 {
-                    _logger.LogWarning("Failed to move window {Handle:X} during animation", 
+                    _logger.LogWarning("Failed to move window {Handle:X} during animation",
                         animation.WindowHandle.ToInt64());
                     break;
                 }
-                
+
                 // Check if animation is complete
                 if (progress >= 1.0)
                 {
                     animation.Complete();
                     break;
                 }
-                
+
                 // Wait for next frame
                 await Task.Delay(frameTime, cancellationToken);
             }
-            
+
             // Clean up animation
             lock (_animationLock)
             {
                 _activeAnimations.Remove(animation.WindowHandle);
             }
-            
+
             var success = animation.IsComplete && !cancellationToken.IsCancellationRequested;
-            
+
             _logger.LogDebug("Animation for window {Handle:X} {Status} after {Elapsed}ms",
-                animation.WindowHandle.ToInt64(), 
+                animation.WindowHandle.ToInt64(),
                 success ? "completed" : "cancelled",
                 stopwatch.ElapsedMilliseconds);
-            
+
             // Phase 2 WI#8: Window operation logging for animation completion with log4net
             var logLevel = success ? Microsoft.Extensions.Logging.LogLevel.Information : Microsoft.Extensions.Logging.LogLevel.Warning;
-            _logger.LogWindowOperation(logLevel, 
-                success ? "CompleteAnimation" : "CancelAnimation", 
-                animation.WindowHandle, null, 
+            _logger.LogWindowOperation(logLevel,
+                success ? "CompleteAnimation" : "CancelAnimation",
+                animation.WindowHandle, null,
                 $"Animation {(success ? "completed" : "cancelled")} after {stopwatch.ElapsedMilliseconds}ms",
                 ("ElapsedMs", stopwatch.ElapsedMilliseconds),
                 ("Success", success),
                 ("FinalX", animation.EndPosition.X),
                 ("FinalY", animation.EndPosition.Y));
-            
+
             return success;
         }
         catch (OperationCanceledException)
@@ -530,7 +530,7 @@ public class WindowPusher : IWindowPusher, IDisposable
             return false;
         }
     }
-    
+
     /// <summary>
     /// Detects which edge a window was constrained against by comparing target vs safe positions
     /// </summary>
@@ -541,7 +541,7 @@ public class WindowPusher : IWindowPusher, IDisposable
     private EdgeType DetectConstrainedEdge(Rectangle currentBounds, Point targetPosition, Point safePosition)
     {
         var tolerance = 5; // Small tolerance for floating point comparison
-        
+
         // Check horizontal constraint
         if (Math.Abs(targetPosition.X - safePosition.X) > tolerance)
         {
@@ -556,7 +556,7 @@ public class WindowPusher : IWindowPusher, IDisposable
                 return EdgeType.Right;
             }
         }
-        
+
         // Check vertical constraint
         if (Math.Abs(targetPosition.Y - safePosition.Y) > tolerance)
         {
@@ -571,10 +571,10 @@ public class WindowPusher : IWindowPusher, IDisposable
                 return EdgeType.Bottom;
             }
         }
-        
+
         return EdgeType.None;
     }
-    
+
     /// <summary>
     /// Applies easing function to animation progress
     /// </summary>
@@ -585,13 +585,13 @@ public class WindowPusher : IWindowPusher, IDisposable
             AnimationEasing.Linear => progress,
             AnimationEasing.EaseIn => progress * progress,
             AnimationEasing.EaseOut => 1 - Math.Pow(1 - progress, 2),
-            AnimationEasing.EaseInOut => progress < 0.5 
-                ? 2 * progress * progress 
+            AnimationEasing.EaseInOut => progress < 0.5
+                ? 2 * progress * progress
                 : 1 - Math.Pow(-2 * progress + 2, 2) / 2,
             _ => progress
         };
     }
-    
+
     /// <summary>
     /// Phase 3 WI#8: Registers the WindowPusher for error recovery
     /// </summary>
@@ -599,7 +599,7 @@ public class WindowPusher : IWindowPusher, IDisposable
     {
         if (_errorRecoveryManager == null)
             return;
-        
+
         try
         {
             var recoveryOptions = new RecoveryOptions
@@ -613,7 +613,7 @@ public class WindowPusher : IWindowPusher, IDisposable
                 ShowUserNotifications = true,
                 Priority = RecoveryPriority.High
             };
-            
+
             await _errorRecoveryManager.RegisterComponentAsync("WindowPusher", RecoverHookAsync, recoveryOptions);
             _logger.LogInformation("WindowPusher registered for error recovery with hook recovery support");
         }
@@ -622,7 +622,7 @@ public class WindowPusher : IWindowPusher, IDisposable
             _logger.LogError(ex, "Failed to register WindowPusher for error recovery");
         }
     }
-    
+
     /// <summary>
     /// Phase 3 WI#8: Hook recovery function for error recovery manager
     /// </summary>
@@ -637,20 +637,20 @@ public class WindowPusher : IWindowPusher, IDisposable
             }
             _hookRecoveryInProgress = true;
         }
-        
+
         try
         {
             _logger.LogInformation("Starting WindowPusher hook recovery...");
-            
+
             // Cancel all active animations to clear state
             CancelAllAnimations();
-            
+
             // Wait a short time for cleanup
             await Task.Delay(500);
-            
+
             // Attempt to validate hook functionality by testing window operations
             bool recoverySuccessful = await ValidateHookFunctionalityAsync();
-            
+
             if (recoverySuccessful)
             {
                 lock (_hookRecoveryLock)
@@ -658,9 +658,9 @@ public class WindowPusher : IWindowPusher, IDisposable
                     _consecutiveHookFailures = 0;
                     _lastHookFailure = DateTime.MinValue;
                 }
-                
+
                 _logger.LogInformation("WindowPusher hook recovery completed successfully");
-                
+
                 // Notify user of successful recovery
                 if (_trayManager != null)
                 {
@@ -672,7 +672,7 @@ public class WindowPusher : IWindowPusher, IDisposable
             {
                 _logger.LogError("WindowPusher hook recovery failed - functionality not restored");
             }
-            
+
             return recoverySuccessful;
         }
         catch (Exception ex)
@@ -688,7 +688,7 @@ public class WindowPusher : IWindowPusher, IDisposable
             }
         }
     }
-    
+
     /// <summary>
     /// Phase 3 WI#8: Validates hook functionality after recovery
     /// </summary>
@@ -703,15 +703,15 @@ public class WindowPusher : IWindowPusher, IDisposable
                 _logger.LogWarning("No visible windows found during hook validation");
                 return false;
             }
-            
+
             // Try to get information about the first few windows
             int testedWindows = 0;
             int successfulTests = 0;
-            
+
             foreach (var window in windows.Take(3))
             {
                 testedWindows++;
-                
+
                 try
                 {
                     // Test window information retrieval
@@ -737,13 +737,13 @@ public class WindowPusher : IWindowPusher, IDisposable
                     _logger.LogWarning("Hook validation failed for window {Handle:X}: {Message}", window.WindowHandle.ToInt64(), ex.Message);
                 }
             }
-            
+
             var successRate = testedWindows > 0 ? (double)successfulTests / testedWindows : 0.0;
             bool isValid = successRate >= 0.5; // At least 50% of tests should pass
-            
+
             _logger.LogInformation("Hook validation completed: {Successful}/{Total} tests passed ({Rate:P1})",
                 successfulTests, testedWindows, successRate);
-            
+
             return isValid;
         }
         catch (Exception ex)
@@ -752,7 +752,7 @@ public class WindowPusher : IWindowPusher, IDisposable
             return false;
         }
     }
-    
+
     /// <summary>
     /// Phase 3 WI#8: Reports hook failure and potentially triggers recovery
     /// </summary>
@@ -763,10 +763,10 @@ public class WindowPusher : IWindowPusher, IDisposable
             _lastHookFailure = DateTime.UtcNow;
             _consecutiveHookFailures++;
         }
-        
+
         _logger.LogWarning("Hook failure detected in {Operation}: {ExceptionType} - {Message} (consecutive failures: {Count})",
             operation, exception.GetType().Name, exception.Message, _consecutiveHookFailures);
-        
+
         // Report to error recovery manager if available
         if (_errorRecoveryManager != null)
         {
@@ -779,7 +779,7 @@ public class WindowPusher : IWindowPusher, IDisposable
                 _logger.LogError("Error reporting hook failure to recovery manager: {Message}", recoveryEx.Message);
             }
         }
-        
+
         // If we've exceeded the failure threshold, show user notification
         if (_consecutiveHookFailures >= MaxConsecutiveHookFailures && _trayManager != null)
         {
@@ -787,7 +787,7 @@ public class WindowPusher : IWindowPusher, IDisposable
                 $"Window pushing has failed {_consecutiveHookFailures} times. Recovery will be attempted.", true);
         }
     }
-    
+
     /// <summary>
     /// Phase 3 WI#8: Reports successful hook operation (resets failure counters)
     /// </summary>
@@ -799,7 +799,7 @@ public class WindowPusher : IWindowPusher, IDisposable
             hadFailures = _consecutiveHookFailures > 0;
             _consecutiveHookFailures = 0;
         }
-        
+
         // Report success to error recovery manager if available
         if (_errorRecoveryManager != null && hadFailures)
         {
@@ -814,7 +814,7 @@ public class WindowPusher : IWindowPusher, IDisposable
             }
         }
     }
-    
+
     /// <summary>
     /// Phase 3 WI#8: Checks if hook recovery is needed based on recent failures
     /// </summary>
@@ -824,21 +824,21 @@ public class WindowPusher : IWindowPusher, IDisposable
         {
             if (_hookRecoveryInProgress)
                 return false;
-            
+
             if (_consecutiveHookFailures >= MaxConsecutiveHookFailures)
                 return true;
-            
+
             // Check if we've had recent failures within the timeout window
             if (_lastHookFailure != DateTime.MinValue)
             {
                 var timeSinceLastFailure = DateTime.UtcNow - _lastHookFailure;
                 return timeSinceLastFailure.TotalMilliseconds < HookRecoveryTimeoutMs && _consecutiveHookFailures > 0;
             }
-            
+
             return false;
         }
     }
-    
+
     /// <summary>
     /// Disposes the WindowPusher and cancels all animations
     /// </summary>
@@ -846,11 +846,11 @@ public class WindowPusher : IWindowPusher, IDisposable
     {
         if (_disposed)
             return;
-            
+
         _logger.LogDebug("Disposing WindowPusher");
-        
+
         CancelAllAnimations();
-        
+
         // Phase 3 WI#8: Unregister from error recovery
         if (_errorRecoveryManager != null)
         {
@@ -863,7 +863,7 @@ public class WindowPusher : IWindowPusher, IDisposable
                 _logger.LogWarning("Error unregistering WindowPusher from error recovery during disposal: {Message}", ex.Message);
             }
         }
-        
+
         try
         {
             if (!_cancellationTokenSource.IsCancellationRequested)
@@ -875,10 +875,10 @@ public class WindowPusher : IWindowPusher, IDisposable
         {
             // Already disposed, ignore
         }
-        
+
         _cancellationTokenSource.Dispose();
         _disposed = true;
-        
+
         GC.SuppressFinalize(this);
     }
 }
@@ -895,7 +895,7 @@ internal class WindowAnimation
     public AnimationEasing Easing { get; }
     public bool IsActive { get; private set; }
     public bool IsComplete { get; private set; }
-    
+
     public WindowAnimation(IntPtr windowHandle, Point startPosition, Point endPosition, int durationMs, AnimationEasing easing)
     {
         WindowHandle = windowHandle;
@@ -906,12 +906,12 @@ internal class WindowAnimation
         IsActive = true;
         IsComplete = false;
     }
-    
+
     public void Cancel()
     {
         IsActive = false;
     }
-    
+
     public void Complete()
     {
         IsActive = false;

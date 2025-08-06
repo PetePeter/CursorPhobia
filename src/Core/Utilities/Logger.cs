@@ -12,7 +12,7 @@ public class Logger : ILogger, Microsoft.Extensions.Logging.ILogger
     private readonly Microsoft.Extensions.Logging.ILogger _innerLogger;
     private readonly string _categoryName;
     private readonly IProductionLogger? _productionLogger;
-    
+
     /// <summary>
     /// Creates a new Logger instance
     /// </summary>
@@ -25,7 +25,7 @@ public class Logger : ILogger, Microsoft.Extensions.Logging.ILogger
         _categoryName = categoryName ?? throw new ArgumentNullException(nameof(categoryName));
         _productionLogger = productionLogger;
     }
-    
+
     /// <summary>
     /// Begins a logical operation scope
     /// </summary>
@@ -36,7 +36,7 @@ public class Logger : ILogger, Microsoft.Extensions.Logging.ILogger
     {
         return _innerLogger.BeginScope(state);
     }
-    
+
     /// <summary>
     /// Checks if the given logLevel is enabled
     /// </summary>
@@ -46,7 +46,7 @@ public class Logger : ILogger, Microsoft.Extensions.Logging.ILogger
     {
         return _innerLogger.IsEnabled(logLevel);
     }
-    
+
     /// <summary>
     /// Writes a log entry
     /// </summary>
@@ -60,7 +60,7 @@ public class Logger : ILogger, Microsoft.Extensions.Logging.ILogger
     {
         _innerLogger.Log(logLevel, eventId, state, exception, formatter);
     }
-    
+
     /// <summary>
     /// Logs a debug message
     /// </summary>
@@ -70,7 +70,7 @@ public class Logger : ILogger, Microsoft.Extensions.Logging.ILogger
     {
         _innerLogger.LogDebug($"[{_categoryName}] {message}", args);
     }
-    
+
     /// <summary>
     /// Logs an informational message
     /// </summary>
@@ -80,7 +80,7 @@ public class Logger : ILogger, Microsoft.Extensions.Logging.ILogger
     {
         _innerLogger.LogInformation($"[{_categoryName}] {message}", args);
     }
-    
+
     /// <summary>
     /// Logs a warning message
     /// </summary>
@@ -90,7 +90,7 @@ public class Logger : ILogger, Microsoft.Extensions.Logging.ILogger
     {
         _innerLogger.LogWarning($"[{_categoryName}] {message}", args);
     }
-    
+
     /// <summary>
     /// Logs an error message
     /// </summary>
@@ -100,7 +100,7 @@ public class Logger : ILogger, Microsoft.Extensions.Logging.ILogger
     {
         _innerLogger.LogError($"[{_categoryName}] {message}", args);
     }
-    
+
     /// <summary>
     /// Logs an error message with exception
     /// </summary>
@@ -111,7 +111,7 @@ public class Logger : ILogger, Microsoft.Extensions.Logging.ILogger
     {
         _innerLogger.LogError(exception, $"[{_categoryName}] {message}", args);
     }
-    
+
     /// <summary>
     /// Logs a critical error message
     /// </summary>
@@ -121,7 +121,7 @@ public class Logger : ILogger, Microsoft.Extensions.Logging.ILogger
     {
         _innerLogger.LogCritical($"[{_categoryName}] {message}", args);
     }
-    
+
     /// <summary>
     /// Logs a critical error message with exception
     /// </summary>
@@ -132,12 +132,12 @@ public class Logger : ILogger, Microsoft.Extensions.Logging.ILogger
     {
         _innerLogger.LogCritical(exception, $"[{_categoryName}] {message}", args);
     }
-    
+
     /// <summary>
     /// Gets the underlying production logger if available
     /// </summary>
     public IProductionLogger? ProductionLogger => _productionLogger;
-    
+
     /// <summary>
     /// Logs performance metrics if production logger is available
     /// </summary>
@@ -145,7 +145,7 @@ public class Logger : ILogger, Microsoft.Extensions.Logging.ILogger
     /// <param name="duration">Duration of the operation</param>
     /// <param name="success">Whether the operation was successful</param>
     /// <param name="additionalContext">Additional contextual information</param>
-    public void LogPerformance(string operation, TimeSpan duration, bool success = true, 
+    public void LogPerformance(string operation, TimeSpan duration, bool success = true,
         params (string Key, object Value)[] additionalContext)
     {
         if (_productionLogger != null)
@@ -156,14 +156,14 @@ public class Logger : ILogger, Microsoft.Extensions.Logging.ILogger
         {
             // Fallback to regular logging
             var level = success ? LogLevel.Information : LogLevel.Warning;
-            var message = success 
+            var message = success
                 ? $"Operation '{operation}' completed in {duration.TotalMilliseconds:F2}ms"
                 : $"Operation '{operation}' completed with issues in {duration.TotalMilliseconds:F2}ms";
-            
+
             _innerLogger.Log(level, $"[{_categoryName}] {message}");
         }
     }
-    
+
     /// <summary>
     /// Logs window operations if production logger is available
     /// </summary>
@@ -173,7 +173,7 @@ public class Logger : ILogger, Microsoft.Extensions.Logging.ILogger
     /// <param name="windowTitle">Window title</param>
     /// <param name="message">Additional message</param>
     /// <param name="additionalProperties">Additional properties</param>
-    public void LogWindowOperation(LogLevel logLevel, string operation, IntPtr windowHandle, 
+    public void LogWindowOperation(LogLevel logLevel, string operation, IntPtr windowHandle,
         string? windowTitle = null, string? message = null, params (string Key, object Value)[] additionalProperties)
     {
         if (_productionLogger != null)
@@ -189,11 +189,11 @@ public class Logger : ILogger, Microsoft.Extensions.Logging.ILogger
                 fullMessage += $" on '{windowTitle}'";
             }
             fullMessage += $" (0x{windowHandle:X})";
-            
+
             _innerLogger.Log(logLevel, $"[{_categoryName}] {fullMessage}");
         }
     }
-    
+
     /// <summary>
     /// Creates a performance timing scope
     /// </summary>
@@ -220,7 +220,7 @@ public class Logger : ILogger, Microsoft.Extensions.Logging.ILogger
 public static class LoggerFactory
 {
     private static ILoggerFactory? _loggerFactory;
-    
+
     /// <summary>
     /// Initializes the logger factory
     /// </summary>
@@ -229,7 +229,7 @@ public static class LoggerFactory
     {
         _loggerFactory = loggerFactory ?? throw new ArgumentNullException(nameof(loggerFactory));
     }
-    
+
     /// <summary>
     /// Creates a logger for the specified category
     /// </summary>
@@ -240,11 +240,11 @@ public static class LoggerFactory
     {
         if (_loggerFactory == null)
             throw new InvalidOperationException("LoggerFactory has not been initialized. Call Initialize() first.");
-            
+
         var innerLogger = _loggerFactory.CreateLogger<T>();
         return new Logger(innerLogger, typeof(T).Name);
     }
-    
+
     /// <summary>
     /// Creates a logger for the specified category name
     /// </summary>
@@ -255,7 +255,7 @@ public static class LoggerFactory
     {
         if (_loggerFactory == null)
             throw new InvalidOperationException("LoggerFactory has not been initialized. Call Initialize() first.");
-            
+
         var innerLogger = _loggerFactory.CreateLogger(categoryName);
         return new Logger(innerLogger, categoryName);
     }
@@ -280,7 +280,7 @@ internal class SimplePerformanceScope : IDisposable, IPerformanceScope
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _operation = operation ?? throw new ArgumentNullException(nameof(operation));
-        
+
         _context = new Dictionary<string, object>();
         foreach (var (key, value) in additionalContext)
         {
@@ -300,7 +300,7 @@ internal class SimplePerformanceScope : IDisposable, IPerformanceScope
     {
         if (string.IsNullOrEmpty(key))
             throw new ArgumentException("Context key cannot be null or empty", nameof(key));
-        
+
         _context[key] = value;
     }
 

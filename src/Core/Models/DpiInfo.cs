@@ -13,32 +13,32 @@ public class DpiInfo
     /// DPI value along the x-axis
     /// </summary>
     public uint DpiX { get; set; }
-    
+
     /// <summary>
     /// DPI value along the y-axis
     /// </summary>
     public uint DpiY { get; set; }
-    
+
     /// <summary>
     /// Scaling factor for the x-axis (relative to 96 DPI)
     /// </summary>
     public double ScaleFactorX => (double)DpiX / DEFAULT_DPI;
-    
+
     /// <summary>
     /// Scaling factor for the y-axis (relative to 96 DPI)
     /// </summary>
     public double ScaleFactorY => (double)DpiY / DEFAULT_DPI;
-    
+
     /// <summary>
     /// Gets the average scaling factor
     /// </summary>
     public double ScaleFactor => (ScaleFactorX + ScaleFactorY) / 2.0;
-    
+
     /// <summary>
     /// Indicates whether this is high DPI (> 96 DPI)
     /// </summary>
     public bool IsHighDpi => DpiX > DEFAULT_DPI || DpiY > DEFAULT_DPI;
-    
+
     /// <summary>
     /// Creates a new DpiInfo instance
     /// </summary>
@@ -47,7 +47,7 @@ public class DpiInfo
         DpiX = DEFAULT_DPI;
         DpiY = DEFAULT_DPI;
     }
-    
+
     /// <summary>
     /// Creates a new DpiInfo instance with specified DPI values
     /// </summary>
@@ -58,7 +58,7 @@ public class DpiInfo
         DpiX = dpiX;
         DpiY = dpiY;
     }
-    
+
     /// <summary>
     /// Creates DpiInfo by querying a monitor handle
     /// </summary>
@@ -78,10 +78,10 @@ public class DpiInfo
         {
             // Fall back to default DPI if API fails
         }
-        
+
         return new DpiInfo();
     }
-    
+
     /// <summary>
     /// Converts logical coordinates to physical coordinates
     /// </summary>
@@ -94,7 +94,7 @@ public class DpiInfo
             (int)(logicalPoint.Y * ScaleFactorY)
         );
     }
-    
+
     /// <summary>
     /// Converts physical coordinates to logical coordinates
     /// </summary>
@@ -107,7 +107,7 @@ public class DpiInfo
             (int)(physicalPoint.Y / ScaleFactorY)
         );
     }
-    
+
     /// <summary>
     /// Converts logical rectangle to physical rectangle
     /// </summary>
@@ -122,7 +122,7 @@ public class DpiInfo
             (int)(logicalRect.Height * ScaleFactorY)
         );
     }
-    
+
     /// <summary>
     /// Converts physical rectangle to logical rectangle
     /// </summary>
@@ -137,7 +137,7 @@ public class DpiInfo
             (int)(physicalRect.Height / ScaleFactorY)
         );
     }
-    
+
     /// <summary>
     /// Scales a distance value from logical to physical coordinates
     /// </summary>
@@ -147,7 +147,7 @@ public class DpiInfo
     {
         return (int)(logicalDistance * ScaleFactor);
     }
-    
+
     /// <summary>
     /// Scales a distance value from physical to logical coordinates
     /// </summary>
@@ -157,7 +157,7 @@ public class DpiInfo
     {
         return (int)(physicalDistance / ScaleFactor);
     }
-    
+
     /// <summary>
     /// Returns a string representation of the DPI information
     /// </summary>
@@ -165,7 +165,7 @@ public class DpiInfo
     {
         return $"DPI: {DpiX}x{DpiY} (Scale: {ScaleFactor:F2}x)";
     }
-    
+
     /// <summary>
     /// Determines if two DpiInfo instances are equal
     /// </summary>
@@ -177,7 +177,7 @@ public class DpiInfo
         }
         return false;
     }
-    
+
     /// <summary>
     /// Gets the hash code for this DpiInfo instance
     /// </summary>

@@ -27,9 +27,9 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
     /// <summary>
     /// Gets whether the manager is currently monitoring for changes
     /// </summary>
-    public bool IsMonitoring 
-    { 
-        get 
+    public bool IsMonitoring
+    {
+        get
         {
             try
             {
@@ -76,7 +76,7 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
         try
         {
             _stateLock.EnterWriteLock();
-            
+
             if (_disposed)
                 throw new ObjectDisposedException(nameof(PerMonitorConfigurationManager));
 
@@ -84,10 +84,10 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
             {
                 // Initialize last known monitors
                 _lastKnownMonitors = _monitorManager.GetAllMonitors();
-                
+
                 // Start the monitor watcher
                 _monitorWatcher.StartMonitoring();
-                
+
                 _logger.LogInformation("PerMonitorConfigurationManager started monitoring with {Count} monitors",
                     _lastKnownMonitors.Count);
             }
@@ -111,7 +111,7 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
         try
         {
             _stateLock.EnterWriteLock();
-            
+
             if (_disposed)
                 return;
 
@@ -119,7 +119,7 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
             {
                 _monitorWatcher.StopMonitoring();
                 _lastKnownMonitors.Clear();
-                
+
                 _logger.LogInformation("PerMonitorConfigurationManager stopped monitoring");
             }
             catch (Exception ex)
@@ -141,31 +141,31 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
     public Task<CursorPhobiaConfiguration> MigrateCurrentConfigurationAsync(CursorPhobiaConfiguration configuration)
     {
         List<MonitorInfo> lastKnownMonitors;
-        
+
         try
         {
             _stateLock.EnterReadLock();
-            
+
             if (_disposed)
                 throw new ObjectDisposedException(nameof(PerMonitorConfigurationManager));
-                
+
             lastKnownMonitors = new List<MonitorInfo>(_lastKnownMonitors);
         }
         finally
         {
             _stateLock.ExitReadLock();
         }
-        
+
         try
         {
             var currentMonitors = _monitorManager.GetAllMonitors();
             var migratedConfiguration = _settingsMigrator.MigrateSettings(configuration, lastKnownMonitors, currentMonitors);
-            
+
             // Update our known monitors under write lock
             try
             {
                 _stateLock.EnterWriteLock();
-                
+
                 if (!_disposed)
                 {
                     _lastKnownMonitors = currentMonitors;
@@ -175,7 +175,7 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
             {
                 _stateLock.ExitWriteLock();
             }
-            
+
             _logger.LogInformation("Manual per-monitor configuration migration completed");
             return Task.FromResult(migratedConfiguration);
         }
@@ -197,7 +197,7 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
         {
             var currentMonitors = _monitorManager.GetAllMonitors();
             var cleanedConfiguration = _settingsMigrator.CleanupOrphanedSettings(configuration, currentMonitors);
-            
+
             _logger.LogInformation("Per-monitor configuration cleanup completed");
             return Task.FromResult(cleanedConfiguration);
         }
@@ -214,14 +214,14 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
     private async void OnMonitorConfigurationChanged(object? sender, MonitorChangeEventArgs e)
     {
         List<MonitorInfo> oldMonitors;
-        
+
         try
         {
             _stateLock.EnterReadLock();
-            
+
             if (_disposed)
                 return;
-                
+
             oldMonitors = new List<MonitorInfo>(_lastKnownMonitors);
         }
         finally
@@ -239,7 +239,7 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
 
             // Perform migration
             var newMonitors = e.CurrentMonitors.ToList();
-            
+
             var migratedConfiguration = _settingsMigrator.MigrateSettings(currentConfiguration, oldMonitors, newMonitors);
 
             // Calculate migration statistics
@@ -254,7 +254,7 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
             try
             {
                 _stateLock.EnterWriteLock();
-                
+
                 if (!_disposed)
                 {
                     _lastKnownMonitors = new List<MonitorInfo>(newMonitors);
@@ -340,7 +340,7 @@ public class PerMonitorConfigurationManager : IPerMonitorConfigurationManager
         try
         {
             _stateLock.EnterWriteLock();
-            
+
             if (_disposed)
                 return;
 

@@ -24,14 +24,14 @@ public class ProximityDetector : IProximityDetector
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _config = config ?? new ProximityConfiguration();
         _monitorManager = monitorManager;
-        
+
         var validationErrors = _config.Validate();
         if (validationErrors.Count > 0)
         {
             throw new ArgumentException($"Invalid proximity configuration: {string.Join(", ", validationErrors)}");
         }
-        
-        _logger.LogDebug("ProximityDetector initialized with algorithm: {Algorithm}, DPI-aware: {DpiAware}", 
+
+        _logger.LogDebug("ProximityDetector initialized with algorithm: {Algorithm}, DPI-aware: {DpiAware}",
             _config.Algorithm, _monitorManager != null);
     }
 
@@ -55,15 +55,15 @@ public class ProximityDetector : IProximityDetector
 
             // Apply sensitivity multipliers
             var adjustedDistance = ApplySensitivityMultipliers(distance, cursorPosition, windowBounds);
-            
-            _logger.LogDebug("Proximity calculated: {Distance:F2} (algorithm: {Algorithm}, cursor: {CursorX},{CursorY}, window: {WindowBounds})", 
+
+            _logger.LogDebug("Proximity calculated: {Distance:F2} (algorithm: {Algorithm}, cursor: {CursorX},{CursorY}, window: {WindowBounds})",
                 adjustedDistance, _config.Algorithm, cursorPosition.X, cursorPosition.Y, windowBounds);
-                
+
             return adjustedDistance;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calculating proximity between cursor ({CursorX},{CursorY}) and window {WindowBounds}", 
+            _logger.LogError(ex, "Error calculating proximity between cursor ({CursorX},{CursorY}) and window {WindowBounds}",
                 cursorPosition.X, cursorPosition.Y, windowBounds);
             return double.MaxValue; // Return maximum distance on error to avoid false positives
         }
@@ -88,18 +88,18 @@ public class ProximityDetector : IProximityDetector
         {
             // Convert threshold to physical pixels if DPI-aware mode is enabled
             var effectiveThreshold = GetDpiAwareThreshold(proximityThreshold, cursorPosition, windowBounds);
-            
+
             var distance = CalculateProximity(cursorPosition, windowBounds);
             var isWithin = distance <= effectiveThreshold;
-            
-            _logger.LogDebug("Proximity check: distance={Distance:F2}, threshold={Threshold} (effective: {EffectiveThreshold}), within={IsWithin}", 
+
+            _logger.LogDebug("Proximity check: distance={Distance:F2}, threshold={Threshold} (effective: {EffectiveThreshold}), within={IsWithin}",
                 distance, proximityThreshold, effectiveThreshold, isWithin);
-                
+
             return isWithin;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error checking proximity between cursor ({CursorX},{CursorY}) and window {WindowBounds}", 
+            _logger.LogError(ex, "Error checking proximity between cursor ({CursorX},{CursorY}) and window {WindowBounds}",
                 cursorPosition.X, cursorPosition.Y, windowBounds);
             return false;
         }
@@ -124,54 +124,54 @@ public class ProximityDetector : IProximityDetector
         {
             // Convert push distance to physical pixels if DPI-aware
             var effectivePushDistance = GetDpiAwarePushDistance(pushDistance, cursorPosition, windowBounds);
-            
+
             // Find the closest point on the window to the cursor
             var closestPoint = GetClosestPointOnRectangle(cursorPosition, windowBounds);
-            
+
             // Calculate direction vector from cursor to closest point
             var directionX = closestPoint.X - cursorPosition.X;
             var directionY = closestPoint.Y - cursorPosition.Y;
-            
+
             // Handle case where cursor is inside the window
             if (windowBounds.Contains(cursorPosition))
             {
                 // Push away from the center of the window
                 var centerX = windowBounds.Left + windowBounds.Width / 2;
                 var centerY = windowBounds.Top + windowBounds.Height / 2;
-                
+
                 directionX = centerX - cursorPosition.X;
                 directionY = centerY - cursorPosition.Y;
-                
+
                 _logger.LogDebug("Cursor inside window, pushing away from center");
             }
-            
+
             // Normalize the direction vector
             var magnitude = Math.Sqrt(directionX * directionX + directionY * directionY);
-            
+
             if (magnitude == 0)
             {
                 // If cursor is exactly at the closest point, push right by default
                 _logger.LogDebug("Zero magnitude vector, defaulting to rightward push");
                 return new Point(effectivePushDistance, 0);
             }
-            
+
             var normalizedX = directionX / magnitude;
             var normalizedY = directionY / magnitude;
-            
+
             // Scale by effective push distance (DPI-aware)
             var pushX = (int)Math.Round(normalizedX * effectivePushDistance);
             var pushY = (int)Math.Round(normalizedY * effectivePushDistance);
-            
+
             var pushVector = new Point(pushX, pushY);
-            
-            _logger.LogDebug("Push vector calculated: ({PushX},{PushY}) from cursor ({CursorX},{CursorY}) to window {WindowBounds}", 
+
+            _logger.LogDebug("Push vector calculated: ({PushX},{PushY}) from cursor ({CursorX},{CursorY}) to window {WindowBounds}",
                 pushX, pushY, cursorPosition.X, cursorPosition.Y, windowBounds);
-                
+
             return pushVector;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calculating push vector for cursor ({CursorX},{CursorY}) and window {WindowBounds}", 
+            _logger.LogError(ex, "Error calculating push vector for cursor ({CursorX},{CursorY}) and window {WindowBounds}",
                 cursorPosition.X, cursorPosition.Y, windowBounds);
             return Point.Empty;
         }
@@ -193,18 +193,18 @@ public class ProximityDetector : IProximityDetector
             // No DPI conversion if monitor manager is not available
             return logicalThreshold;
         }
-        
+
         try
         {
             // Use cursor position to determine DPI (more responsive to user's current monitor)
             var dpiInfo = _monitorManager.GetDpiForPoint(cursorPosition);
-            
+
             // Convert logical threshold to physical pixels
             var physicalThreshold = (int)Math.Round(logicalThreshold * dpiInfo.ScaleFactorX);
-            
+
             _logger.LogDebug("DPI-aware threshold conversion: {LogicalThreshold} -> {PhysicalThreshold} (scale: {ScaleFactor})",
                 logicalThreshold, physicalThreshold, dpiInfo.ScaleFactorX);
-                
+
             return physicalThreshold;
         }
         catch (Exception)
@@ -213,7 +213,7 @@ public class ProximityDetector : IProximityDetector
             return logicalThreshold;
         }
     }
-    
+
     /// <summary>
     /// Converts a logical push distance to physical pixels based on monitor DPI
     /// </summary>
@@ -228,18 +228,18 @@ public class ProximityDetector : IProximityDetector
             // No DPI conversion if monitor manager is not available
             return logicalDistance;
         }
-        
+
         try
         {
             // Use cursor position to determine DPI
             var dpiInfo = _monitorManager.GetDpiForPoint(cursorPosition);
-            
+
             // Convert logical distance to physical pixels
             var physicalDistance = (int)Math.Round(logicalDistance * dpiInfo.ScaleFactorX);
-            
+
             _logger.LogDebug("DPI-aware distance conversion: {LogicalDistance} -> {PhysicalDistance} (scale: {ScaleFactor})",
                 logicalDistance, physicalDistance, dpiInfo.ScaleFactorX);
-                
+
             return physicalDistance;
         }
         catch (Exception)
@@ -330,7 +330,7 @@ public class ProximityDetector : IProximityDetector
     private double ApplySensitivityMultipliers(double distance, Point cursor, Rectangle window)
     {
         // If using default multipliers (both 1.0), skip calculation
-        if (Math.Abs(_config.HorizontalSensitivityMultiplier - 1.0) < 0.001 && 
+        if (Math.Abs(_config.HorizontalSensitivityMultiplier - 1.0) < 0.001 &&
             Math.Abs(_config.VerticalSensitivityMultiplier - 1.0) < 0.001)
         {
             return distance;

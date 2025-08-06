@@ -22,21 +22,21 @@ public class Log4NetLoggingTests : IDisposable
     {
         // Create a temporary directory for test logs
         _tempLogDirectory = Path.Combine(Path.GetTempPath(), "CursorPhobiaTests", Guid.NewGuid().ToString());
-        
+
         // Ensure the directory exists
         Directory.CreateDirectory(_tempLogDirectory);
-        
+
         // Set up log4net configuration for testing
         var testConfigPath = CreateTestLog4NetConfig();
-        
+
         // Initialize logging with log4net
         var success = Log4NetConfiguration.InitializeLogging(true, testConfigPath);
         Assert.True(success);
-        
+
         // Set up dependency injection
         var services = new ServiceCollection();
         Log4NetConfiguration.ConfigureLoggingServices(services, true);
-        
+
         _serviceProvider = services.BuildServiceProvider();
     }
 
@@ -44,7 +44,7 @@ public class Log4NetLoggingTests : IDisposable
     {
         _serviceProvider?.Dispose();
         Log4NetConfiguration.ShutdownLogging();
-        
+
         // Clean up test log directory
         try
         {
@@ -123,8 +123,8 @@ public class Log4NetLoggingTests : IDisposable
         var logger = _serviceProvider!.GetRequiredService<IProductionLogger>();
 
         // Act & Assert - Should not throw
-        logger.LogWithContext(LogLevel.Information, "Test message", 
-            ("Property1", "Value1"), 
+        logger.LogWithContext(LogLevel.Information, "Test message",
+            ("Property1", "Value1"),
             ("Property2", 42));
     }
 
@@ -147,8 +147,8 @@ public class Log4NetLoggingTests : IDisposable
         var windowHandle = new IntPtr(0x12345);
 
         // Act & Assert - Should not throw
-        logger.LogWindowOperation(LogLevel.Information, "PushWindow", windowHandle, 
-            "Test Window", "Window operation test", 
+        logger.LogWindowOperation(LogLevel.Information, "PushWindow", windowHandle,
+            "Test Window", "Window operation test",
             ("PushDistance", 150));
     }
 
@@ -159,9 +159,9 @@ public class Log4NetLoggingTests : IDisposable
         var logger = _serviceProvider!.GetRequiredService<IProductionLogger>();
 
         // Act & Assert - Should not throw
-        logger.LogSystemEvent(LogLevel.Information, "Cursor", "PositionChanged", 
-            "Cursor position changed", 
-            ("X", 100), 
+        logger.LogSystemEvent(LogLevel.Information, "Cursor", "PositionChanged",
+            "Cursor position changed",
+            ("X", 100),
             ("Y", 200));
     }
 
@@ -186,19 +186,19 @@ public class Log4NetLoggingTests : IDisposable
         var logger = _serviceProvider!.GetRequiredService<IProductionLogger>();
 
         // Act
-        using var scope = logger.BeginPerformanceScope("TestService", "TestOperation", 
+        using var scope = logger.BeginPerformanceScope("TestService", "TestOperation",
             ("Context", "Value"));
 
         // Assert
         Assert.NotNull(scope);
         Assert.IsAssignableFrom<IPerformanceScope>(scope);
-        
+
         // Test scope functionality  
         var perfScope = scope as IPerformanceScope;
         Assert.NotNull(perfScope);
         perfScope.AddContext("AdditionalContext", "AdditionalValue");
         perfScope.MarkAsFailed("Test failure");
-        
+
         Assert.True(perfScope.Elapsed >= TimeSpan.Zero);
     }
 

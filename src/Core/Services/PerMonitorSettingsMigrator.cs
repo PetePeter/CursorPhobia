@@ -153,7 +153,7 @@ public class PerMonitorSettingsMigrator : IPerMonitorSettingsMigrator
         }
 
         // 2. Try device name match
-        var deviceNameMatch = newMonitors.FirstOrDefault(m => 
+        var deviceNameMatch = newMonitors.FirstOrDefault(m =>
             string.Equals(m.deviceName, oldMonitor.deviceName, StringComparison.OrdinalIgnoreCase));
         if (deviceNameMatch != null)
         {
@@ -214,7 +214,7 @@ public class PerMonitorSettingsMigrator : IPerMonitorSettingsMigrator
             return configuration;
 
         var updatedConfiguration = CloneConfiguration(configuration);
-        
+
         // Ensure MultiMonitor configuration exists
         updatedConfiguration.MultiMonitor ??= new MultiMonitorConfiguration();
         updatedConfiguration.MultiMonitor.PerMonitorSettings ??= new Dictionary<string, PerMonitorSettings>();
@@ -225,7 +225,7 @@ public class PerMonitorSettingsMigrator : IPerMonitorSettingsMigrator
         foreach (var monitor in newMonitors)
         {
             var monitorKey = monitor.GetStableKey();
-            
+
             // Skip if settings already exist for this monitor
             if (existingKeys.Contains(monitorKey))
                 continue;

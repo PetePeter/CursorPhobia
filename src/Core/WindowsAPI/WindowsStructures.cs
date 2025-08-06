@@ -8,17 +8,17 @@ namespace CursorPhobia.Core.WindowsAPI;
 public static class WindowsStructures
 {
     #region Constants
-    
+
     // Window Extended Styles
     public const uint WS_EX_TOPMOST = 0x00000008;
     public const uint WS_EX_TOOLWINDOW = 0x00000080;
     public const uint WS_EX_APPWINDOW = 0x00040000;
-    
+
     // Window Styles
     public const uint WS_VISIBLE = 0x10000000;
     public const uint WS_MINIMIZE = 0x20000000;
     public const uint WS_MAXIMIZE = 0x01000000;
-    
+
     // GetWindowLong constants
     public const int GWL_STYLE = -16;
     public const int GWL_EXSTYLE = -20;
@@ -27,7 +27,7 @@ public static class WindowsStructures
     public const int GWL_HWNDPARENT = -8;
     public const int GWL_ID = -12;
     public const int GWL_USERDATA = -21;
-    
+
     // SetWindowPos flags
     public const uint SWP_NOSIZE = 0x0001;
     public const uint SWP_NOMOVE = 0x0002;
@@ -40,13 +40,13 @@ public static class WindowsStructures
     public const uint SWP_NOCOPYBITS = 0x0100;
     public const uint SWP_NOOWNERZORDER = 0x0200;
     public const uint SWP_NOSENDCHANGING = 0x0400;
-    
+
     // Special HWND values for SetWindowPos
     public static readonly IntPtr HWND_TOP = new(0);
     public static readonly IntPtr HWND_BOTTOM = new(1);
     public static readonly IntPtr HWND_TOPMOST = new(-1);
     public static readonly IntPtr HWND_NOTOPMOST = new(-2);
-    
+
     // Window Show States
     public const int SW_HIDE = 0;
     public const int SW_SHOWNORMAL = 1;
@@ -60,45 +60,45 @@ public static class WindowsStructures
     public const int SW_SHOWMINNOACTIVE = 7;
     public const int SW_SHOWNA = 8;
     public const int SW_RESTORE = 9;
-    
+
     // Error codes
     public const uint ERROR_SUCCESS = 0;
     public const uint ERROR_INVALID_WINDOW_HANDLE = 1400;
     public const uint ERROR_INVALID_PARAMETER = 87;
-    
+
     // Hook constants
     public const int WH_MOUSE_LL = 14;
     public const int HC_ACTION = 0;
-    
+
     // Mouse messages
     public const int WM_MOUSEMOVE = 0x0200;
     public const int WM_LBUTTONDOWN = 0x0201;
     public const int WM_LBUTTONUP = 0x0202;
     public const int WM_RBUTTONDOWN = 0x0204;
     public const int WM_RBUTTONUP = 0x0205;
-    
+
     // Virtual key codes
     public const int VK_CONTROL = 0x11;
     public const int VK_LCONTROL = 0xA2;
     public const int VK_RCONTROL = 0xA3;
-    
+
     // DPI Awareness constants
     public const int PROCESS_DPI_UNAWARE = 0;
     public const int PROCESS_SYSTEM_DPI_AWARE = 1;
     public const int PROCESS_PER_MONITOR_DPI_AWARE = 2;
-    
+
     // Monitor DPI types
     public const int MDT_EFFECTIVE_DPI = 0;
     public const int MDT_ANGULAR_DPI = 1;
     public const int MDT_RAW_DPI = 2;
-    
+
     // Default DPI value
     public const int DEFAULT_DPI = 96;
-    
+
     #endregion
-    
+
     #region Structures
-    
+
     /// <summary>
     /// Windows RECT structure
     /// </summary>
@@ -109,10 +109,10 @@ public static class WindowsStructures
         public int Top;
         public int Right;
         public int Bottom;
-        
+
         public int Width => Right - Left;
         public int Height => Bottom - Top;
-        
+
         public RECT(int left, int top, int right, int bottom)
         {
             Left = left;
@@ -120,18 +120,18 @@ public static class WindowsStructures
             Right = right;
             Bottom = bottom;
         }
-        
+
         public System.Drawing.Rectangle ToRectangle()
         {
             return new System.Drawing.Rectangle(Left, Top, Width, Height);
         }
-        
+
         public static RECT FromRectangle(System.Drawing.Rectangle rect)
         {
             return new RECT(rect.Left, rect.Top, rect.Right, rect.Bottom);
         }
     }
-    
+
     /// <summary>
     /// Windows POINT structure
     /// </summary>
@@ -140,24 +140,24 @@ public static class WindowsStructures
     {
         public int X;
         public int Y;
-        
+
         public POINT(int x, int y)
         {
             X = x;
             Y = y;
         }
-        
+
         public System.Drawing.Point ToPoint()
         {
             return new System.Drawing.Point(X, Y);
         }
-        
+
         public static POINT FromPoint(System.Drawing.Point point)
         {
             return new POINT(point.X, point.Y);
         }
     }
-    
+
     /// <summary>
     /// Windows WINDOWINFO structure
     /// </summary>
@@ -174,7 +174,7 @@ public static class WindowsStructures
         public uint cyWindowBorders;
         public ushort atomWindowType;
         public ushort wCreatorVersion;
-        
+
         public static WINDOWINFO Create()
         {
             var info = new WINDOWINFO();
@@ -182,7 +182,7 @@ public static class WindowsStructures
             return info;
         }
     }
-    
+
     /// <summary>
     /// Windows WINDOWPLACEMENT structure
     /// </summary>
@@ -195,7 +195,7 @@ public static class WindowsStructures
         public POINT ptMinPosition;
         public POINT ptMaxPosition;
         public RECT rcNormalPosition;
-        
+
         public static WINDOWPLACEMENT Create()
         {
             var placement = new WINDOWPLACEMENT();
@@ -203,7 +203,7 @@ public static class WindowsStructures
             return placement;
         }
     }
-    
+
     /// <summary>
     /// Monitor information structure
     /// </summary>
@@ -214,7 +214,7 @@ public static class WindowsStructures
         public RECT rcMonitor;
         public RECT rcWork;
         public uint dwFlags;
-        
+
         public static MONITORINFO Create()
         {
             var info = new MONITORINFO();
@@ -222,7 +222,7 @@ public static class WindowsStructures
             return info;
         }
     }
-    
+
     /// <summary>
     /// Low-level mouse input structure
     /// </summary>
@@ -235,11 +235,11 @@ public static class WindowsStructures
         public uint time;
         public IntPtr dwExtraInfo;
     }
-    
+
     #endregion
-    
+
     #region Delegates
-    
+
     /// <summary>
     /// Delegate for EnumWindows callback
     /// </summary>
@@ -247,7 +247,7 @@ public static class WindowsStructures
     /// <param name="lParam">Application-defined value</param>
     /// <returns>True to continue enumeration, false to stop</returns>
     public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
-    
+
     /// <summary>
     /// Delegate for EnumDisplayMonitors callback
     /// </summary>
@@ -257,7 +257,7 @@ public static class WindowsStructures
     /// <param name="dwData">Application-defined data</param>
     /// <returns>True to continue enumeration, false to stop</returns>
     public delegate bool MonitorEnumProc(IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData);
-    
+
     /// <summary>
     /// Delegate for low-level mouse hook procedure
     /// </summary>
@@ -266,6 +266,6 @@ public static class WindowsStructures
     /// <param name="lParam">Pointer to MSLLHOOKSTRUCT</param>
     /// <returns>Result of hook procedure</returns>
     public delegate IntPtr LowLevelMouseProc(int nCode, IntPtr wParam, IntPtr lParam);
-    
+
     #endregion
 }

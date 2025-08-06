@@ -8,45 +8,45 @@ namespace CursorPhobia.Tests;
 public class MonitorManagerTests
 {
     private readonly MonitorManager _monitorManager;
-    
+
     public MonitorManagerTests()
     {
         _monitorManager = new MonitorManager();
     }
-    
+
     [Fact]
     public void GetAllMonitors_ShouldReturnAtLeastOneMonitor()
     {
         // Act
         var monitors = _monitorManager.GetAllMonitors();
-        
+
         // Assert
         Assert.NotNull(monitors);
         Assert.True(monitors.Count > 0, "Should have at least one monitor");
     }
-    
+
     [Fact]
     public void GetAllMonitors_ShouldHavePrimaryMonitor()
     {
         // Act
         var monitors = _monitorManager.GetAllMonitors();
-        
+
         // Assert
         Assert.True(monitors.Any(m => m.isPrimary), "Should have one primary monitor");
         Assert.Single(monitors, m => m.isPrimary);
     }
-    
+
     [Fact]
     public void GetPrimaryMonitor_ShouldReturnPrimaryMonitor()
     {
         // Act
         var primaryMonitor = _monitorManager.GetPrimaryMonitor();
-        
+
         // Assert
         Assert.NotNull(primaryMonitor);
         Assert.True(primaryMonitor.isPrimary);
     }
-    
+
     [Fact]
     public void GetMonitorContaining_Point_ShouldReturnCorrectMonitor()
     {
@@ -57,15 +57,15 @@ public class MonitorManagerTests
             firstMonitor.monitorBounds.X + firstMonitor.monitorBounds.Width / 2,
             firstMonitor.monitorBounds.Y + firstMonitor.monitorBounds.Height / 2
         );
-        
+
         // Act
         var containingMonitor = _monitorManager.GetMonitorContaining(testPoint);
-        
+
         // Assert
         Assert.NotNull(containingMonitor);
         Assert.Equal(firstMonitor.monitorHandle, containingMonitor.monitorHandle);
     }
-    
+
     [Fact]
     public void GetMonitorContaining_Rectangle_ShouldReturnCorrectMonitor()
     {
@@ -78,34 +78,34 @@ public class MonitorManagerTests
             100,
             100
         );
-        
+
         // Act
         var containingMonitor = _monitorManager.GetMonitorContaining(testRect);
-        
+
         // Assert
         Assert.NotNull(containingMonitor);
         Assert.Equal(firstMonitor.monitorHandle, containingMonitor.monitorHandle);
     }
-    
+
     [Fact]
     public void GetMonitorContaining_PointOutsideAllMonitors_ShouldReturnNull()
     {
         // Arrange - use a point that's likely outside all monitors
         var testPoint = new Point(-10000, -10000);
-        
+
         // Act
         var containingMonitor = _monitorManager.GetMonitorContaining(testPoint);
-        
+
         // Assert
         Assert.Null(containingMonitor);
     }
-    
+
     [Fact]
     public void MonitorInfo_Properties_ShouldBeValid()
     {
         // Act
         var monitors = _monitorManager.GetAllMonitors();
-        
+
         // Assert
         foreach (var monitor in monitors)
         {
@@ -115,7 +115,7 @@ public class MonitorManagerTests
             Assert.True(monitor.monitorBounds.Height > 0, "Monitor bounds height should be positive");
             Assert.True(monitor.workAreaBounds.Width > 0, "Work area width should be positive");
             Assert.True(monitor.workAreaBounds.Height > 0, "Work area height should be positive");
-            
+
             // Work area should be within or equal to monitor bounds
             Assert.True(monitor.workAreaBounds.Left >= monitor.monitorBounds.Left);
             Assert.True(monitor.workAreaBounds.Top >= monitor.monitorBounds.Top);
@@ -123,18 +123,18 @@ public class MonitorManagerTests
             Assert.True(monitor.workAreaBounds.Bottom <= monitor.monitorBounds.Bottom);
         }
     }
-    
+
     [Fact]
     public void GetAdjacentMonitors_SingleMonitor_ShouldReturnEmpty()
     {
         // Arrange
         var monitors = _monitorManager.GetAllMonitors();
-        
+
         // Act & Assert for each monitor
         foreach (var monitor in monitors)
         {
             var adjacent = _monitorManager.GetAdjacentMonitors(monitor);
-            
+
             if (monitors.Count == 1)
             {
                 Assert.Empty(adjacent);
@@ -147,18 +147,18 @@ public class MonitorManagerTests
             }
         }
     }
-    
+
     [Fact]
     public void GetMonitorInDirection_ShouldReturnCorrectResults()
     {
         // Arrange
         var monitors = _monitorManager.GetAllMonitors();
-        
+
         if (monitors.Count < 2)
         {
             return; // Skip test if not enough monitors
         }
-        
+
         // Act & Assert
         foreach (var monitor in monitors)
         {
@@ -166,7 +166,7 @@ public class MonitorManagerTests
             var rightMonitor = _monitorManager.GetMonitorInDirection(monitor, EdgeDirection.Right);
             var upMonitor = _monitorManager.GetMonitorInDirection(monitor, EdgeDirection.Up);
             var downMonitor = _monitorManager.GetMonitorInDirection(monitor, EdgeDirection.Down);
-            
+
             // Validate that returned monitors (if any) are different from source
             if (leftMonitor != null)
                 Assert.NotEqual(monitor.monitorHandle, leftMonitor.monitorHandle);
@@ -178,17 +178,17 @@ public class MonitorManagerTests
                 Assert.NotEqual(monitor.monitorHandle, downMonitor.monitorHandle);
         }
     }
-    
+
     [Fact]
     public void MonitorCache_ShouldWork()
     {
         // Arrange & Act
         var monitors1 = _monitorManager.GetAllMonitors();
         var monitors2 = _monitorManager.GetAllMonitors(); // Should use cache
-        
+
         // Assert
         Assert.Equal(monitors1.Count, monitors2.Count);
-        
+
         for (int i = 0; i < monitors1.Count; i++)
         {
             Assert.Equal(monitors1[i].monitorHandle, monitors2[i].monitorHandle);

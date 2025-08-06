@@ -78,8 +78,8 @@ public class CursorPhobiaConfigurationTests
     public void Validate_WithInvalidUpdateInterval_ReturnsError(int interval, string expectedError)
     {
         // Arrange
-        var config = new CursorPhobiaConfiguration 
-        { 
+        var config = new CursorPhobiaConfiguration
+        {
             UpdateIntervalMs = interval,
             MaxUpdateIntervalMs = 50
         };

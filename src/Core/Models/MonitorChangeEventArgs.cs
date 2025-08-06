@@ -11,22 +11,22 @@ public class MonitorChangeEventArgs : EventArgs
     /// Type of monitor change that occurred
     /// </summary>
     public MonitorChangeType ChangeType { get; }
-    
+
     /// <summary>
     /// Monitor configurations before the change
     /// </summary>
     public IReadOnlyList<MonitorInfo> PreviousMonitors { get; }
-    
+
     /// <summary>
     /// Monitor configurations after the change
     /// </summary>
     public IReadOnlyList<MonitorInfo> CurrentMonitors { get; }
-    
+
     /// <summary>
     /// Timestamp when the change was detected
     /// </summary>
     public DateTime Timestamp { get; }
-    
+
     /// <summary>
     /// Creates new monitor change event arguments
     /// </summary>
@@ -43,7 +43,7 @@ public class MonitorChangeEventArgs : EventArgs
         CurrentMonitors = currentMonitors ?? throw new ArgumentNullException(nameof(currentMonitors));
         Timestamp = DateTime.UtcNow;
     }
-    
+
     /// <summary>
     /// Gets monitors that were added in this change
     /// </summary>
@@ -51,11 +51,11 @@ public class MonitorChangeEventArgs : EventArgs
     public List<MonitorInfo> GetAddedMonitors()
     {
         return CurrentMonitors
-            .Where(current => !PreviousMonitors.Any(previous => 
+            .Where(current => !PreviousMonitors.Any(previous =>
                 previous.monitorHandle == current.monitorHandle))
             .ToList();
     }
-    
+
     /// <summary>
     /// Gets monitors that were removed in this change
     /// </summary>
@@ -63,11 +63,11 @@ public class MonitorChangeEventArgs : EventArgs
     public List<MonitorInfo> GetRemovedMonitors()
     {
         return PreviousMonitors
-            .Where(previous => !CurrentMonitors.Any(current => 
+            .Where(previous => !CurrentMonitors.Any(current =>
                 current.monitorHandle == previous.monitorHandle))
             .ToList();
     }
-    
+
     /// <summary>
     /// Gets monitors that changed configuration (position, size, DPI)
     /// </summary>
@@ -75,21 +75,21 @@ public class MonitorChangeEventArgs : EventArgs
     public List<(MonitorInfo Previous, MonitorInfo Current)> GetModifiedMonitors()
     {
         var modified = new List<(MonitorInfo Previous, MonitorInfo Current)>();
-        
+
         foreach (var current in CurrentMonitors)
         {
-            var previous = PreviousMonitors.FirstOrDefault(p => 
+            var previous = PreviousMonitors.FirstOrDefault(p =>
                 p.monitorHandle == current.monitorHandle);
-                
+
             if (previous != null && !MonitorsEqual(previous, current))
             {
                 modified.Add((previous, current));
             }
         }
-        
+
         return modified;
     }
-    
+
     /// <summary>
     /// Checks if two monitor configurations are equal
     /// </summary>
@@ -114,32 +114,32 @@ public enum MonitorChangeType
     /// Monitors were added to the system
     /// </summary>
     MonitorsAdded,
-    
+
     /// <summary>
     /// Monitors were removed from the system
     /// </summary>
     MonitorsRemoved,
-    
+
     /// <summary>
     /// Monitor positions or sizes changed
     /// </summary>
     MonitorsRepositioned,
-    
+
     /// <summary>
     /// Monitor DPI settings changed
     /// </summary>
     DpiChanged,
-    
+
     /// <summary>
     /// Primary monitor changed
     /// </summary>
     PrimaryMonitorChanged,
-    
+
     /// <summary>
     /// Multiple types of changes occurred simultaneously
     /// </summary>
     ComplexChange,
-    
+
     /// <summary>
     /// Unknown or unspecified change type
     /// </summary>

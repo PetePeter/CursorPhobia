@@ -27,17 +27,17 @@ public class SafetyManager : ISafetyManager
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _config = config ?? CursorPhobiaConfiguration.CreateDefault();
-        
+
         var validationErrors = _config.Validate();
         if (validationErrors.Count > 0)
         {
             throw new ArgumentException($"Invalid safety manager configuration: {string.Join(", ", validationErrors)}");
         }
-        
+
         _screenBounds = new List<Rectangle>();
         RefreshScreenBounds();
-        
-        _logger.LogDebug("SafetyManager initialized with {ScreenCount} screens and {EdgeBuffer}px edge buffer", 
+
+        _logger.LogDebug("SafetyManager initialized with {ScreenCount} screens and {EdgeBuffer}px edge buffer",
             _screenBounds.Count, _config.ScreenEdgeBuffer);
     }
 
@@ -55,27 +55,27 @@ public class SafetyManager : ISafetyManager
             {
                 // Create the proposed window bounds
                 var proposedBounds = new Rectangle(proposedPosition.X, proposedPosition.Y, windowBounds.Width, windowBounds.Height);
-                
+
                 // Find the best screen for this window
                 var targetScreen = FindBestScreenForWindow(proposedBounds);
-                
+
                 // Calculate the safe bounds within the target screen
                 var safeBounds = GetSafeBounds(targetScreen);
-                
+
                 // Adjust the position to keep the window within safe bounds
                 var safePosition = ConstrainToSafeBounds(proposedBounds, safeBounds);
-                
-                _logger.LogDebug("Position validation: proposed=({ProposedX},{ProposedY}), safe=({SafeX},{SafeY}), screen={Screen}", 
+
+                _logger.LogDebug("Position validation: proposed=({ProposedX},{ProposedY}), safe=({SafeX},{SafeY}), screen={Screen}",
                     proposedPosition.X, proposedPosition.Y, safePosition.X, safePosition.Y, targetScreen);
-                
+
                 return safePosition;
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error validating window position for bounds {WindowBounds} at proposed position ({ProposedX},{ProposedY})", 
+            _logger.LogError(ex, "Error validating window position for bounds {WindowBounds} at proposed position ({ProposedX},{ProposedY})",
                 windowBounds, proposedPosition.X, proposedPosition.Y);
-            
+
             // Return the original proposed position as fallback
             return proposedPosition;
         }
@@ -96,7 +96,7 @@ public class SafetyManager : ISafetyManager
                 foreach (var screen in _screenBounds)
                 {
                     var safeBounds = GetSafeBounds(screen);
-                    
+
                     // Window is safe if it's entirely within the safe bounds of any screen
                     if (safeBounds.Contains(windowBounds))
                     {
@@ -104,7 +104,7 @@ public class SafetyManager : ISafetyManager
                         return true;
                     }
                 }
-                
+
                 _logger.LogDebug("Window position {WindowBounds} is not safe - outside all screen safe bounds", windowBounds);
                 return false;
             }
@@ -127,12 +127,12 @@ public class SafetyManager : ISafetyManager
             lock (_lockObject)
             {
                 var safeAreas = new List<Rectangle>();
-                
+
                 foreach (var screen in _screenBounds)
                 {
                     safeAreas.Add(GetSafeBounds(screen));
                 }
-                
+
                 _logger.LogDebug("Retrieved {Count} safe screen areas", safeAreas.Count);
                 return safeAreas;
             }
@@ -154,14 +154,14 @@ public class SafetyManager : ISafetyManager
             lock (_lockObject)
             {
                 _screenBounds.Clear();
-                
+
                 // Enumerate all display monitors
                 var monitors = new List<Rectangle>();
-                
+
                 User32.EnumDisplayMonitors(IntPtr.Zero, IntPtr.Zero, MonitorEnumCallback, IntPtr.Zero);
-                
+
                 _screenBounds.AddRange(monitors);
-                
+
                 if (_screenBounds.Count == 0)
                 {
                     // Fallback to primary screen if enumeration fails
@@ -169,9 +169,9 @@ public class SafetyManager : ISafetyManager
                     _screenBounds.Add(primaryScreen);
                     _logger.LogWarning("Failed to enumerate monitors, using fallback primary screen: {PrimaryScreen}", primaryScreen);
                 }
-                
+
                 _logger.LogInformation("Refreshed screen bounds: found {ScreenCount} screens", _screenBounds.Count);
-                
+
                 // Local callback method
                 bool MonitorEnumCallback(IntPtr hMonitor, IntPtr hdcMonitor, ref RECT lprcMonitor, IntPtr dwData)
                 {
@@ -181,7 +181,7 @@ public class SafetyManager : ISafetyManager
                         // Use the work area (excludes taskbar, etc.)
                         var workArea = monitorInfo.rcWork.ToRectangle();
                         monitors.Add(workArea);
-                        
+
                         _logger.LogDebug("Found monitor work area: {WorkArea}", workArea);
                     }
                     return true; // Continue enumeration
@@ -191,7 +191,7 @@ public class SafetyManager : ISafetyManager
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error refreshing screen bounds");
-            
+
             // Ensure we have at least one screen bound as fallback
             if (_screenBounds.Count == 0)
             {
@@ -213,22 +213,22 @@ public class SafetyManager : ISafetyManager
         {
             // Base distance is the configured edge buffer
             var baseDistance = _config.ScreenEdgeBuffer;
-            
+
             // For very small windows, use a smaller buffer
             if (windowBounds.Width < 200 || windowBounds.Height < 150)
             {
                 baseDistance = Math.Max(5, baseDistance / 2);
             }
-            
+
             // For very large windows, use a larger buffer
             if (windowBounds.Width > 1500 || windowBounds.Height > 1000)
             {
                 baseDistance = Math.Min(50, baseDistance * 2);
             }
-            
-            _logger.LogDebug("Calculated minimum safe distance: {Distance}px for window size {Width}x{Height}", 
+
+            _logger.LogDebug("Calculated minimum safe distance: {Distance}px for window size {Width}x{Height}",
                 baseDistance, windowBounds.Width, windowBounds.Height);
-            
+
             return baseDistance;
         }
         catch (Exception ex)
@@ -249,32 +249,32 @@ public class SafetyManager : ISafetyManager
         {
             throw new InvalidOperationException("No screen bounds available");
         }
-        
+
         if (_screenBounds.Count == 1)
         {
             return _screenBounds[0];
         }
-        
+
         Rectangle bestScreen = _screenBounds[0];
         var maxIntersectionArea = 0;
-        
+
         foreach (var screen in _screenBounds)
         {
             var intersection = Rectangle.Intersect(windowBounds, screen);
             var intersectionArea = intersection.Width * intersection.Height;
-            
+
             if (intersectionArea > maxIntersectionArea)
             {
                 maxIntersectionArea = intersectionArea;
                 bestScreen = screen;
             }
         }
-        
+
         // If no intersection, find the closest screen
         if (maxIntersectionArea == 0)
         {
             var minDistance = double.MaxValue;
-            
+
             foreach (var screen in _screenBounds)
             {
                 var distance = CalculateDistanceToRectangle(windowBounds, screen);
@@ -285,7 +285,7 @@ public class SafetyManager : ISafetyManager
                 }
             }
         }
-        
+
         return bestScreen;
     }
 
@@ -295,7 +295,7 @@ public class SafetyManager : ISafetyManager
     private Rectangle GetSafeBounds(Rectangle screenBounds)
     {
         var buffer = _config.ScreenEdgeBuffer;
-        
+
         return new Rectangle(
             screenBounds.X + buffer,
             screenBounds.Y + buffer,
@@ -311,7 +311,7 @@ public class SafetyManager : ISafetyManager
     {
         var x = windowBounds.X;
         var y = windowBounds.Y;
-        
+
         // Adjust X position
         if (windowBounds.Left < safeBounds.Left)
         {
@@ -321,7 +321,7 @@ public class SafetyManager : ISafetyManager
         {
             x = safeBounds.Right - windowBounds.Width;
         }
-        
+
         // Adjust Y position
         if (windowBounds.Top < safeBounds.Top)
         {
@@ -331,18 +331,18 @@ public class SafetyManager : ISafetyManager
         {
             y = safeBounds.Bottom - windowBounds.Height;
         }
-        
+
         // Final bounds check - if window is larger than safe bounds, center it
         if (windowBounds.Width > safeBounds.Width)
         {
             x = safeBounds.Left + (safeBounds.Width - windowBounds.Width) / 2;
         }
-        
+
         if (windowBounds.Height > safeBounds.Height)
         {
             y = safeBounds.Top + (safeBounds.Height - windowBounds.Height) / 2;
         }
-        
+
         return new Point(x, y);
     }
 
@@ -353,10 +353,10 @@ public class SafetyManager : ISafetyManager
     {
         if (rect1.IntersectsWith(rect2))
             return 0;
-        
+
         var dx = Math.Max(0, Math.Max(rect1.Left - rect2.Right, rect2.Left - rect1.Right));
         var dy = Math.Max(0, Math.Max(rect1.Top - rect2.Bottom, rect2.Top - rect1.Bottom));
-        
+
         return Math.Sqrt(dx * dx + dy * dy);
     }
 

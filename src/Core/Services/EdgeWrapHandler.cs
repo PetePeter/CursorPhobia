@@ -9,7 +9,7 @@ namespace CursorPhobia.Core.Services;
 public class EdgeWrapHandler
 {
     private readonly MonitorManager _monitorManager;
-    
+
     /// <summary>
     /// Initializes a new instance of the EdgeWrapHandler
     /// </summary>
@@ -18,7 +18,7 @@ public class EdgeWrapHandler
     {
         _monitorManager = monitorManager ?? throw new ArgumentNullException(nameof(monitorManager));
     }
-    
+
     /// <summary>
     /// Calculates the wrap destination for a window being pushed to a screen edge
     /// </summary>
@@ -29,13 +29,13 @@ public class EdgeWrapHandler
     public Point? CalculateWrapDestination(Rectangle windowRect, Point pushVector, WrapBehavior wrapBehavior)
     {
         if (!wrapBehavior.EnableWrapping) return null;
-        
+
         var currentMonitor = _monitorManager.GetMonitorContaining(windowRect);
         if (currentMonitor == null) return null;
-        
+
         var edgeType = DetectCrossedEdge(windowRect, pushVector, currentMonitor);
         if (edgeType == EdgeType.None) return null;
-        
+
         return wrapBehavior.PreferredBehavior switch
         {
             WrapPreference.Adjacent => CalculateAdjacentWrap(windowRect, edgeType, currentMonitor),
@@ -44,7 +44,7 @@ public class EdgeWrapHandler
             _ => null
         };
     }
-    
+
     /// <summary>
     /// Determines which edge of the monitor is being crossed
     /// </summary>
@@ -56,23 +56,23 @@ public class EdgeWrapHandler
     {
         var workArea = monitor.workAreaBounds;
         var windowCenter = new Point(windowRect.X + windowRect.Width / 2, windowRect.Y + windowRect.Height / 2);
-        
+
         // Check if window is at or beyond edges
         if (pushVector.X < 0 && windowRect.Left <= workArea.Left)
             return EdgeType.Left;
-            
+
         if (pushVector.X > 0 && windowRect.Right >= workArea.Right)
             return EdgeType.Right;
-            
+
         if (pushVector.Y < 0 && windowRect.Top <= workArea.Top)
             return EdgeType.Top;
-            
+
         if (pushVector.Y > 0 && windowRect.Bottom >= workArea.Bottom)
             return EdgeType.Bottom;
-        
+
         return EdgeType.None;
     }
-    
+
     /// <summary>
     /// Calculates wrap destination using adjacent monitor logic
     /// </summary>
@@ -84,16 +84,16 @@ public class EdgeWrapHandler
     {
         var direction = EdgeTypeToDirection(edgeType);
         var adjacentMonitor = _monitorManager.GetMonitorInDirection(currentMonitor, direction);
-        
+
         if (adjacentMonitor == null)
         {
             // No adjacent monitor, wrap to opposite edge of current monitor
             return CalculateOppositeEdgeWrap(windowRect, edgeType, currentMonitor);
         }
-        
+
         return CalculateAdjacentMonitorWrap(windowRect, edgeType, adjacentMonitor);
     }
-    
+
     /// <summary>
     /// Calculates wrap destination using opposite edge logic
     /// </summary>
@@ -105,7 +105,7 @@ public class EdgeWrapHandler
     {
         return CalculateOppositeEdgeWrap(windowRect, edgeType, currentMonitor);
     }
-    
+
     /// <summary>
     /// Calculates wrap destination using smart logic (adjacent if available, otherwise opposite)
     /// </summary>
@@ -117,15 +117,15 @@ public class EdgeWrapHandler
     {
         var direction = EdgeTypeToDirection(edgeType);
         var adjacentMonitor = _monitorManager.GetMonitorInDirection(currentMonitor, direction);
-        
+
         if (adjacentMonitor != null)
         {
             return CalculateAdjacentMonitorWrap(windowRect, edgeType, adjacentMonitor);
         }
-        
+
         return CalculateOppositeEdgeWrap(windowRect, edgeType, currentMonitor);
     }
-    
+
     /// <summary>
     /// Calculates position for wrapping to opposite edge of current monitor
     /// </summary>
@@ -136,7 +136,7 @@ public class EdgeWrapHandler
     private Point CalculateOppositeEdgeWrap(Rectangle windowRect, EdgeType edgeType, MonitorInfo monitor)
     {
         var workArea = monitor.workAreaBounds;
-        
+
         return edgeType switch
         {
             EdgeType.Left => new Point(workArea.Right - windowRect.Width, windowRect.Y),
@@ -146,7 +146,7 @@ public class EdgeWrapHandler
             _ => windowRect.Location
         };
     }
-    
+
     /// <summary>
     /// Calculates position for wrapping to adjacent monitor
     /// </summary>
@@ -157,29 +157,29 @@ public class EdgeWrapHandler
     private Point CalculateAdjacentMonitorWrap(Rectangle windowRect, EdgeType edgeType, MonitorInfo targetMonitor)
     {
         var targetWorkArea = targetMonitor.workAreaBounds;
-        
+
         return edgeType switch
         {
-            EdgeType.Left => new Point(targetWorkArea.Right - windowRect.Width, 
-                                     Math.Max(targetWorkArea.Top, 
+            EdgeType.Left => new Point(targetWorkArea.Right - windowRect.Width,
+                                     Math.Max(targetWorkArea.Top,
                                      Math.Min(targetWorkArea.Bottom - windowRect.Height, windowRect.Y))),
-            
+
             EdgeType.Right => new Point(targetWorkArea.Left,
                                       Math.Max(targetWorkArea.Top,
                                       Math.Min(targetWorkArea.Bottom - windowRect.Height, windowRect.Y))),
-            
+
             EdgeType.Top => new Point(Math.Max(targetWorkArea.Left,
                                              Math.Min(targetWorkArea.Right - windowRect.Width, windowRect.X)),
                                     targetWorkArea.Bottom - windowRect.Height),
-            
+
             EdgeType.Bottom => new Point(Math.Max(targetWorkArea.Left,
                                                 Math.Min(targetWorkArea.Right - windowRect.Width, windowRect.X)),
                                        targetWorkArea.Top),
-            
+
             _ => windowRect.Location
         };
     }
-    
+
     /// <summary>
     /// Converts edge type to direction
     /// </summary>
@@ -196,7 +196,7 @@ public class EdgeWrapHandler
             _ => throw new ArgumentException($"Invalid edge type: {edgeType}")
         };
     }
-    
+
     /// <summary>
     /// Calculates wrap destination for a window that has been constrained at a monitor edge
     /// </summary>
@@ -207,10 +207,10 @@ public class EdgeWrapHandler
     public Point? CalculateWrapDestinationForConstrainedWindow(Rectangle windowRect, EdgeType constrainedEdge, WrapBehavior wrapBehavior)
     {
         if (!wrapBehavior.EnableWrapping || constrainedEdge == EdgeType.None) return null;
-        
+
         var currentMonitor = _monitorManager.GetMonitorContaining(windowRect);
         if (currentMonitor == null) return null;
-        
+
         return wrapBehavior.PreferredBehavior switch
         {
             WrapPreference.Adjacent => CalculateAdjacentWrap(windowRect, constrainedEdge, currentMonitor),
@@ -219,7 +219,7 @@ public class EdgeWrapHandler
             _ => null
         };
     }
-    
+
     /// <summary>
     /// Validates that a wrap destination is safe and doesn't cause infinite loops
     /// </summary>
@@ -231,16 +231,16 @@ public class EdgeWrapHandler
     {
         // Ensure minimum movement distance to prevent rapid oscillation
         const int minimumWrapDistance = 50;
-        
-        var distance = Math.Sqrt(Math.Pow(newPosition.X - originalPosition.X, 2) + 
+
+        var distance = Math.Sqrt(Math.Pow(newPosition.X - originalPosition.X, 2) +
                                 Math.Pow(newPosition.Y - originalPosition.Y, 2));
-        
+
         if (distance < minimumWrapDistance) return false;
-        
+
         // Ensure new position is within some monitor's work area
         var newRect = new Rectangle(newPosition, windowSize);
         var targetMonitor = _monitorManager.GetMonitorContaining(newRect);
-        
+
         return targetMonitor != null;
     }
 }
@@ -266,12 +266,12 @@ public class WrapBehavior
     /// Whether wrapping is enabled
     /// </summary>
     public bool EnableWrapping { get; set; } = true;
-    
+
     /// <summary>
     /// Preferred wrapping behavior
     /// </summary>
     public WrapPreference PreferredBehavior { get; set; } = WrapPreference.Smart;
-    
+
     /// <summary>
     /// Whether to respect taskbar areas when wrapping
     /// </summary>

@@ -10,17 +10,17 @@ public enum TrayIconState
     /// Engine is running and functioning normally (green icon)
     /// </summary>
     Enabled,
-    
+
     /// <summary>
     /// Engine is stopped or disabled (red icon)
     /// </summary>
     Disabled,
-    
+
     /// <summary>
     /// Engine is running but has performance issues or warnings (yellow icon)
     /// </summary>
     Warning,
-    
+
     /// <summary>
     /// Engine has encountered an error or cannot function (gray icon)
     /// </summary>

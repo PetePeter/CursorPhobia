@@ -15,17 +15,17 @@ public class CursorTracker : ICursorTracker, IDisposable
     private readonly ILogger _logger;
     private readonly CursorPhobiaConfiguration _config;
     private readonly object _lockObject = new();
-    
+
     private IntPtr _hookHandle = IntPtr.Zero;
     private LowLevelMouseProc? _mouseHookDelegate;
     private volatile bool _isTracking = false;
     private volatile bool _disposed = false;
-    
+
     // Cursor state
     private Point _lastCursorPosition = Point.Empty;
     private DateTime _lastUpdateTime = DateTime.MinValue;
     private readonly System.Timers.Timer _fallbackTimer;
-    
+
     // Events
     public event EventHandler<CursorMovedEventArgs>? CursorMoved;
     public event EventHandler<Point>? CursorPositionChanged;
@@ -58,19 +58,19 @@ public class CursorTracker : ICursorTracker, IDisposable
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _config = config ?? CursorPhobiaConfiguration.CreateDefault();
-        
+
         var validationErrors = _config.Validate();
         if (validationErrors.Count > 0)
         {
             throw new ArgumentException($"Invalid cursor tracker configuration: {string.Join(", ", validationErrors)}");
         }
-        
+
         // Initialize fallback timer for when hooks fail
         _fallbackTimer = new System.Timers.Timer(_config.MaxUpdateIntervalMs);
         _fallbackTimer.Elapsed += FallbackTimer_Elapsed;
         _fallbackTimer.AutoReset = true;
-        
-        _logger.LogDebug("CursorTracker initialized with update interval: {UpdateInterval}ms, max interval: {MaxInterval}ms", 
+
+        _logger.LogDebug("CursorTracker initialized with update interval: {UpdateInterval}ms, max interval: {MaxInterval}ms",
             _config.UpdateIntervalMs, _config.MaxUpdateIntervalMs);
     }
 
@@ -149,13 +149,13 @@ public class CursorTracker : ICursorTracker, IDisposable
             try
             {
                 _isTracking = false;
-                
+
                 // Stop fallback timer
                 _fallbackTimer.Stop();
-                
+
                 // Uninstall mouse hook
                 UninstallMouseHook();
-                
+
                 _logger.LogInformation("CursorTracker stopped successfully");
             }
             catch (Exception ex)
@@ -205,7 +205,7 @@ public class CursorTracker : ICursorTracker, IDisposable
             var leftCtrl = (User32.GetAsyncKeyState(VK_LCONTROL) & 0x8000) != 0;
             var rightCtrl = (User32.GetAsyncKeyState(VK_RCONTROL) & 0x8000) != 0;
             var genericCtrl = (User32.GetAsyncKeyState(VK_CONTROL) & 0x8000) != 0;
-            
+
             return leftCtrl || rightCtrl || genericCtrl;
         }
         catch (Exception ex)
@@ -226,7 +226,7 @@ public class CursorTracker : ICursorTracker, IDisposable
         {
             // Create the hook delegate (must be kept alive)
             _mouseHookDelegate = MouseHookProc;
-            
+
             // Get the module handle for the current process
             var moduleHandle = Kernel32.GetModuleHandle(null);
             if (moduleHandle == IntPtr.Zero)
@@ -300,18 +300,18 @@ public class CursorTracker : ICursorTracker, IDisposable
             if (nCode >= HC_ACTION && _isTracking && !_disposed)
             {
                 var messageType = wParam.ToInt32();
-                
+
                 // We're primarily interested in mouse move events
                 if (messageType == WM_MOUSEMOVE)
                 {
                     // Extract mouse data from lParam
                     var hookStruct = Marshal.PtrToStructure<MSLLHOOKSTRUCT>(lParam);
                     var newPosition = hookStruct.pt.ToPoint();
-                    
+
                     // Throttle updates based on configuration
                     var now = DateTime.UtcNow;
                     var timeSinceLastUpdate = (now - _lastUpdateTime).TotalMilliseconds;
-                    
+
                     if (timeSinceLastUpdate >= _config.UpdateIntervalMs)
                     {
                         UpdateCursorPosition(newPosition);
@@ -356,12 +356,12 @@ public class CursorTracker : ICursorTracker, IDisposable
     private void UpdateCursorPosition(Point newPosition)
     {
         Point oldPosition;
-        
+
         lock (_lockObject)
         {
             if (newPosition == _lastCursorPosition)
                 return;
-                
+
             oldPosition = _lastCursorPosition;
             _lastCursorPosition = newPosition;
             _lastUpdateTime = DateTime.UtcNow;
@@ -371,11 +371,11 @@ public class CursorTracker : ICursorTracker, IDisposable
         {
             // Raise events
             CursorPositionChanged?.Invoke(this, newPosition);
-            
+
             var moveArgs = new CursorMovedEventArgs(oldPosition, newPosition);
             CursorMoved?.Invoke(this, moveArgs);
-            
-            _logger.LogDebug("Cursor moved from ({OldX},{OldY}) to ({NewX},{NewY})", 
+
+            _logger.LogDebug("Cursor moved from ({OldX},{OldY}) to ({NewX},{NewY})",
                 oldPosition.X, oldPosition.Y, newPosition.X, newPosition.Y);
         }
         catch (Exception ex)
@@ -410,10 +410,10 @@ public class CursorTracker : ICursorTracker, IDisposable
                 {
                     // Stop tracking first
                     StopTracking();
-                    
+
                     // Dispose timer
                     _fallbackTimer?.Dispose();
-                    
+
                     _logger.LogDebug("CursorTracker disposed successfully");
                 }
                 catch (Exception ex)
@@ -421,7 +421,7 @@ public class CursorTracker : ICursorTracker, IDisposable
                     _logger.LogError(ex, "Error during CursorTracker disposal");
                 }
             }
-            
+
             _disposed = true;
         }
     }
@@ -515,7 +515,7 @@ public class CursorMovedEventArgs : EventArgs
     {
         OldPosition = oldPosition;
         NewPosition = newPosition;
-        
+
         var dx = newPosition.X - oldPosition.X;
         var dy = newPosition.Y - oldPosition.Y;
         Distance = Math.Sqrt(dx * dx + dy * dy);

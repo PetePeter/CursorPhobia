@@ -25,32 +25,32 @@ public class ApplicationLifecycleManagerIntegrationTests : IDisposable
     private void Setup()
     {
         var services = new ServiceCollection();
-        
+
         // Setup logging similar to production
         services.AddLogging(builder =>
         {
             builder.AddConsole();
             builder.SetMinimumLevel(LogLevel.Debug);
         });
-        
+
         // Add core services like in production
         services.AddSingleton<CursorPhobia.Core.Utilities.Logger>(provider =>
         {
             var loggerFactory = provider.GetRequiredService<ILoggerFactory>();
-            return new CursorPhobia.Core.Utilities.Logger(loggerFactory.CreateLogger<ApplicationLifecycleManagerIntegrationTests>(), 
+            return new CursorPhobia.Core.Utilities.Logger(loggerFactory.CreateLogger<ApplicationLifecycleManagerIntegrationTests>(),
                 nameof(ApplicationLifecycleManagerIntegrationTests));
         });
-        
+
         services.AddSingleton<CursorPhobia.Core.Utilities.ILogger>(provider =>
         {
             return provider.GetRequiredService<CursorPhobia.Core.Utilities.Logger>();
         });
-        
+
         // Add production readiness services
         services.AddSingleton<IGlobalExceptionHandler, GlobalExceptionHandler>();
         services.AddSingleton<IErrorRecoveryManager, ErrorRecoveryManager>();
         services.AddSingleton<IServiceHealthMonitor, ServiceHealthMonitor>();
-        
+
         // ApplicationLifecycleManager with all dependencies like in production
         services.AddSingleton<IApplicationLifecycleManager>(provider =>
         {
@@ -60,7 +60,7 @@ public class ApplicationLifecycleManagerIntegrationTests : IDisposable
             var errorRecoveryManager = provider.GetService<IErrorRecoveryManager>();
             return new ApplicationLifecycleManager(logger, globalExceptionHandler, healthMonitor, errorRecoveryManager);
         });
-        
+
         _serviceProvider = services.BuildServiceProvider();
         _lifecycleManager = _serviceProvider.GetRequiredService<IApplicationLifecycleManager>();
         _logger = new TestLogger();
@@ -77,7 +77,7 @@ public class ApplicationLifecycleManagerIntegrationTests : IDisposable
     {
         // Act
         var result = await _lifecycleManager!.InitializeAsync();
-        
+
         // Assert
         Assert.True(result);
         Assert.True(_lifecycleManager.IsInitialized);
@@ -89,19 +89,19 @@ public class ApplicationLifecycleManagerIntegrationTests : IDisposable
     {
         // Arrange
         await _lifecycleManager!.InitializeAsync();
-        
+
         var service1 = new TestDisposableService("Service1");
         var service2 = new TestDisposableService("Service2");
         var service3 = new TestDisposableService("Service3");
-        
+
         // Act - Register services in order
         _lifecycleManager.RegisterService(service1, "Service1");
         _lifecycleManager.RegisterService(service2, "Service2");
         _lifecycleManager.RegisterService(service3, "Service3");
-        
+
         // Shutdown should dispose in reverse order
         await _lifecycleManager.ShutdownAsync();
-        
+
         // Assert - Services should be disposed in reverse order (3, 2, 1)
         Assert.True(service3.DisposedBefore(service2));
         Assert.True(service2.DisposedBefore(service1));
@@ -115,18 +115,18 @@ public class ApplicationLifecycleManagerIntegrationTests : IDisposable
     {
         // Arrange
         await _lifecycleManager!.InitializeAsync();
-        
+
         var goodService = new TestDisposableService("GoodService");
         var badService = new TestDisposableService("BadService", shouldThrowOnDispose: true);
         var anotherGoodService = new TestDisposableService("AnotherGoodService");
-        
+
         _lifecycleManager.RegisterService(goodService, "GoodService");
         _lifecycleManager.RegisterService(badService, "BadService");
         _lifecycleManager.RegisterService(anotherGoodService, "AnotherGoodService");
-        
+
         // Act - Should not throw even if one service throws during disposal
         await _lifecycleManager.ShutdownAsync();
-        
+
         // Assert - Good services should still be disposed despite bad service throwing
         Assert.True(goodService.IsDisposed);
         Assert.True(anotherGoodService.IsDisposed);
@@ -138,10 +138,10 @@ public class ApplicationLifecycleManagerIntegrationTests : IDisposable
     {
         // Arrange
         var globalExceptionHandler = _serviceProvider!.GetRequiredService<IGlobalExceptionHandler>();
-        
+
         // Act
         var result = await _lifecycleManager!.InitializeAsync();
-        
+
         // Assert
         Assert.True(result);
         Assert.True(globalExceptionHandler.IsActive);
@@ -152,10 +152,10 @@ public class ApplicationLifecycleManagerIntegrationTests : IDisposable
     {
         // Arrange
         var healthMonitor = _serviceProvider!.GetRequiredService<IServiceHealthMonitor>();
-        
+
         // Act
         var result = await _lifecycleManager!.InitializeAsync();
-        
+
         // Assert
         Assert.True(result);
         // The lifecycle manager should register itself with the health monitor
@@ -167,10 +167,10 @@ public class ApplicationLifecycleManagerIntegrationTests : IDisposable
     {
         // Arrange
         var errorRecoveryManager = _serviceProvider!.GetRequiredService<IErrorRecoveryManager>();
-        
+
         // Act
         var result = await _lifecycleManager!.InitializeAsync();
-        
+
         // Assert
         Assert.True(result);
         Assert.True(errorRecoveryManager.IsInitialized);
@@ -181,13 +181,13 @@ public class ApplicationLifecycleManagerIntegrationTests : IDisposable
     {
         // Arrange
         await _lifecycleManager!.InitializeAsync();
-        
+
         var exitRequested = false;
         _lifecycleManager.ApplicationExitRequested += (sender, args) => exitRequested = true;
-        
+
         // Act
         await _lifecycleManager.ShutdownAsync();
-        
+
         // Assert
         Assert.True(exitRequested);
         Assert.True(_lifecycleManager.IsShuttingDown);
@@ -199,13 +199,13 @@ public class ApplicationLifecycleManagerIntegrationTests : IDisposable
         // Arrange
         await _lifecycleManager!.InitializeAsync();
         var originalExitCode = Environment.ExitCode;
-        
+
         // Act
         await _lifecycleManager.ShutdownAsync(42);
-        
+
         // Assert
         Assert.Equal(42, Environment.ExitCode);
-        
+
         // Cleanup
         Environment.ExitCode = originalExitCode;
     }
@@ -217,7 +217,7 @@ public class ApplicationLifecycleManagerIntegrationTests : IDisposable
         var result1 = await _lifecycleManager!.InitializeAsync();
         var result2 = await _lifecycleManager.InitializeAsync();
         var result3 = await _lifecycleManager.InitializeAsync();
-        
+
         // Assert
         Assert.True(result1);
         Assert.True(result2);
@@ -231,15 +231,15 @@ public class ApplicationLifecycleManagerIntegrationTests : IDisposable
         // Arrange
         await _lifecycleManager!.InitializeAsync();
         var service = new TestDisposableService("TestService");
-        
+
         // Start shutdown asynchronously
         var shutdownTask = _lifecycleManager.ShutdownAsync();
-        
+
         // Act - Try to register service during shutdown
         _lifecycleManager.RegisterService(service, "TestService");
-        
+
         await shutdownTask;
-        
+
         // Assert - Service should not be disposed since it wasn't actually registered
         Assert.False(service.IsDisposed);
     }
@@ -250,7 +250,7 @@ public class ApplicationLifecycleManagerIntegrationTests : IDisposable
         // Act
         var instance1 = _serviceProvider!.GetRequiredService<IApplicationLifecycleManager>();
         var instance2 = _serviceProvider.GetRequiredService<IApplicationLifecycleManager>();
-        
+
         // Assert
         Assert.Same(instance1, instance2);
     }
@@ -260,17 +260,17 @@ public class ApplicationLifecycleManagerIntegrationTests : IDisposable
     {
         // Arrange
         await _lifecycleManager!.InitializeAsync();
-        
+
         var service1 = new TestDisposableService("Service1");
         var service2 = new TestDisposableService("Service2");
-        
+
         _lifecycleManager.RegisterService(service1, "Service1");
         _lifecycleManager.RegisterService(service2, "Service2");
-        
+
         // Act
         _lifecycleManager.UnregisterService(service1);
         await _lifecycleManager.ShutdownAsync();
-        
+
         // Assert
         Assert.False(service1.IsDisposed);
         Assert.True(service2.IsDisposed);
@@ -285,33 +285,33 @@ public class TestDisposableService : IDisposable
     private static long _disposalCounter = 0;
     private readonly bool _shouldThrowOnDispose;
     private long _disposalOrder = -1;
-    
+
     public string Name { get; }
     public bool IsDisposed => _disposalOrder != -1;
     public bool DisposeAttempted { get; private set; }
     public long DisposalOrder => _disposalOrder;
-    
+
     public TestDisposableService(string name, bool shouldThrowOnDispose = false)
     {
         Name = name;
         _shouldThrowOnDispose = shouldThrowOnDispose;
     }
-    
+
     public void Dispose()
     {
         DisposeAttempted = true;
-        
+
         if (_shouldThrowOnDispose)
         {
             throw new InvalidOperationException($"Test exception from {Name}");
         }
-        
+
         if (_disposalOrder == -1)
         {
             _disposalOrder = Interlocked.Increment(ref _disposalCounter);
         }
     }
-    
+
     public bool DisposedBefore(TestDisposableService other)
     {
         return IsDisposed && other.IsDisposed && _disposalOrder < other._disposalOrder;

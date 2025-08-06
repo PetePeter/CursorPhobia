@@ -186,7 +186,7 @@ namespace CursorPhobia.Core.Services
         /// <summary>
         /// Percentage of successful health checks
         /// </summary>
-        public double SuccessRate => TotalHealthChecks > 0 ? 
+        public double SuccessRate => TotalHealthChecks > 0 ?
             (double)(TotalHealthChecks - FailedHealthChecks) / TotalHealthChecks * 100 : 0;
 
         /// <summary>
