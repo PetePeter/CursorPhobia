@@ -1,0 +1,202 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TestRun id="a648c6d9-a95e-4786-83af-74252e20c576" name="oscar@BOX 2025-08-08 00:25:17" runUser="BOX\oscar" xmlns="http://microsoft.com/schemas/VisualStudio/TeamTest/2010">
+  <Times creation="2025-08-08T00:25:17.2574638+10:00" queuing="2025-08-08T00:25:17.2574648+10:00" start="2025-08-08T00:25:16.2429197+10:00" finish="2025-08-08T00:25:18.3452396+10:00" />
+  <TestSettings name="default" id="f55852b9-dbe1-4c39-a9fa-2c333725505a">
+    <Deployment runDeploymentRoot="oscar_BOX_2025-08-08_00_25_17" />
+  </TestSettings>
+  <Results>
+    <UnitTestResult executionId="06ee18b1-694b-4d14-a716-b0b3daa7c02e" testId="da33fa40-73a7-c9ab-9b62-7cde46612cd1" testName="CursorPhobia.Tests.MonitorManagerDpiTests.MockMonitorManager_GetMonitorDpi_WithoutConfiguration_ReturnsDefaultDpi" computerName="BOX" duration="00:00:00.0002795" startTime="2025-08-08T00:25:17.2425373+10:00" endTime="2025-08-08T00:25:17.2425374+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="06ee18b1-694b-4d14-a716-b0b3daa7c02e" />
+    <UnitTestResult executionId="6e11900c-11d9-422f-a047-e21877965565" testId="f07cc7b0-4964-5b7d-7219-66ecff882f3f" testName="CursorPhobia.Tests.DpiUtilitiesTests.Conversions_WithPointOutsideAllMonitors_UsesDefaultDpi" computerName="BOX" duration="00:00:00.0063719" startTime="2025-08-08T00:25:17.2416150+10:00" endTime="2025-08-08T00:25:17.2416150+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="6e11900c-11d9-422f-a047-e21877965565" />
+    <UnitTestResult executionId="9e4da28b-2fa0-4dda-9f44-51ebbcfbd73a" testId="ae814322-8446-eb00-aa3a-d848870d85e6" testName="CursorPhobia.Tests.ProximityDetectorTests.CalculatePushVector_ZeroMagnitudeVector_ReturnsDefaultRightward" computerName="BOX" duration="00:00:00.0047766" startTime="2025-08-08T00:25:17.2314657+10:00" endTime="2025-08-08T00:25:17.2314972+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="9e4da28b-2fa0-4dda-9f44-51ebbcfbd73a" />
+    <UnitTestResult executionId="0e96fc63-e48d-4b62-a6cf-c3e0c3c1161e" testId="02ee4f15-1638-d65f-49e5-ff981b437890" testName="CursorPhobia.Tests.AnimationEasingTests.AnimationEasing_Default_IsEaseOut" computerName="BOX" duration="00:00:00.0030295" startTime="2025-08-08T00:25:17.2405794+10:00" endTime="2025-08-08T00:25:17.2405796+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="0e96fc63-e48d-4b62-a6cf-c3e0c3c1161e" />
+    <UnitTestResult executionId="998e8545-25f3-4455-ad93-46143873b9f4" testId="f3f0a1b0-1e0a-80f4-ab27-986e47e3f1d9" testName="CursorPhobia.Tests.MonitorManagerDpiTests.GetDpiForRectangle_WithRectangleOutsideMonitors_ReturnsDefaultDpi" computerName="BOX" duration="00:00:00.0005528" startTime="2025-08-08T00:25:17.2426222+10:00" endTime="2025-08-08T00:25:17.2426223+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="998e8545-25f3-4455-ad93-46143873b9f4" />
+    <UnitTestResult executionId="f5845909-5dda-434d-8eb2-30d862caf426" testId="356b86d5-7c15-7ae0-19bd-b1f8b234302d" testName="CursorPhobia.Tests.ConfigurationServiceTests.LoadConfigurationAsync_WithEmptyFile_ReturnsDefaultConfiguration" computerName="BOX" duration="00:00:00.0017068" startTime="2025-08-08T00:25:17.2688996+10:00" endTime="2025-08-08T00:25:17.2688998+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="f5845909-5dda-434d-8eb2-30d862caf426" />
+    <UnitTestResult executionId="f5b3e25a-7f8f-4fc1-aef0-78632b01305d" testId="4b4d2fdd-f675-bc1d-bb30-ab99a551cb87" testName="CursorPhobia.Tests.ConfigurationServiceTests.GetDefaultConfigurationPathAsync_ReturnsValidPath" computerName="BOX" duration="00:00:00.0027261" startTime="2025-08-08T00:25:17.2858959+10:00" endTime="2025-08-08T00:25:17.2858960+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="f5b3e25a-7f8f-4fc1-aef0-78632b01305d" />
+    <UnitTestResult executionId="ef41b2e7-2fc1-47c5-8cfb-31a59fc8ee76" testId="bcf16930-cea9-5298-73b2-9fb3a3065b4f" testName="CursorPhobia.Tests.MultiMonitorConfigurationTests.DefaultConfiguration_ShouldHaveValidSettings" computerName="BOX" duration="00:00:00.0031568" startTime="2025-08-08T00:25:17.2331561+10:00" endTime="2025-08-08T00:25:17.2331563+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="ef41b2e7-2fc1-47c5-8cfb-31a59fc8ee76" />
+    <UnitTestResult executionId="b6fb8d40-c000-4a34-90ab-a29d0e8ae05a" testId="eda2f8eb-95ab-3662-8984-f42e393fab4d" testName="CursorPhobia.Tests.MultiMonitorConfigurationTests.Validate_DefaultConfiguration_ShouldReturnNoErrors" computerName="BOX" duration="00:00:00.0001020" startTime="2025-08-08T00:25:17.2415937+10:00" endTime="2025-08-08T00:25:17.2415939+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="b6fb8d40-c000-4a34-90ab-a29d0e8ae05a" />
+    <UnitTestResult executionId="406a28a6-566f-49f7-ac04-1b37c413a41f" testId="bb3fb9dc-6064-4ac1-95a7-1454d7295a45" testName="CursorPhobia.Tests.ConfigurationServiceTests.GetDefaultConfiguration_ReturnsValidConfiguration" computerName="BOX" duration="00:00:00.0007999" startTime="2025-08-08T00:25:17.2671152+10:00" endTime="2025-08-08T00:25:17.2671153+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="406a28a6-566f-49f7-ac04-1b37c413a41f" />
+    <UnitTestResult executionId="e773cb75-6d64-4e10-9c54-eebd4378ebc3" testId="bd8724a1-d22e-61d4-85e0-30b551b10852" testName="CursorPhobia.Tests.ConfigurationWatcherTests.ConfigurationChange_InvalidJson_LoadsDefaultConfiguration" computerName="BOX" duration="00:00:00.5468236" startTime="2025-08-08T00:25:17.7649682+10:00" endTime="2025-08-08T00:25:17.7649688+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="e773cb75-6d64-4e10-9c54-eebd4378ebc3" />
+    <UnitTestResult executionId="fdbf06e0-30ec-4594-8afc-347cdd40ac66" testId="552ec6cc-7a8a-593c-8084-bcd825d1c054" testName="CursorPhobia.Tests.DpiInfoTests.Constructor_Default_CreatesWithDefaultDpi" computerName="BOX" duration="00:00:00.0038482" startTime="2025-08-08T00:25:17.2335532+10:00" endTime="2025-08-08T00:25:17.2335533+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="fdbf06e0-30ec-4594-8afc-347cdd40ac66" />
+    <UnitTestResult executionId="04e1b7f2-4024-4b0b-af52-a69b00d64f5a" testId="468e083a-0004-a00d-f542-266636b3c5e6" testName="CursorPhobia.Tests.CursorPhobiaConfigurationTests.Constructor_DefaultValues_SetsCorrectDefaults" computerName="BOX" duration="00:00:00.0003688" startTime="2025-08-08T00:25:17.2425779+10:00" endTime="2025-08-08T00:25:17.2425779+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="04e1b7f2-4024-4b0b-af52-a69b00d64f5a" />
+    <UnitTestResult executionId="49e170cf-0183-4fdb-9922-974150b87624" testId="bfc484dc-04db-5568-fd7a-378eaa9b3790" testName="CursorPhobia.Tests.PerMonitorSettingsTests.Validate_DefaultSettings_ShouldReturnNoErrors" computerName="BOX" duration="00:00:00.0003096" startTime="2025-08-08T00:25:17.2425621+10:00" endTime="2025-08-08T00:25:17.2425621+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="49e170cf-0183-4fdb-9922-974150b87624" />
+    <UnitTestResult executionId="2d44a148-e990-463b-90bb-c8c075448998" testId="d92523b2-a76e-3c56-7eb6-2d5473bba9f4" testName="CursorPhobia.Tests.DpiInfoTests.LogicalToPhysical_WithDefaultDpi_ReturnsUnchanged" computerName="BOX" duration="00:00:00.0012430" startTime="2025-08-08T00:25:17.2426323+10:00" endTime="2025-08-08T00:25:17.2426324+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="2d44a148-e990-463b-90bb-c8c075448998" />
+    <UnitTestResult executionId="4152db4b-c29c-4f63-95d6-2a5e4679f85b" testId="c59bbe66-8e9d-26bc-a831-3a1a7dc608d9" testName="CursorPhobia.Tests.DpiUtilitiesTests.GetMinimumScaleFactor_WithNoMonitors_ReturnsDefault" computerName="BOX" duration="00:00:00.0002771" startTime="2025-08-08T00:25:17.2426110+10:00" endTime="2025-08-08T00:25:17.2426110+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="4152db4b-c29c-4f63-95d6-2a5e4679f85b" />
+    <UnitTestResult executionId="8b845050-db67-443f-845b-3a922ea82634" testId="8dc6cffa-89d2-66c0-fbe1-49cc0287ddfe" testName="CursorPhobia.Tests.MonitorManagerDpiTests.GetDpiForPoint_WithPointOutsideMonitors_ReturnsDefaultDpi" computerName="BOX" duration="00:00:00.0054469" startTime="2025-08-08T00:25:17.2406830+10:00" endTime="2025-08-08T00:25:17.2406831+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="8b845050-db67-443f-845b-3a922ea82634" />
+    <UnitTestResult executionId="b5e0409d-2aab-48b2-b63b-93cfda87f049" testId="efee3319-86da-ac44-bcde-b15bef04713e" testName="CursorPhobia.Tests.ConfigurationServiceTests.LoadConfigurationAsync_WithInvalidConfiguration_ReturnsDefaultConfiguration" computerName="BOX" duration="00:00:00.0414513" startTime="2025-08-08T00:25:17.2615795+10:00" endTime="2025-08-08T00:25:17.2615799+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="b5e0409d-2aab-48b2-b63b-93cfda87f049" />
+    <UnitTestResult executionId="cd44d99c-1ed3-4580-9a9e-ab089ba87ab1" testId="3f32b888-0206-2ca8-9147-2a74f1e85736" testName="CursorPhobia.Tests.ConfigurationServiceTests.LoadConfigurationAsync_WithNonExistentFile_CreatesDefaultConfigurationFile" computerName="BOX" duration="00:00:00.0124706" startTime="2025-08-08T00:25:17.2815304+10:00" endTime="2025-08-08T00:25:17.2815306+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="cd44d99c-1ed3-4580-9a9e-ab089ba87ab1" />
+    <UnitTestResult executionId="01c7e8bb-9659-4b92-8d41-5ac3cb8ef3c0" testId="69de4300-40df-8dd4-2eb1-d3f7c563f9c5" testName="CursorPhobia.Tests.ConfigurationWatcherTests.ConfigurationChange_WithValidationErrors_LoadsDefaultConfiguration" computerName="BOX" duration="00:00:00.5074944" startTime="2025-08-08T00:25:18.2728267+10:00" endTime="2025-08-08T00:25:18.2728271+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="01c7e8bb-9659-4b92-8d41-5ac3cb8ef3c0" />
+    <UnitTestResult executionId="b5bab71f-451f-4028-9718-9b0d715ca0bb" testId="28b09fac-be3a-a9e3-0bde-14c347aeec1e" testName="CursorPhobia.Tests.UI.SettingsFormTests.SettingsForm_ResetToDefaults_ResetsConfiguration" computerName="BOX" duration="00:00:00.0688646" startTime="2025-08-08T00:25:17.2887322+10:00" endTime="2025-08-08T00:25:17.2887324+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="b5bab71f-451f-4028-9718-9b0d715ca0bb" />
+    <UnitTestResult executionId="39e1814b-bd79-49a3-9642-1589c669245b" testId="d2ddadc9-894a-254f-32d9-0bf13d36a537" testName="CursorPhobia.Tests.UI.SettingsViewModelTests.SettingsViewModel_ApplyPreset_Default_UpdatesConfiguration" computerName="BOX" duration="00:00:00.0062465" startTime="2025-08-08T00:25:17.2416316+10:00" endTime="2025-08-08T00:25:17.2416316+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="39e1814b-bd79-49a3-9642-1589c669245b" />
+    <UnitTestResult executionId="d23b2cbe-8b36-47c2-965a-295c216cf24a" testId="e0dee75e-73de-ddf1-427a-9aa4acb8402d" testName="CursorPhobia.Tests.ConfigurationServiceTests.LoadConfigurationAsync_WithNullOrEmptyFilePath_ReturnsDefaultConfiguration" computerName="BOX" duration="00:00:00.0014051" startTime="2025-08-08T00:25:17.2831651+10:00" endTime="2025-08-08T00:25:17.2831654+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="d23b2cbe-8b36-47c2-965a-295c216cf24a" />
+    <UnitTestResult executionId="b1bf3d9a-6a3a-4d91-ae54-14e435fac8ed" testId="fe9f9139-6440-0f65-574e-124a06314280" testName="CursorPhobia.Tests.PerMonitorSettingsTests.DefaultSettings_ShouldHaveValidValues" computerName="BOX" duration="00:00:00.0024296" startTime="2025-08-08T00:25:17.2335366+10:00" endTime="2025-08-08T00:25:17.2335367+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="b1bf3d9a-6a3a-4d91-ae54-14e435fac8ed" />
+    <UnitTestResult executionId="9cb5520a-79e5-41a0-b563-84f3727b4809" testId="1673129b-5cfe-5d5e-8bcf-560a681ad273" testName="CursorPhobia.Tests.CursorPhobiaConfigurationTests.CreateDefault_ReturnsValidConfiguration" computerName="BOX" duration="00:00:00.0026614" startTime="2025-08-08T00:25:17.2335415+10:00" endTime="2025-08-08T00:25:17.2335416+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="9cb5520a-79e5-41a0-b563-84f3727b4809" />
+    <UnitTestResult executionId="b2ba4815-ddcb-4544-a3e2-6f7f15029f3f" testId="0a5d7eaf-0490-bdf6-c0ad-ad403233352b" testName="CursorPhobia.Tests.ConfigurationServiceTests.LoadConfigurationAsync_WithCorruptJson_ReturnsDefaultConfiguration" computerName="BOX" duration="00:00:00.0038043" startTime="2025-08-08T00:25:17.2662128+10:00" endTime="2025-08-08T00:25:17.2662132+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="b2ba4815-ddcb-4544-a3e2-6f7f15029f3f" />
+    <UnitTestResult executionId="0dd06e78-6a1c-45b7-b152-e1a8567cd494" testId="0b730bbe-d1be-5f08-7062-14bde1451c2e" testName="CursorPhobia.Tests.DpiUtilitiesTests.GetMaximumScaleFactor_WithNoMonitors_ReturnsDefault" computerName="BOX" duration="00:00:00.0003193" startTime="2025-08-08T00:25:17.2425882+10:00" endTime="2025-08-08T00:25:17.2425883+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="0dd06e78-6a1c-45b7-b152-e1a8567cd494" />
+    <UnitTestResult executionId="98fbe5c8-7a08-4fbe-90ce-7efea2f876b9" testId="f6fb220d-561c-7016-c229-9625c8a346ff" testName="CursorPhobia.Tests.MonitorManagerIntegrationTests.DefaultConstructor_CreatesBasicInstance" computerName="BOX" duration="00:00:00.0025636" startTime="2025-08-08T00:25:17.2335478+10:00" endTime="2025-08-08T00:25:17.2335479+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="98fbe5c8-7a08-4fbe-90ce-7efea2f876b9" />
+    <UnitTestResult executionId="caf2ed6d-73f7-4750-9b59-7e8779606478" testId="e4cb2b8b-0019-8a0f-11c5-16ba13f70504" testName="CursorPhobia.Tests.ProximityConfigurationTests.Constructor_DefaultValues_SetsCorrectDefaults" computerName="BOX" duration="00:00:00.0043591" startTime="2025-08-08T00:25:17.2335251+10:00" endTime="2025-08-08T00:25:17.2335252+10:00" testType="13cdc9d9-ddb5-4fa4-a97d-d965ccfc6d4b" outcome="Passed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" relativeResultsDirectory="caf2ed6d-73f7-4750-9b59-7e8779606478" />
+  </Results>
+  <TestDefinitions>
+    <UnitTest name="CursorPhobia.Tests.ConfigurationServiceTests.GetDefaultConfigurationPathAsync_ReturnsValidPath" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="4b4d2fdd-f675-bc1d-bb30-ab99a551cb87">
+      <Execution id="f5b3e25a-7f8f-4fc1-aef0-78632b01305d" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.ConfigurationServiceTests" name="GetDefaultConfigurationPathAsync_ReturnsValidPath" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.UI.SettingsFormTests.SettingsForm_ResetToDefaults_ResetsConfiguration" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="28b09fac-be3a-a9e3-0bde-14c347aeec1e">
+      <Execution id="b5bab71f-451f-4028-9718-9b0d715ca0bb" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.UI.SettingsFormTests" name="SettingsForm_ResetToDefaults_ResetsConfiguration" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.DpiInfoTests.Constructor_Default_CreatesWithDefaultDpi" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="552ec6cc-7a8a-593c-8084-bcd825d1c054">
+      <Execution id="fdbf06e0-30ec-4594-8afc-347cdd40ac66" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.DpiInfoTests" name="Constructor_Default_CreatesWithDefaultDpi" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.CursorPhobiaConfigurationTests.Constructor_DefaultValues_SetsCorrectDefaults" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="468e083a-0004-a00d-f542-266636b3c5e6">
+      <Execution id="04e1b7f2-4024-4b0b-af52-a69b00d64f5a" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.CursorPhobiaConfigurationTests" name="Constructor_DefaultValues_SetsCorrectDefaults" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.PerMonitorSettingsTests.DefaultSettings_ShouldHaveValidValues" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="fe9f9139-6440-0f65-574e-124a06314280">
+      <Execution id="b1bf3d9a-6a3a-4d91-ae54-14e435fac8ed" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.PerMonitorSettingsTests" name="DefaultSettings_ShouldHaveValidValues" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.ProximityConfigurationTests.Constructor_DefaultValues_SetsCorrectDefaults" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="e4cb2b8b-0019-8a0f-11c5-16ba13f70504">
+      <Execution id="caf2ed6d-73f7-4750-9b59-7e8779606478" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.ProximityConfigurationTests" name="Constructor_DefaultValues_SetsCorrectDefaults" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.AnimationEasingTests.AnimationEasing_Default_IsEaseOut" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="02ee4f15-1638-d65f-49e5-ff981b437890">
+      <Execution id="0e96fc63-e48d-4b62-a6cf-c3e0c3c1161e" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.AnimationEasingTests" name="AnimationEasing_Default_IsEaseOut" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.UI.SettingsViewModelTests.SettingsViewModel_ApplyPreset_Default_UpdatesConfiguration" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="d2ddadc9-894a-254f-32d9-0bf13d36a537">
+      <Execution id="39e1814b-bd79-49a3-9642-1589c669245b" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.UI.SettingsViewModelTests" name="SettingsViewModel_ApplyPreset_Default_UpdatesConfiguration" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.DpiInfoTests.LogicalToPhysical_WithDefaultDpi_ReturnsUnchanged" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="d92523b2-a76e-3c56-7eb6-2d5473bba9f4">
+      <Execution id="2d44a148-e990-463b-90bb-c8c075448998" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.DpiInfoTests" name="LogicalToPhysical_WithDefaultDpi_ReturnsUnchanged" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.ConfigurationServiceTests.LoadConfigurationAsync_WithCorruptJson_ReturnsDefaultConfiguration" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="0a5d7eaf-0490-bdf6-c0ad-ad403233352b">
+      <Execution id="b2ba4815-ddcb-4544-a3e2-6f7f15029f3f" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.ConfigurationServiceTests" name="LoadConfigurationAsync_WithCorruptJson_ReturnsDefaultConfiguration" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.CursorPhobiaConfigurationTests.CreateDefault_ReturnsValidConfiguration" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="1673129b-5cfe-5d5e-8bcf-560a681ad273">
+      <Execution id="9cb5520a-79e5-41a0-b563-84f3727b4809" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.CursorPhobiaConfigurationTests" name="CreateDefault_ReturnsValidConfiguration" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.ConfigurationServiceTests.GetDefaultConfiguration_ReturnsValidConfiguration" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="bb3fb9dc-6064-4ac1-95a7-1454d7295a45">
+      <Execution id="406a28a6-566f-49f7-ac04-1b37c413a41f" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.ConfigurationServiceTests" name="GetDefaultConfiguration_ReturnsValidConfiguration" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.DpiUtilitiesTests.Conversions_WithPointOutsideAllMonitors_UsesDefaultDpi" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="f07cc7b0-4964-5b7d-7219-66ecff882f3f">
+      <Execution id="6e11900c-11d9-422f-a047-e21877965565" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.DpiUtilitiesTests" name="Conversions_WithPointOutsideAllMonitors_UsesDefaultDpi" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.MultiMonitorConfigurationTests.DefaultConfiguration_ShouldHaveValidSettings" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="bcf16930-cea9-5298-73b2-9fb3a3065b4f">
+      <Execution id="ef41b2e7-2fc1-47c5-8cfb-31a59fc8ee76" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.MultiMonitorConfigurationTests" name="DefaultConfiguration_ShouldHaveValidSettings" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.ConfigurationWatcherTests.ConfigurationChange_InvalidJson_LoadsDefaultConfiguration" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="bd8724a1-d22e-61d4-85e0-30b551b10852">
+      <Execution id="e773cb75-6d64-4e10-9c54-eebd4378ebc3" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.ConfigurationWatcherTests" name="ConfigurationChange_InvalidJson_LoadsDefaultConfiguration" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.ConfigurationServiceTests.LoadConfigurationAsync_WithEmptyFile_ReturnsDefaultConfiguration" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="356b86d5-7c15-7ae0-19bd-b1f8b234302d">
+      <Execution id="f5845909-5dda-434d-8eb2-30d862caf426" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.ConfigurationServiceTests" name="LoadConfigurationAsync_WithEmptyFile_ReturnsDefaultConfiguration" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.MonitorManagerDpiTests.GetDpiForPoint_WithPointOutsideMonitors_ReturnsDefaultDpi" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="8dc6cffa-89d2-66c0-fbe1-49cc0287ddfe">
+      <Execution id="8b845050-db67-443f-845b-3a922ea82634" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.MonitorManagerDpiTests" name="GetDpiForPoint_WithPointOutsideMonitors_ReturnsDefaultDpi" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.DpiUtilitiesTests.GetMaximumScaleFactor_WithNoMonitors_ReturnsDefault" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="0b730bbe-d1be-5f08-7062-14bde1451c2e">
+      <Execution id="0dd06e78-6a1c-45b7-b152-e1a8567cd494" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.DpiUtilitiesTests" name="GetMaximumScaleFactor_WithNoMonitors_ReturnsDefault" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.MultiMonitorConfigurationTests.Validate_DefaultConfiguration_ShouldReturnNoErrors" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="eda2f8eb-95ab-3662-8984-f42e393fab4d">
+      <Execution id="b6fb8d40-c000-4a34-90ab-a29d0e8ae05a" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.MultiMonitorConfigurationTests" name="Validate_DefaultConfiguration_ShouldReturnNoErrors" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.ConfigurationServiceTests.LoadConfigurationAsync_WithInvalidConfiguration_ReturnsDefaultConfiguration" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="efee3319-86da-ac44-bcde-b15bef04713e">
+      <Execution id="b5e0409d-2aab-48b2-b63b-93cfda87f049" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.ConfigurationServiceTests" name="LoadConfigurationAsync_WithInvalidConfiguration_ReturnsDefaultConfiguration" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.PerMonitorSettingsTests.Validate_DefaultSettings_ShouldReturnNoErrors" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="bfc484dc-04db-5568-fd7a-378eaa9b3790">
+      <Execution id="49e170cf-0183-4fdb-9922-974150b87624" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.PerMonitorSettingsTests" name="Validate_DefaultSettings_ShouldReturnNoErrors" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.MonitorManagerDpiTests.GetDpiForRectangle_WithRectangleOutsideMonitors_ReturnsDefaultDpi" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="f3f0a1b0-1e0a-80f4-ab27-986e47e3f1d9">
+      <Execution id="998e8545-25f3-4455-ad93-46143873b9f4" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.MonitorManagerDpiTests" name="GetDpiForRectangle_WithRectangleOutsideMonitors_ReturnsDefaultDpi" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.MonitorManagerDpiTests.MockMonitorManager_GetMonitorDpi_WithoutConfiguration_ReturnsDefaultDpi" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="da33fa40-73a7-c9ab-9b62-7cde46612cd1">
+      <Execution id="06ee18b1-694b-4d14-a716-b0b3daa7c02e" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.MonitorManagerDpiTests" name="MockMonitorManager_GetMonitorDpi_WithoutConfiguration_ReturnsDefaultDpi" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.ConfigurationServiceTests.LoadConfigurationAsync_WithNonExistentFile_CreatesDefaultConfigurationFile" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="3f32b888-0206-2ca8-9147-2a74f1e85736">
+      <Execution id="cd44d99c-1ed3-4580-9a9e-ab089ba87ab1" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.ConfigurationServiceTests" name="LoadConfigurationAsync_WithNonExistentFile_CreatesDefaultConfigurationFile" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.ConfigurationServiceTests.LoadConfigurationAsync_WithNullOrEmptyFilePath_ReturnsDefaultConfiguration" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="e0dee75e-73de-ddf1-427a-9aa4acb8402d">
+      <Execution id="d23b2cbe-8b36-47c2-965a-295c216cf24a" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.ConfigurationServiceTests" name="LoadConfigurationAsync_WithNullOrEmptyFilePath_ReturnsDefaultConfiguration" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.ProximityDetectorTests.CalculatePushVector_ZeroMagnitudeVector_ReturnsDefaultRightward" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="ae814322-8446-eb00-aa3a-d848870d85e6">
+      <Execution id="9e4da28b-2fa0-4dda-9f44-51ebbcfbd73a" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.ProximityDetectorTests" name="CalculatePushVector_ZeroMagnitudeVector_ReturnsDefaultRightward" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.ConfigurationWatcherTests.ConfigurationChange_WithValidationErrors_LoadsDefaultConfiguration" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="69de4300-40df-8dd4-2eb1-d3f7c563f9c5">
+      <Execution id="01c7e8bb-9659-4b92-8d41-5ac3cb8ef3c0" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.ConfigurationWatcherTests" name="ConfigurationChange_WithValidationErrors_LoadsDefaultConfiguration" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.DpiUtilitiesTests.GetMinimumScaleFactor_WithNoMonitors_ReturnsDefault" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="c59bbe66-8e9d-26bc-a831-3a1a7dc608d9">
+      <Execution id="4152db4b-c29c-4f63-95d6-2a5e4679f85b" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.DpiUtilitiesTests" name="GetMinimumScaleFactor_WithNoMonitors_ReturnsDefault" />
+    </UnitTest>
+    <UnitTest name="CursorPhobia.Tests.MonitorManagerIntegrationTests.DefaultConstructor_CreatesBasicInstance" storage="x:\coding\cursorphobia\tests\bin\debug\net8.0-windows\cursorphobia.tests.dll" id="f6fb220d-561c-7016-c229-9625c8a346ff">
+      <Execution id="98fbe5c8-7a08-4fbe-90ce-7efea2f876b9" />
+      <TestMethod codeBase="X:\coding\CursorPhobia\tests\bin\Debug\net8.0-windows\CursorPhobia.Tests.dll" adapterTypeName="executor://xunit/VsTestRunner2/netcoreapp" className="CursorPhobia.Tests.MonitorManagerIntegrationTests" name="DefaultConstructor_CreatesBasicInstance" />
+    </UnitTest>
+  </TestDefinitions>
+  <TestEntries>
+    <TestEntry testId="da33fa40-73a7-c9ab-9b62-7cde46612cd1" executionId="06ee18b1-694b-4d14-a716-b0b3daa7c02e" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="f07cc7b0-4964-5b7d-7219-66ecff882f3f" executionId="6e11900c-11d9-422f-a047-e21877965565" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="ae814322-8446-eb00-aa3a-d848870d85e6" executionId="9e4da28b-2fa0-4dda-9f44-51ebbcfbd73a" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="02ee4f15-1638-d65f-49e5-ff981b437890" executionId="0e96fc63-e48d-4b62-a6cf-c3e0c3c1161e" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="f3f0a1b0-1e0a-80f4-ab27-986e47e3f1d9" executionId="998e8545-25f3-4455-ad93-46143873b9f4" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="356b86d5-7c15-7ae0-19bd-b1f8b234302d" executionId="f5845909-5dda-434d-8eb2-30d862caf426" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="4b4d2fdd-f675-bc1d-bb30-ab99a551cb87" executionId="f5b3e25a-7f8f-4fc1-aef0-78632b01305d" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="bcf16930-cea9-5298-73b2-9fb3a3065b4f" executionId="ef41b2e7-2fc1-47c5-8cfb-31a59fc8ee76" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="eda2f8eb-95ab-3662-8984-f42e393fab4d" executionId="b6fb8d40-c000-4a34-90ab-a29d0e8ae05a" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="bb3fb9dc-6064-4ac1-95a7-1454d7295a45" executionId="406a28a6-566f-49f7-ac04-1b37c413a41f" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="bd8724a1-d22e-61d4-85e0-30b551b10852" executionId="e773cb75-6d64-4e10-9c54-eebd4378ebc3" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="552ec6cc-7a8a-593c-8084-bcd825d1c054" executionId="fdbf06e0-30ec-4594-8afc-347cdd40ac66" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="468e083a-0004-a00d-f542-266636b3c5e6" executionId="04e1b7f2-4024-4b0b-af52-a69b00d64f5a" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="bfc484dc-04db-5568-fd7a-378eaa9b3790" executionId="49e170cf-0183-4fdb-9922-974150b87624" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="d92523b2-a76e-3c56-7eb6-2d5473bba9f4" executionId="2d44a148-e990-463b-90bb-c8c075448998" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="c59bbe66-8e9d-26bc-a831-3a1a7dc608d9" executionId="4152db4b-c29c-4f63-95d6-2a5e4679f85b" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="8dc6cffa-89d2-66c0-fbe1-49cc0287ddfe" executionId="8b845050-db67-443f-845b-3a922ea82634" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="efee3319-86da-ac44-bcde-b15bef04713e" executionId="b5e0409d-2aab-48b2-b63b-93cfda87f049" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="3f32b888-0206-2ca8-9147-2a74f1e85736" executionId="cd44d99c-1ed3-4580-9a9e-ab089ba87ab1" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="69de4300-40df-8dd4-2eb1-d3f7c563f9c5" executionId="01c7e8bb-9659-4b92-8d41-5ac3cb8ef3c0" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="28b09fac-be3a-a9e3-0bde-14c347aeec1e" executionId="b5bab71f-451f-4028-9718-9b0d715ca0bb" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="d2ddadc9-894a-254f-32d9-0bf13d36a537" executionId="39e1814b-bd79-49a3-9642-1589c669245b" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="e0dee75e-73de-ddf1-427a-9aa4acb8402d" executionId="d23b2cbe-8b36-47c2-965a-295c216cf24a" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="fe9f9139-6440-0f65-574e-124a06314280" executionId="b1bf3d9a-6a3a-4d91-ae54-14e435fac8ed" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="1673129b-5cfe-5d5e-8bcf-560a681ad273" executionId="9cb5520a-79e5-41a0-b563-84f3727b4809" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="0a5d7eaf-0490-bdf6-c0ad-ad403233352b" executionId="b2ba4815-ddcb-4544-a3e2-6f7f15029f3f" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="0b730bbe-d1be-5f08-7062-14bde1451c2e" executionId="0dd06e78-6a1c-45b7-b152-e1a8567cd494" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="f6fb220d-561c-7016-c229-9625c8a346ff" executionId="98fbe5c8-7a08-4fbe-90ce-7efea2f876b9" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestEntry testId="e4cb2b8b-0019-8a0f-11c5-16ba13f70504" executionId="caf2ed6d-73f7-4750-9b59-7e8779606478" testListId="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+  </TestEntries>
+  <TestLists>
+    <TestList name="Results Not in a List" id="8c84fa94-04c1-424b-9868-57a2d4851a1d" />
+    <TestList name="All Loaded Results" id="19431567-8539-422a-85d7-44ee4e166bda" />
+  </TestLists>
+  <ResultSummary outcome="Completed">
+    <Counters total="29" executed="29" passed="29" failed="0" error="0" timeout="0" aborted="0" inconclusive="0" passedButRunAborted="0" notRunnable="0" notExecuted="0" disconnected="0" warning="0" completed="0" inProgress="0" pending="0" />
+    <Output>
+      <StdOut>[xUnit.net 00:00:00.00] xUnit.net VSTest Adapter v2.4.5+1caef2f33e (64-bit .NET 8.0.18)&#xD;
+[xUnit.net 00:00:00.52]   Discovering: CursorPhobia.Tests&#xD;
+[xUnit.net 00:00:00.58]   Discovered:  CursorPhobia.Tests&#xD;
+[xUnit.net 00:00:00.59]   Starting:    CursorPhobia.Tests&#xD;
+[xUnit.net 00:00:01.68]   Finished:    CursorPhobia.Tests&#xD;
+</StdOut>
+    </Output>
+  </ResultSummary>
+</TestRun>

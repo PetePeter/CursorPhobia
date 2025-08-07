@@ -454,7 +454,9 @@ public partial class SettingsForm : Form
         enableAnimationsCheckBox.CheckedChanged += (s, e) =>
         {
             var enabled = enableAnimationsCheckBox.Checked;
+            animationDurationLabel.Enabled = enabled;
             animationDurationNumeric.Enabled = enabled;
+            animationEasingLabel.Enabled = enabled;
             animationEasingComboBox.Enabled = enabled;
         };
 
@@ -926,4 +928,5 @@ public partial class SettingsForm : Form
     }
 
     #endregion
+
 }
