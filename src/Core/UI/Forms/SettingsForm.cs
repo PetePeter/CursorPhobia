@@ -383,23 +383,14 @@ public partial class SettingsForm : Form
             nameof(CheckBox.Checked), _viewModel, nameof(_viewModel.StartWithWindows), false, DataSourceUpdateMode.OnPropertyChanged);
 
         // Behavior Tab Bindings
-        proximityThresholdTrackBar.DataBindings.Add(
-            nameof(TrackBar.Value), _viewModel, nameof(_viewModel.ProximityThreshold), false, DataSourceUpdateMode.OnPropertyChanged);
-
         proximityThresholdNumeric.DataBindings.Add(
             nameof(NumericUpDown.Value), _viewModel, nameof(_viewModel.ProximityThreshold), false, DataSourceUpdateMode.OnPropertyChanged);
-
-        pushDistanceTrackBar.DataBindings.Add(
-            nameof(TrackBar.Value), _viewModel, nameof(_viewModel.PushDistance), false, DataSourceUpdateMode.OnPropertyChanged);
 
         pushDistanceNumeric.DataBindings.Add(
             nameof(NumericUpDown.Value), _viewModel, nameof(_viewModel.PushDistance), false, DataSourceUpdateMode.OnPropertyChanged);
 
         enableAnimationsCheckBox.DataBindings.Add(
             nameof(CheckBox.Checked), _viewModel, nameof(_viewModel.EnableAnimations), false, DataSourceUpdateMode.OnPropertyChanged);
-
-        animationDurationTrackBar.DataBindings.Add(
-            nameof(TrackBar.Value), _viewModel, nameof(_viewModel.AnimationDurationMs), false, DataSourceUpdateMode.OnPropertyChanged);
 
         animationDurationNumeric.DataBindings.Add(
             nameof(NumericUpDown.Value), _viewModel, nameof(_viewModel.AnimationDurationMs), false, DataSourceUpdateMode.OnPropertyChanged);
@@ -442,8 +433,8 @@ public partial class SettingsForm : Form
             }
         };
 
-            // Setup trackbar synchronization
-            SetupTrackBarSync();
+            // Setup control state management
+            SetupControlStates();
         }
         catch (Exception ex)
         {
@@ -457,52 +448,12 @@ public partial class SettingsForm : Form
         }
     }
 
-    private void SetupTrackBarSync()
+    private void SetupControlStates()
     {
-        // Sync proximity threshold trackbar and numeric
-        proximityThresholdTrackBar.ValueChanged += (s, e) =>
-        {
-            if (!_isInitializing)
-                proximityThresholdNumeric.Value = proximityThresholdTrackBar.Value;
-        };
-
-        proximityThresholdNumeric.ValueChanged += (s, e) =>
-        {
-            if (!_isInitializing)
-                proximityThresholdTrackBar.Value = (int)proximityThresholdNumeric.Value;
-        };
-
-        // Sync push distance trackbar and numeric
-        pushDistanceTrackBar.ValueChanged += (s, e) =>
-        {
-            if (!_isInitializing)
-                pushDistanceNumeric.Value = pushDistanceTrackBar.Value;
-        };
-
-        pushDistanceNumeric.ValueChanged += (s, e) =>
-        {
-            if (!_isInitializing)
-                pushDistanceTrackBar.Value = (int)pushDistanceNumeric.Value;
-        };
-
-        // Sync animation duration trackbar and numeric
-        animationDurationTrackBar.ValueChanged += (s, e) =>
-        {
-            if (!_isInitializing)
-                animationDurationNumeric.Value = animationDurationTrackBar.Value;
-        };
-
-        animationDurationNumeric.ValueChanged += (s, e) =>
-        {
-            if (!_isInitializing)
-                animationDurationTrackBar.Value = (int)animationDurationNumeric.Value;
-        };
-
         // Enable/disable animation controls based on animations checkbox
         enableAnimationsCheckBox.CheckedChanged += (s, e) =>
         {
             var enabled = enableAnimationsCheckBox.Checked;
-            animationDurationTrackBar.Enabled = enabled;
             animationDurationNumeric.Enabled = enabled;
             animationEasingComboBox.Enabled = enabled;
         };
@@ -651,9 +602,6 @@ public partial class SettingsForm : Form
                 case NumericUpDown numeric:
                     numeric.BackColor = SystemColors.Window;
                     break;
-                case TrackBar trackBar:
-                    trackBar.BackColor = SystemColors.Control;
-                    break;
                 case ComboBox combo:
                     combo.BackColor = SystemColors.Window;
                     break;
@@ -691,17 +639,14 @@ public partial class SettingsForm : Form
         if (errorMessage.Contains("ProximityThreshold", StringComparison.OrdinalIgnoreCase))
         {
             HighlightControl("proximityThresholdNumeric", errorColor, errorMessage);
-            HighlightControl("proximityThresholdTrackBar", errorColor, errorMessage);
         }
         else if (errorMessage.Contains("PushDistance", StringComparison.OrdinalIgnoreCase))
         {
             HighlightControl("pushDistanceNumeric", errorColor, errorMessage);
-            HighlightControl("pushDistanceTrackBar", errorColor, errorMessage);
         }
         else if (errorMessage.Contains("AnimationDuration", StringComparison.OrdinalIgnoreCase))
         {
             HighlightControl("animationDurationNumeric", errorColor, errorMessage);
-            HighlightControl("animationDurationTrackBar", errorColor, errorMessage);
         }
         else if (errorMessage.Contains("UpdateInterval", StringComparison.OrdinalIgnoreCase))
         {

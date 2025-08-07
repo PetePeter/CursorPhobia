@@ -17,18 +17,15 @@ namespace CursorPhobia.Core.UI.Forms
         private CheckBox startWithWindowsCheckBox;
         
         // Behavior Tab Controls
-        private TrackBar proximityThresholdTrackBar;
         private Label proximityThresholdLabel;
         private NumericUpDown proximityThresholdNumeric;
-        private TrackBar pushDistanceTrackBar;
         private Label pushDistanceLabel;
         private NumericUpDown pushDistanceNumeric;
         private CheckBox enableAnimationsCheckBox;
-        private TrackBar animationDurationTrackBar;
         private Label animationDurationLabel;
         private NumericUpDown animationDurationNumeric;
-        private ComboBox animationEasingComboBox;
         private Label animationEasingLabel;
+        private ComboBox animationEasingComboBox;
         private CheckBox enableHoverTimeoutCheckBox;
         private NumericUpDown hoverTimeoutNumeric;
         private Label hoverTimeoutLabel;
@@ -189,27 +186,16 @@ namespace CursorPhobia.Core.UI.Forms
                 Size = new Size(150, 20)
             };
 
-            proximityThresholdTrackBar = new TrackBar
-            {
-                Location = new Point(170, yPos),
-                Size = new Size(200, 45),
-                Minimum = 1,
-                Maximum = 500,
-                TickFrequency = 50,
-                SmallChange = 5,
-                LargeChange = 25
-            };
-
             proximityThresholdNumeric = new NumericUpDown
             {
-                Location = new Point(380, yPos),
-                Size = new Size(70, 20),
+                Location = new Point(170, yPos),
+                Size = new Size(100, 20),
                 Minimum = 1,
                 Maximum = 500,
                 DecimalPlaces = 0
             };
 
-            yPos += 55;
+            yPos += 30;
 
             // Push Distance
             pushDistanceLabel = new Label
@@ -219,27 +205,16 @@ namespace CursorPhobia.Core.UI.Forms
                 Size = new Size(150, 20)
             };
 
-            pushDistanceTrackBar = new TrackBar
-            {
-                Location = new Point(170, yPos),
-                Size = new Size(200, 45),
-                Minimum = 1,
-                Maximum = 1000,
-                TickFrequency = 100,
-                SmallChange = 10,
-                LargeChange = 50
-            };
-
             pushDistanceNumeric = new NumericUpDown
             {
-                Location = new Point(380, yPos),
-                Size = new Size(70, 20),
+                Location = new Point(170, yPos),
+                Size = new Size(100, 20),
                 Minimum = 1,
                 Maximum = 1000,
                 DecimalPlaces = 0
             };
 
-            yPos += 55;
+            yPos += 30;
 
             // Enable Animations
             enableAnimationsCheckBox = new CheckBox
@@ -260,32 +235,21 @@ namespace CursorPhobia.Core.UI.Forms
                 Size = new Size(150, 20)
             };
 
-            animationDurationTrackBar = new TrackBar
-            {
-                Location = new Point(170, yPos),
-                Size = new Size(200, 45),
-                Minimum = 0,
-                Maximum = 2000,
-                TickFrequency = 200,
-                SmallChange = 50,
-                LargeChange = 200
-            };
-
             animationDurationNumeric = new NumericUpDown
             {
-                Location = new Point(380, yPos),
-                Size = new Size(70, 20),
+                Location = new Point(170, yPos),
+                Size = new Size(100, 20),
                 Minimum = 0,
                 Maximum = 2000,
                 DecimalPlaces = 0
             };
 
-            yPos += 55;
+            yPos += 30;
 
             // Animation Easing
             animationEasingLabel = new Label
             {
-                Text = "Animation Style:",
+                Text = "Animation Easing:",
                 Location = new Point(12, yPos),
                 Size = new Size(150, 20)
             };
@@ -298,7 +262,7 @@ namespace CursorPhobia.Core.UI.Forms
             };
             animationEasingComboBox.Items.AddRange(Enum.GetValues(typeof(AnimationEasing)).Cast<object>().ToArray());
 
-            yPos += 35;
+            yPos += 30;
 
             // Hover Timeout
             enableHoverTimeoutCheckBox = new CheckBox
@@ -348,10 +312,10 @@ namespace CursorPhobia.Core.UI.Forms
             previewPanel.Controls.Add(previewLabel);
 
             behaviorTabPage.Controls.AddRange(new Control[] {
-                proximityThresholdLabel, proximityThresholdTrackBar, proximityThresholdNumeric,
-                pushDistanceLabel, pushDistanceTrackBar, pushDistanceNumeric,
+                proximityThresholdLabel, proximityThresholdNumeric,
+                pushDistanceLabel, pushDistanceNumeric,
                 enableAnimationsCheckBox,
-                animationDurationLabel, animationDurationTrackBar, animationDurationNumeric,
+                animationDurationLabel, animationDurationNumeric,
                 animationEasingLabel, animationEasingComboBox,
                 enableHoverTimeoutCheckBox, hoverTimeoutNumeric, hoverTimeoutLabel,
                 previewPanel
