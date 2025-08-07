@@ -12,6 +12,12 @@ public class ProximityDetector : IProximityDetector
     private readonly ILogger _logger;
     private readonly ProximityConfiguration _config;
     private readonly IMonitorManager? _monitorManager;
+    
+    // Spatial caching for performance optimization
+    private readonly Dictionary<(Point cursor, Rectangle window, int threshold), (bool result, DateTime timestamp)> _proximityCache = new();
+    private readonly object _cacheLock = new();
+    private const int CacheTimeoutMs = 16; // ~60fps cache timeout
+    private const int MaxCacheSize = 1000; // Prevent memory bloat
 
     /// <summary>
     /// Creates a new ProximityDetector instance
@@ -45,19 +51,20 @@ public class ProximityDetector : IProximityDetector
     {
         try
         {
+            // Optimized calculation using switch expression and avoiding repeated calculations
             var distance = _config.Algorithm switch
             {
-                ProximityAlgorithm.EuclideanDistance => CalculateEuclideanDistance(cursorPosition, windowBounds),
-                ProximityAlgorithm.ManhattanDistance => CalculateManhattanDistance(cursorPosition, windowBounds),
-                ProximityAlgorithm.NearestEdgeDistance => CalculateNearestEdgeDistance(cursorPosition, windowBounds),
+                ProximityAlgorithm.EuclideanDistance => CalculateEuclideanDistanceOptimized(cursorPosition, windowBounds),
+                ProximityAlgorithm.ManhattanDistance => CalculateManhattanDistanceOptimized(cursorPosition, windowBounds),
+                ProximityAlgorithm.NearestEdgeDistance => CalculateNearestEdgeDistanceOptimized(cursorPosition, windowBounds),
                 _ => throw new NotSupportedException($"Proximity algorithm {_config.Algorithm} is not supported")
             };
 
-            // Apply sensitivity multipliers
-            var adjustedDistance = ApplySensitivityMultipliers(distance, cursorPosition, windowBounds);
-
-            _logger.LogDebug("Proximity calculated: {Distance:F2} (algorithm: {Algorithm}, cursor: {CursorX},{CursorY}, window: {WindowBounds})",
-                adjustedDistance, _config.Algorithm, cursorPosition.X, cursorPosition.Y, windowBounds);
+            // Apply sensitivity multipliers only if they're not default values
+            var adjustedDistance = Math.Abs(_config.HorizontalSensitivityMultiplier - 1.0) < 0.001 &&
+                                 Math.Abs(_config.VerticalSensitivityMultiplier - 1.0) < 0.001
+                ? distance
+                : ApplySensitivityMultipliers(distance, cursorPosition, windowBounds);
 
             return adjustedDistance;
         }
@@ -70,7 +77,7 @@ public class ProximityDetector : IProximityDetector
     }
 
     /// <summary>
-    /// Determines if a cursor is within the proximity threshold of a window
+    /// Determines if a cursor is within the proximity threshold of a window with spatial caching
     /// </summary>
     /// <param name="cursorPosition">Current cursor position in screen coordinates</param>
     /// <param name="windowBounds">Window bounds rectangle</param>
@@ -86,11 +93,41 @@ public class ProximityDetector : IProximityDetector
 
         try
         {
+            // Check cache first for performance optimization
+            var cacheKey = (cursorPosition, windowBounds, proximityThreshold);
+            var currentTime = DateTime.UtcNow;
+
+            lock (_cacheLock)
+            {
+                if (_proximityCache.TryGetValue(cacheKey, out var cachedResult))
+                {
+                    var age = (currentTime - cachedResult.timestamp).TotalMilliseconds;
+                    if (age < CacheTimeoutMs)
+                    {
+                        return cachedResult.result;
+                    }
+                    // Remove expired entry
+                    _proximityCache.Remove(cacheKey);
+                }
+
+                // Cleanup cache if it's getting too large
+                if (_proximityCache.Count > MaxCacheSize)
+                {
+                    CleanupExpiredCacheEntries(currentTime);
+                }
+            }
+
             // Convert threshold to physical pixels if DPI-aware mode is enabled
             var effectiveThreshold = GetDpiAwareThreshold(proximityThreshold, cursorPosition, windowBounds);
 
             var distance = CalculateProximity(cursorPosition, windowBounds);
             var isWithin = distance <= effectiveThreshold;
+
+            // Cache the result
+            lock (_cacheLock)
+            {
+                _proximityCache[cacheKey] = (isWithin, currentTime);
+            }
 
             _logger.LogDebug("Proximity check: distance={Distance:F2}, threshold={Threshold} (effective: {EffectiveThreshold}), within={IsWithin}",
                 distance, proximityThreshold, effectiveThreshold, isWithin);
@@ -250,69 +287,69 @@ public class ProximityDetector : IProximityDetector
     }
 
     /// <summary>
-    /// Calculates Euclidean distance between cursor and nearest point on window
+    /// Optimized Euclidean distance calculation with fewer allocations
     /// </summary>
-    private double CalculateEuclideanDistance(Point cursor, Rectangle window)
+    private double CalculateEuclideanDistanceOptimized(Point cursor, Rectangle window)
     {
-        var closestPoint = GetClosestPointOnRectangle(cursor, window);
-        var dx = cursor.X - closestPoint.X;
-        var dy = cursor.Y - closestPoint.Y;
+        // Calculate closest point inline to avoid method call overhead
+        var closestX = Math.Max(window.Left, Math.Min(cursor.X, window.Right));
+        var closestY = Math.Max(window.Top, Math.Min(cursor.Y, window.Bottom));
+        
+        var dx = cursor.X - closestX;
+        var dy = cursor.Y - closestY;
         return Math.Sqrt(dx * dx + dy * dy);
     }
 
     /// <summary>
-    /// Calculates Manhattan distance between cursor and nearest point on window
+    /// Optimized Manhattan distance calculation with fewer allocations
     /// </summary>
-    private double CalculateManhattanDistance(Point cursor, Rectangle window)
+    private double CalculateManhattanDistanceOptimized(Point cursor, Rectangle window)
     {
-        var closestPoint = GetClosestPointOnRectangle(cursor, window);
-        var dx = Math.Abs(cursor.X - closestPoint.X);
-        var dy = Math.Abs(cursor.Y - closestPoint.Y);
-        return dx + dy;
+        // Calculate closest point inline to avoid method call overhead
+        var closestX = Math.Max(window.Left, Math.Min(cursor.X, window.Right));
+        var closestY = Math.Max(window.Top, Math.Min(cursor.Y, window.Bottom));
+        
+        return Math.Abs(cursor.X - closestX) + Math.Abs(cursor.Y - closestY);
     }
 
     /// <summary>
-    /// Calculates distance to nearest window edge
+    /// Optimized nearest edge distance calculation
     /// </summary>
-    private double CalculateNearestEdgeDistance(Point cursor, Rectangle window)
+    private double CalculateNearestEdgeDistanceOptimized(Point cursor, Rectangle window)
     {
         // If cursor is inside window, return 0
-        if (window.Contains(cursor))
+        if (cursor.X >= window.Left && cursor.X <= window.Right &&
+            cursor.Y >= window.Top && cursor.Y <= window.Bottom)
             return 0;
 
-        // Calculate distance to each edge
-        var leftDistance = Math.Abs(cursor.X - window.Left);
-        var rightDistance = Math.Abs(cursor.X - window.Right);
-        var topDistance = Math.Abs(cursor.Y - window.Top);
-        var bottomDistance = Math.Abs(cursor.Y - window.Bottom);
-
-        // Return minimum distance considering cursor position relative to window
+        // Calculate distances efficiently without creating intermediate objects
         if (cursor.X < window.Left)
         {
             if (cursor.Y < window.Top)
-                return Math.Min(leftDistance, topDistance);
+                return Math.Min(window.Left - cursor.X, window.Top - cursor.Y);
             else if (cursor.Y > window.Bottom)
-                return Math.Min(leftDistance, bottomDistance);
+                return Math.Min(window.Left - cursor.X, cursor.Y - window.Bottom);
             else
-                return leftDistance;
+                return window.Left - cursor.X;
         }
         else if (cursor.X > window.Right)
         {
             if (cursor.Y < window.Top)
-                return Math.Min(rightDistance, topDistance);
+                return Math.Min(cursor.X - window.Right, window.Top - cursor.Y);
             else if (cursor.Y > window.Bottom)
-                return Math.Min(rightDistance, bottomDistance);
+                return Math.Min(cursor.X - window.Right, cursor.Y - window.Bottom);
             else
-                return rightDistance;
+                return cursor.X - window.Right;
         }
         else
         {
             if (cursor.Y < window.Top)
-                return topDistance;
+                return window.Top - cursor.Y;
             else
-                return bottomDistance;
+                return cursor.Y - window.Bottom;
         }
     }
+
 
     /// <summary>
     /// Finds the closest point on a rectangle to a given point
@@ -354,6 +391,31 @@ public class ProximityDetector : IProximityDetector
 
         // For NearestEdgeDistance, apply based on which edge is closest
         return distance * Math.Min(_config.HorizontalSensitivityMultiplier, _config.VerticalSensitivityMultiplier);
+    }
+
+    /// <summary>
+    /// Cleans up expired cache entries to prevent memory bloat
+    /// </summary>
+    /// <param name="currentTime">Current timestamp for comparison</param>
+    private void CleanupExpiredCacheEntries(DateTime currentTime)
+    {
+        var expiredKeys = new List<(Point, Rectangle, int)>();
+        
+        foreach (var kvp in _proximityCache)
+        {
+            var age = (currentTime - kvp.Value.timestamp).TotalMilliseconds;
+            if (age >= CacheTimeoutMs)
+            {
+                expiredKeys.Add(kvp.Key);
+            }
+        }
+        
+        foreach (var key in expiredKeys)
+        {
+            _proximityCache.Remove(key);
+        }
+        
+        _logger.LogDebug("Cleaned up {Count} expired proximity cache entries", expiredKeys.Count);
     }
 
     #endregion

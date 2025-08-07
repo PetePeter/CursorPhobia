@@ -44,11 +44,7 @@ public class WindowPusherTests
         var windowDetectionService = new MockWindowDetectionService();
         var monitorManager = new MockMonitorManager();
         var edgeWrapHandler = new MockEdgeWrapHandler(monitorManager);
-<<<<<<< HEAD
         Assert.Throws<ArgumentNullException>(() =>
-=======
-        Assert.Throws<ArgumentNullException>(() => 
->>>>>>> issue_6
             new WindowPusher(null!, windowService, safetyManager, proximityDetector, windowDetectionService, monitorManager, edgeWrapHandler));
     }
 
@@ -64,11 +60,7 @@ public class WindowPusherTests
         var windowDetectionService = new MockWindowDetectionService();
         var monitorManager = new MockMonitorManager();
         var edgeWrapHandler = new MockEdgeWrapHandler(monitorManager);
-<<<<<<< HEAD
         Assert.Throws<ArgumentNullException>(() =>
-=======
-        Assert.Throws<ArgumentNullException>(() => 
->>>>>>> issue_6
             new WindowPusher(logger, null!, safetyManager, proximityDetector, windowDetectionService, monitorManager, edgeWrapHandler));
     }
 
@@ -84,11 +76,7 @@ public class WindowPusherTests
         var windowDetectionService = new MockWindowDetectionService();
         var monitorManager = new MockMonitorManager();
         var edgeWrapHandler = new MockEdgeWrapHandler(monitorManager);
-<<<<<<< HEAD
         Assert.Throws<ArgumentNullException>(() =>
-=======
-        Assert.Throws<ArgumentNullException>(() => 
->>>>>>> issue_6
             new WindowPusher(logger, windowService, null!, proximityDetector, windowDetectionService, monitorManager, edgeWrapHandler));
     }
 
@@ -104,11 +92,7 @@ public class WindowPusherTests
         var windowDetectionService = new MockWindowDetectionService();
         var monitorManager = new MockMonitorManager();
         var edgeWrapHandler = new MockEdgeWrapHandler(monitorManager);
-<<<<<<< HEAD
         Assert.Throws<ArgumentNullException>(() =>
-=======
-        Assert.Throws<ArgumentNullException>(() => 
->>>>>>> issue_6
             new WindowPusher(logger, windowService, safetyManager, null!, windowDetectionService, monitorManager, edgeWrapHandler));
     }
 
@@ -126,11 +110,7 @@ public class WindowPusherTests
         var windowDetectionService = new MockWindowDetectionService();
         var monitorManager = new MockMonitorManager();
         var edgeWrapHandler = new MockEdgeWrapHandler(monitorManager);
-<<<<<<< HEAD
-        Assert.Throws<ArgumentException>(() =>
-=======
         Assert.Throws<ArgumentException>(() => 
->>>>>>> issue_6
             new WindowPusher(logger, windowService, safetyManager, proximityDetector, windowDetectionService, monitorManager, edgeWrapHandler, invalidConfig));
     }
 
@@ -511,9 +491,7 @@ public class WindowPusherTests
     }
 
     #endregion
-<<<<<<< HEAD
 
-=======
     
     #region MockWindowDetectionService Tests
     
@@ -580,7 +558,6 @@ public class WindowPusherTests
     
     #endregion
     
->>>>>>> issue_6
     #region Helper Methods
 
     private static WindowPusher CreateWindowPusher(
@@ -814,6 +791,18 @@ public class MockWindowManipulationService : IWindowManipulationService
         return _windowBounds.TryGetValue(hWnd, out var bounds) ? bounds : Rectangle.Empty;
     }
 
+    public async Task<bool> MoveWindowAsync(IntPtr hWnd, int x, int y)
+    {
+        await Task.Delay(1); // Simulate async behavior
+        return MoveWindow(hWnd, x, y);
+    }
+
+    public async Task<Rectangle> GetWindowBoundsAsync(IntPtr hWnd)
+    {
+        await Task.Delay(1); // Simulate async behavior
+        return GetWindowBounds(hWnd);
+    }
+
     public bool IsWindowVisible(IntPtr hWnd)
     {
         return _windowBounds.ContainsKey(hWnd);
@@ -856,6 +845,11 @@ public class MockSafetyManager : ISafetyManager
     {
         return 20; // Default safe distance
     }
+
+    public Rectangle GetOverallDesktopSafeArea()
+    {
+        return new Rectangle(0, 0, 1920, 1080); // Default desktop area for testing
+    }
 }
 
 /// <summary>
@@ -891,11 +885,12 @@ public class MockProximityDetector : IProximityDetector
 /// </summary>
 public class MockWindowDetectionService : IWindowDetectionService
 {
-<<<<<<< HEAD
     private readonly List<WindowInfo> _topMostWindows = new();
     private readonly Dictionary<IntPtr, bool> _alwaysOnTopWindows = new();
     private readonly Dictionary<IntPtr, WindowInfo> _windowInfos = new();
     private readonly List<WindowInfo> _visibleWindows = new();
+    private readonly Dictionary<IntPtr, WindowInfo> _windows = new();
+    private readonly Dictionary<IntPtr, bool> _topMostFlags = new();
 
     public void AddTopMostWindow(WindowInfo window)
     {
@@ -906,6 +901,27 @@ public class MockWindowDetectionService : IWindowDetectionService
     public void SetWindowAlwaysOnTop(IntPtr handle, bool isAlwaysOnTop)
     {
         _alwaysOnTopWindows[handle] = isAlwaysOnTop;
+        
+        if (isAlwaysOnTop)
+        {
+            // Add to topmost collection if window exists and not already there
+            if (_windows.TryGetValue(handle, out var window) && !_topMostWindows.Any(w => w.WindowHandle == handle))
+            {
+                window.IsTopmost = true;
+                _topMostWindows.Add(window);
+                _topMostFlags[handle] = true;
+            }
+        }
+        else
+        {
+            // Remove from topmost collection
+            _topMostWindows.RemoveAll(w => w.WindowHandle == handle);
+            _topMostFlags.Remove(handle);
+            if (_windows.TryGetValue(handle, out var window))
+            {
+                window.IsTopmost = false;
+            }
+        }
     }
 
     public void SetWindowInfo(IntPtr handle, WindowInfo info)
@@ -918,11 +934,6 @@ public class MockWindowDetectionService : IWindowDetectionService
         _visibleWindows.Add(window);
     }
 
-=======
-    private readonly Dictionary<IntPtr, WindowInfo> _windows = new();
-    private readonly Dictionary<IntPtr, bool> _topMostFlags = new();
-    private readonly List<WindowInfo> _visibleWindows = new();
-    private readonly List<WindowInfo> _topMostWindows = new();
 
     /// <summary>
     /// Adds a window to the mock service
@@ -981,25 +992,6 @@ public class MockWindowDetectionService : IWindowDetectionService
         AddWindow(window);
     }
 
-    /// <summary>
-    /// Sets the topmost flag for a specific window
-    /// </summary>
-    public void SetWindowAlwaysOnTop(IntPtr handle, bool isTopmost)
-    {
-        _topMostFlags[handle] = isTopmost;
-        
-        if (_windows.TryGetValue(handle, out var window))
-        {
-            window.IsTopmost = isTopmost;
-            
-            // Update the topmost windows list
-            _topMostWindows.RemoveAll(w => w.WindowHandle == handle);
-            if (isTopmost)
-            {
-                _topMostWindows.Add(window);
-            }
-        }
-    }
 
     /// <summary>
     /// Sets the visibility of a window
@@ -1065,7 +1057,6 @@ public class MockWindowDetectionService : IWindowDetectionService
 
     // IWindowDetectionService implementation
 
->>>>>>> issue_6
     public List<WindowInfo> GetAllTopMostWindows()
     {
         return new List<WindowInfo>(_topMostWindows);
@@ -1073,26 +1064,22 @@ public class MockWindowDetectionService : IWindowDetectionService
 
     public bool IsWindowAlwaysOnTop(IntPtr hWnd)
     {
-<<<<<<< HEAD
-        return _alwaysOnTopWindows.TryGetValue(hWnd, out var isAlwaysOnTop) && isAlwaysOnTop;
-=======
         if (hWnd == IntPtr.Zero)
             return false;
             
-        return _topMostFlags.TryGetValue(hWnd, out var isTopmost) && isTopmost;
->>>>>>> issue_6
+        // Check both the alwaysOnTop collection and topMost flags for compatibility
+        return (_alwaysOnTopWindows.TryGetValue(hWnd, out var isAlwaysOnTop) && isAlwaysOnTop) ||
+               (_topMostFlags.TryGetValue(hWnd, out var isTopmost) && isTopmost);
     }
 
     public WindowInfo? GetWindowInformation(IntPtr hWnd)
     {
-<<<<<<< HEAD
-        return _windowInfos.TryGetValue(hWnd, out var info) ? info : null;
-=======
         if (hWnd == IntPtr.Zero)
             return null;
             
-        return _windows.TryGetValue(hWnd, out var window) ? window : null;
->>>>>>> issue_6
+        // Check the windowInfos collection first, then fall back to the windows collection
+        return _windowInfos.TryGetValue(hWnd, out var info) ? info : 
+               (_windows.TryGetValue(hWnd, out var window) ? window : null);
     }
 
     public List<WindowInfo> EnumerateVisibleWindows()

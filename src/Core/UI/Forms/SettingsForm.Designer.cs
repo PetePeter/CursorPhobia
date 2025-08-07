@@ -1,3 +1,4 @@
+using System.Linq;
 using CursorPhobia.Core.Models;
 
 namespace CursorPhobia.Core.UI.Forms
@@ -295,7 +296,7 @@ namespace CursorPhobia.Core.UI.Forms
                 Size = new Size(120, 21),
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
-            animationEasingComboBox.Items.AddRange(Enum.GetNames(typeof(AnimationEasing)));
+            animationEasingComboBox.Items.AddRange(Enum.GetValues(typeof(AnimationEasing)).Cast<object>().ToArray());
 
             yPos += 35;
 
@@ -392,7 +393,7 @@ namespace CursorPhobia.Core.UI.Forms
                 Size = new Size(150, 21),
                 DropDownStyle = ComboBoxStyle.DropDownList
             };
-            wrapPreferenceComboBox.Items.AddRange(Enum.GetNames(typeof(WrapPreference)));
+            wrapPreferenceComboBox.Items.AddRange(Enum.GetValues(typeof(WrapPreference)).Cast<object>().ToArray());
 
             yPos += 35;
 

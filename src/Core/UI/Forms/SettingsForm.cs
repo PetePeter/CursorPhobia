@@ -370,9 +370,11 @@ public partial class SettingsForm : Form
 
     private void SetupDataBindings()
     {
-        // General Tab Bindings
-        enableCtrlOverrideCheckBox.DataBindings.Add(
-            nameof(CheckBox.Checked), _viewModel, nameof(_viewModel.EnableCtrlOverride), false, DataSourceUpdateMode.OnPropertyChanged);
+        try
+        {
+            // General Tab Bindings
+            enableCtrlOverrideCheckBox.DataBindings.Add(
+                nameof(CheckBox.Checked), _viewModel, nameof(_viewModel.EnableCtrlOverride), false, DataSourceUpdateMode.OnPropertyChanged);
 
         applyToAllWindowsCheckBox.DataBindings.Add(
             nameof(CheckBox.Checked), _viewModel, nameof(_viewModel.ApplyToAllWindows), false, DataSourceUpdateMode.OnPropertyChanged);
@@ -440,8 +442,19 @@ public partial class SettingsForm : Form
             }
         };
 
-        // Setup trackbar synchronization
-        SetupTrackBarSync();
+            // Setup trackbar synchronization
+            SetupTrackBarSync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to setup data bindings for settings form");
+            MessageBox.Show(
+                "Failed to initialize some settings controls. Default values will be used.\n\n" +
+                $"Error: {ex.Message}",
+                "Initialization Warning",
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Warning);
+        }
     }
 
     private void SetupTrackBarSync()

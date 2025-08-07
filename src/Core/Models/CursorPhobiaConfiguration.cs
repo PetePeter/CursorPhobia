@@ -331,6 +331,42 @@ public class MultiMonitorConfiguration
     public bool RespectTaskbarAreas { get; set; } = true;
 
     /// <summary>
+    /// Whether to enable cross-monitor window movement
+    /// Default: true (allows windows to move between monitors)
+    /// </summary>
+    public bool EnableCrossMonitorMovement { get; set; } = true;
+
+    /// <summary>
+    /// Whether to show visual feedback during cross-monitor transitions
+    /// Default: true (recommended by UX evaluation)
+    /// </summary>
+    public bool ShowTransitionFeedback { get; set; } = true;
+
+    /// <summary>
+    /// Duration of transition feedback in milliseconds
+    /// Default: 800ms (brief visual indicator)
+    /// </summary>
+    public int TransitionFeedbackDurationMs { get; set; } = 800;
+
+    /// <summary>
+    /// Type of visual feedback to show during transitions
+    /// Default: Subtle (non-intrusive indicators)
+    /// </summary>
+    public TransitionFeedbackType FeedbackType { get; set; } = TransitionFeedbackType.Subtle;
+
+    /// <summary>
+    /// Minimum distance between monitors for cross-monitor movement (pixels)
+    /// Default: 10 (prevents excessive jumping between adjacent monitors)
+    /// </summary>
+    public int CrossMonitorThreshold { get; set; } = 10;
+
+    /// <summary>
+    /// Whether to automatically adjust DPI scaling for cross-monitor movements
+    /// Default: true (ensures consistent visual sizing across monitors)
+    /// </summary>
+    public bool EnableAutoDpiAdjustment { get; set; } = true;
+
+    /// <summary>
     /// Per-monitor settings for customizing behavior on specific displays
     /// Key is monitor device name or handle
     /// </summary>
@@ -343,6 +379,19 @@ public class MultiMonitorConfiguration
     public List<string> Validate()
     {
         var errors = new List<string>();
+
+        // Validate transition feedback settings
+        if (TransitionFeedbackDurationMs < 100)
+            errors.Add("TransitionFeedbackDurationMs must be at least 100ms");
+
+        if (TransitionFeedbackDurationMs > 5000)
+            errors.Add("TransitionFeedbackDurationMs should not exceed 5000ms to avoid UI disruption");
+
+        if (CrossMonitorThreshold < 0)
+            errors.Add("CrossMonitorThreshold cannot be negative");
+
+        if (CrossMonitorThreshold > 100)
+            errors.Add("CrossMonitorThreshold should not exceed 100 pixels for responsiveness");
 
         // Validate per-monitor settings
         foreach (var kvp in PerMonitorSettings)
@@ -442,4 +491,35 @@ public enum WrapPreference
     /// Smart wrapping: adjacent if available, otherwise opposite
     /// </summary>
     Smart
+}
+
+/// <summary>
+/// Visual feedback types for cross-monitor transitions
+/// </summary>
+public enum TransitionFeedbackType
+{
+    /// <summary>
+    /// No visual feedback
+    /// </summary>
+    None,
+
+    /// <summary>
+    /// Subtle visual feedback (brief highlight or border)
+    /// </summary>
+    Subtle,
+
+    /// <summary>
+    /// Animation feedback (fade/slide effects)
+    /// </summary>
+    Animation,
+
+    /// <summary>
+    /// Toast notification feedback
+    /// </summary>
+    Toast,
+
+    /// <summary>
+    /// System tray notification
+    /// </summary>
+    TrayNotification
 }

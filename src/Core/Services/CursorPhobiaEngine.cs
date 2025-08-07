@@ -27,8 +27,8 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
     private volatile bool _disposed = false;
     private readonly object _stateLock = new();
 
-    // Main update loop
-    private readonly System.Timers.Timer _updateTimer;
+    // High-resolution update loop to prevent timer drift
+    private readonly HighResolutionTimer _updateTimer;
     private readonly CancellationTokenSource _cancellationTokenSource;
 
     // Window tracking and hover timing
@@ -128,10 +128,9 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
 
         _cancellationTokenSource = new CancellationTokenSource();
 
-        // Initialize update timer
-        _updateTimer = new System.Timers.Timer(_config.UpdateIntervalMs);
+        // Initialize high-resolution update timer to prevent drift
+        _updateTimer = new HighResolutionTimer(_config.UpdateIntervalMs);
         _updateTimer.Elapsed += UpdateTimer_Elapsed;
-        _updateTimer.AutoReset = true;
 
         _logger.LogInformation("CursorPhobiaEngine initialized with update interval: {UpdateInterval}ms, hover timeout: {HoverTimeout}ms",
             _config.UpdateIntervalMs, _config.HoverTimeoutMs);
@@ -338,9 +337,9 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
     }
 
     /// <summary>
-    /// Main update timer event handler
+    /// Main update timer event handler with high-resolution timing
     /// </summary>
-    private async void UpdateTimer_Elapsed(object? sender, System.Timers.ElapsedEventArgs e)
+    private async void UpdateTimer_Elapsed(object? sender, EventArgs e)
     {
         if (!_isRunning || _disposed)
             return;

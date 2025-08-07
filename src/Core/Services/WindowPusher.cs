@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Drawing;
 using CursorPhobia.Core.Models;
 using CursorPhobia.Core.Utilities;
@@ -62,12 +63,18 @@ public class WindowPusher : IWindowPusher, IDisposable
     private readonly EdgeWrapHandler _edgeWrapHandler;
     private readonly IErrorRecoveryManager? _errorRecoveryManager;
     private readonly ISystemTrayManager? _trayManager;
+    private readonly ITransitionFeedbackService? _transitionFeedbackService;
 
-    // Animation tracking
-    private readonly Dictionary<IntPtr, WindowAnimation> _activeAnimations;
-    private readonly object _animationLock = new();
-    private readonly CancellationTokenSource _cancellationTokenSource;
-    private bool _disposed = false;
+    // Animation tracking with improved thread safety
+    private readonly ConcurrentDictionary<IntPtr, WindowAnimation> _activeAnimations = new();
+    private readonly SemaphoreSlim _animationSemaphore = new(Environment.ProcessorCount, Environment.ProcessorCount);
+    private readonly CancellationTokenSource _cancellationTokenSource = new();
+    private volatile bool _disposed = false;
+    
+    // Spatial caching for performance
+    private readonly ConcurrentDictionary<IntPtr, CachedWindowPosition> _positionCache = new();
+    private readonly SemaphoreSlim _cacheLock = new(1, 1);
+    private const int CacheExpiryMs = 100; // Cache positions for 100ms
 
     // Phase 3 WI#8: Hook recovery tracking
     private readonly object _hookRecoveryLock = new();
@@ -90,6 +97,7 @@ public class WindowPusher : IWindowPusher, IDisposable
     /// <param name="config">Configuration for animation and behavior settings</param>
     /// <param name="errorRecoveryManager">Optional error recovery manager for hook recovery</param>
     /// <param name="trayManager">Optional system tray manager for user notifications</param>
+    /// <param name="transitionFeedbackService">Optional transition feedback service for visual feedback</param>
     public WindowPusher(
         ILogger logger,
         IWindowManipulationService windowService,
@@ -100,7 +108,8 @@ public class WindowPusher : IWindowPusher, IDisposable
         EdgeWrapHandler edgeWrapHandler,
         CursorPhobiaConfiguration? config = null,
         IErrorRecoveryManager? errorRecoveryManager = null,
-        ISystemTrayManager? trayManager = null)
+        ISystemTrayManager? trayManager = null,
+        ITransitionFeedbackService? transitionFeedbackService = null)
     {
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _windowService = windowService ?? throw new ArgumentNullException(nameof(windowService));
@@ -112,6 +121,7 @@ public class WindowPusher : IWindowPusher, IDisposable
         _config = config ?? CursorPhobiaConfiguration.CreateDefault();
         _errorRecoveryManager = errorRecoveryManager;
         _trayManager = trayManager;
+        _transitionFeedbackService = transitionFeedbackService;
 
         var validationErrors = _config.Validate();
         if (validationErrors.Count > 0)
@@ -119,8 +129,7 @@ public class WindowPusher : IWindowPusher, IDisposable
             throw new ArgumentException($"Invalid configuration: {string.Join(", ", validationErrors)}");
         }
 
-        _activeAnimations = new Dictionary<IntPtr, WindowAnimation>();
-        _cancellationTokenSource = new CancellationTokenSource();
+        // Initialize concurrent collections - no need for explicit initialization
 
         // Phase 3 WI#8: Register with error recovery manager for hook failures
         if (_errorRecoveryManager != null)
@@ -178,8 +187,12 @@ public class WindowPusher : IWindowPusher, IDisposable
             (perfScope as IPerformanceScope)?.AddContext("WindowWidth", currentBounds.Width);
             (perfScope as IPerformanceScope)?.AddContext("WindowHeight", currentBounds.Height);
 
-            // Calculate push vector using proximity detector
-            var pushVector = _proximityDetector.CalculatePushVector(cursorPosition, currentBounds, pushDistance);
+            // Get DPI information for the current window's monitor for proper scaling
+            var currentMonitorDpi = _monitorManager.GetDpiForRectangle(currentBounds);
+            var scaledPushDistance = currentMonitorDpi.ScaleDistance(pushDistance);
+
+            // Calculate push vector using proximity detector with DPI-scaled distance
+            var pushVector = _proximityDetector.CalculatePushVector(cursorPosition, currentBounds, scaledPushDistance);
             if (pushVector.IsEmpty)
             {
                 (perfScope as IPerformanceScope)?.MarkAsFailed("Could not calculate push vector");
@@ -189,9 +202,11 @@ public class WindowPusher : IWindowPusher, IDisposable
 
             (perfScope as IPerformanceScope)?.AddContext("PushVectorX", pushVector.X);
             (perfScope as IPerformanceScope)?.AddContext("PushVectorY", pushVector.Y);
+            (perfScope as IPerformanceScope)?.AddContext("DpiScaleFactor", currentMonitorDpi.ScaleFactor);
+            (perfScope as IPerformanceScope)?.AddContext("ScaledPushDistance", scaledPushDistance);
 
-            // Calculate target position
-            var targetPosition = new Point(
+            // Calculate initial target position
+            var initialTargetPosition = new Point(
                 currentBounds.X + pushVector.X,
                 currentBounds.Y + pushVector.Y
             );
@@ -217,13 +232,17 @@ public class WindowPusher : IWindowPusher, IDisposable
             {
                 _logger.LogDebug("Edge wrapping detected for window {Handle:X} from ({CurrentX},{CurrentY}) to ({WrapX},{WrapY})",
                     windowHandle.ToInt64(), currentBounds.X, currentBounds.Y, wrapDestination.Value.X, wrapDestination.Value.Y);
-                targetPosition = wrapDestination.Value;
+                initialTargetPosition = wrapDestination.Value;
             }
 
-            // Validate the target position with safety manager
+            // Apply cross-monitor DPI scaling if the target position is on a different monitor
+            var targetPosition = ApplyCrossMonitorDpiScaling(currentBounds, initialTargetPosition, currentMonitorDpi);
+
+            // Validate the target position with safety manager (now supports multi-monitor transitions)
             var safePosition = _safetyManager.ValidateWindowPosition(currentBounds, targetPosition);
 
             // Check if the window was constrained by safety manager (hit an edge and can't move further)
+            // This now only occurs at the overall desktop boundaries, not individual monitor boundaries
             if (!targetPosition.Equals(safePosition))
             {
                 // Detect which edge the window hit
@@ -255,14 +274,46 @@ public class WindowPusher : IWindowPusher, IDisposable
                 }
             }
 
-            _logger.LogDebug("Pushing window {Handle:X} from ({CurrentX},{CurrentY}) to ({TargetX},{TargetY}) -> ({SafeX},{SafeY})",
+            // Log cross-monitor transition information and handle visual feedback
+            var currentMonitor = _monitorManager.GetMonitorContaining(currentBounds);
+            var targetMonitor = _monitorManager.GetMonitorContaining(new Rectangle(safePosition.X, safePosition.Y, currentBounds.Width, currentBounds.Height));
+            var isMultiMonitorMove = currentMonitor?.monitorHandle != targetMonitor?.monitorHandle;
+
+            _logger.LogDebug("Pushing window {Handle:X} from ({CurrentX},{CurrentY}) to ({TargetX},{TargetY}) -> ({SafeX},{SafeY}) " +
+                           "[Cross-monitor: {IsMultiMonitor}]",
                 windowHandle.ToInt64(), currentBounds.X, currentBounds.Y,
-                targetPosition.X, targetPosition.Y, safePosition.X, safePosition.Y);
+                targetPosition.X, targetPosition.Y, safePosition.X, safePosition.Y, isMultiMonitorMove);
+
+            // Show visual feedback for cross-monitor transitions if enabled
+            if (isMultiMonitorMove && 
+                currentMonitor != null && 
+                targetMonitor != null && 
+                _config.MultiMonitor?.ShowTransitionFeedback == true &&
+                _transitionFeedbackService != null)
+            {
+                var feedbackType = _config.MultiMonitor.FeedbackType;
+                var feedbackDuration = _config.MultiMonitor.TransitionFeedbackDurationMs;
+                
+                // Start feedback asynchronously - don't await to avoid blocking the window move
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _transitionFeedbackService.ShowTransitionFeedbackAsync(
+                            windowHandle, currentMonitor, targetMonitor, feedbackType, feedbackDuration);
+                    }
+                    catch (Exception feedbackEx)
+                    {
+                        _logger.LogWarning("Error showing transition feedback: {Message}", feedbackEx.Message);
+                    }
+                });
+            }
 
             (perfScope as IPerformanceScope)?.AddContext("TargetX", targetPosition.X);
             (perfScope as IPerformanceScope)?.AddContext("TargetY", targetPosition.Y);
             (perfScope as IPerformanceScope)?.AddContext("SafeX", safePosition.X);
             (perfScope as IPerformanceScope)?.AddContext("SafeY", safePosition.Y);
+            (perfScope as IPerformanceScope)?.AddContext("IsMultiMonitorMove", isMultiMonitorMove);
 
             var result = await PushWindowToPositionAsync(windowHandle, safePosition);
             if (!result)
@@ -352,7 +403,7 @@ public class WindowPusher : IWindowPusher, IDisposable
             // Cancel any existing animation for this window
             CancelWindowAnimation(windowHandle);
 
-            // Create and start new animation
+            // Create and start new animation with proper async state management
             var animation = new WindowAnimation(
                 windowHandle,
                 currentPosition,
@@ -361,10 +412,12 @@ public class WindowPusher : IWindowPusher, IDisposable
                 _config.AnimationEasing
             );
 
-            lock (_animationLock)
+            // Atomically add or update the animation
+            _activeAnimations.AddOrUpdate(windowHandle, animation, (key, existing) => 
             {
-                _activeAnimations[windowHandle] = animation;
-            }
+                existing.Cancel(); // Cancel any existing animation
+                return animation;
+            });
 
             _logger.LogDebug("Starting animation for window {Handle:X} from ({StartX},{StartY}) to ({EndX},{EndY}) over {Duration}ms",
                 windowHandle.ToInt64(), currentPosition.X, currentPosition.Y,
@@ -381,14 +434,21 @@ public class WindowPusher : IWindowPusher, IDisposable
             (perfScope as IPerformanceScope)?.AddContext("AnimationDuration", _config.AnimationDurationMs);
             (perfScope as IPerformanceScope)?.AddContext("AnimationEasing", _config.AnimationEasing.ToString());
 
-            // Run the animation
-            var animationResult = await RunAnimationAsync(animation, _cancellationTokenSource.Token);
-            if (!animationResult)
+            // Run the animation with semaphore-based concurrency control
+            await _animationSemaphore.WaitAsync(_cancellationTokenSource.Token);
+            try
             {
-                (perfScope as IPerformanceScope)?.MarkAsFailed("Animation failed or was cancelled");
+                var animationResult = await RunAnimationAsync(animation, _cancellationTokenSource.Token);
+                if (!animationResult)
+                {
+                    (perfScope as IPerformanceScope)?.MarkAsFailed("Animation failed or was cancelled");
+                }
+                return animationResult;
             }
-
-            return animationResult;
+            finally
+            {
+                _animationSemaphore.Release();
+            }
         }
         catch (Exception ex)
         {
@@ -410,11 +470,8 @@ public class WindowPusher : IWindowPusher, IDisposable
     /// <returns>True if the window is currently being animated</returns>
     public bool IsWindowAnimating(IntPtr windowHandle)
     {
-        lock (_animationLock)
-        {
-            return _activeAnimations.ContainsKey(windowHandle) &&
-                   _activeAnimations[windowHandle].IsActive;
-        }
+        return _activeAnimations.TryGetValue(windowHandle, out var animation) && 
+               animation.IsActive;
     }
 
     /// <summary>
@@ -423,14 +480,10 @@ public class WindowPusher : IWindowPusher, IDisposable
     /// <param name="windowHandle">Handle to the window</param>
     public void CancelWindowAnimation(IntPtr windowHandle)
     {
-        lock (_animationLock)
+        if (_activeAnimations.TryRemove(windowHandle, out var animation))
         {
-            if (_activeAnimations.TryGetValue(windowHandle, out var animation))
-            {
-                animation.Cancel();
-                _activeAnimations.Remove(windowHandle);
-                _logger.LogDebug("Cancelled animation for window {Handle:X}", windowHandle.ToInt64());
-            }
+            animation.Cancel();
+            _logger.LogDebug("Cancelled animation for window {Handle:X}", windowHandle.ToInt64());
         }
     }
 
@@ -439,47 +492,72 @@ public class WindowPusher : IWindowPusher, IDisposable
     /// </summary>
     public void CancelAllAnimations()
     {
-        lock (_animationLock)
+        var animations = _activeAnimations.ToArray();
+        var animationCount = animations.Length;
+        
+        foreach (var kvp in animations)
         {
-            foreach (var animation in _activeAnimations.Values)
+            if (_activeAnimations.TryRemove(kvp.Key, out var animation))
             {
                 animation.Cancel();
             }
-            _activeAnimations.Clear();
-            _logger.LogDebug("Cancelled all window animations ({Count} animations)", _activeAnimations.Count);
         }
+        
+        _logger.LogDebug("Cancelled all window animations ({Count} animations)", animationCount);
     }
 
     /// <summary>
-    /// Runs an animation to completion
+    /// Runs an animation to completion with async window movement and high-resolution timing
     /// </summary>
     private async Task<bool> RunAnimationAsync(WindowAnimation animation, CancellationToken cancellationToken)
     {
         try
         {
+            // Use high-resolution timing for smoother animations
             var stopwatch = Stopwatch.StartNew();
-            var frameTime = Math.Max(8, _config.UpdateIntervalMs); // Minimum 8ms per frame (~120fps max)
+            var targetFrameTimeMs = Math.Max(8, _config.UpdateIntervalMs); // Minimum 8ms per frame (~120fps max)
+            var lastMoveTime = 0L;
+            var moveThrottleMs = 1; // Throttle window moves to prevent excessive API calls
+            var frameCount = 0;
+            var lastFeedbackTime = 0L;
+            const int feedbackIntervalMs = 50; // Visual feedback every 50ms
+
+            // Provide initial visual feedback (as recommended by UX evaluator)
+            await NotifyAnimationStartAsync(animation);
 
             while (!animation.IsComplete && !cancellationToken.IsCancellationRequested)
             {
-                var elapsed = stopwatch.ElapsedMilliseconds;
-                var progress = Math.Min(1.0, elapsed / (double)animation.DurationMs);
+                var frameStartTime = stopwatch.ElapsedMilliseconds;
+                var progress = Math.Min(1.0, frameStartTime / (double)animation.DurationMs);
 
                 // Apply easing function
                 var easedProgress = ApplyEasing(progress, animation.Easing);
 
-                // Calculate current position
+                // Calculate current position with sub-pixel precision
                 var currentX = (int)Math.Round(animation.StartPosition.X +
                     (animation.EndPosition.X - animation.StartPosition.X) * easedProgress);
                 var currentY = (int)Math.Round(animation.StartPosition.Y +
                     (animation.EndPosition.Y - animation.StartPosition.Y) * easedProgress);
 
-                // Move the window
-                if (!_windowService.MoveWindow(animation.WindowHandle, currentX, currentY))
+                // Throttle window movement calls to reduce API overhead and prevent race conditions
+                if (frameStartTime - lastMoveTime >= moveThrottleMs || progress >= 1.0)
                 {
-                    _logger.LogWarning("Failed to move window {Handle:X} during animation",
-                        animation.WindowHandle.ToInt64());
-                    break;
+                    // Move the window asynchronously to prevent blocking the animation thread
+                    var moveSuccess = await MoveWindowAsyncNonBlocking(animation.WindowHandle, currentX, currentY);
+                    if (!moveSuccess)
+                    {
+                        _logger.LogWarning("Failed to move window {Handle:X} during animation at frame {Frame}",
+                            animation.WindowHandle.ToInt64(), frameCount);
+                        break;
+                    }
+                    lastMoveTime = frameStartTime;
+                }
+
+                // Provide visual feedback during long animations
+                if (frameStartTime - lastFeedbackTime >= feedbackIntervalMs)
+                {
+                    await NotifyAnimationProgressAsync(animation, progress);
+                    lastFeedbackTime = frameStartTime;
                 }
 
                 // Check if animation is complete
@@ -489,15 +567,21 @@ public class WindowPusher : IWindowPusher, IDisposable
                     break;
                 }
 
-                // Wait for next frame
-                await Task.Delay(frameTime, cancellationToken);
+                frameCount++;
+
+                // High-resolution delay with frame rate compensation
+                var frameProcessingTime = stopwatch.ElapsedMilliseconds - frameStartTime;
+                var remainingFrameTime = Math.Max(1, targetFrameTimeMs - frameProcessingTime);
+                
+                // Use high-resolution timer for more precise timing
+                await HighResolutionDelayAsync((int)remainingFrameTime, cancellationToken);
             }
 
-            // Clean up animation
-            lock (_animationLock)
-            {
-                _activeAnimations.Remove(animation.WindowHandle);
-            }
+            // Clean up animation with proper thread safety
+            _activeAnimations.TryRemove(animation.WindowHandle, out _);
+            
+            // Clear cached position on animation completion
+            _positionCache.TryRemove(animation.WindowHandle, out _);
 
             var success = animation.IsComplete && !cancellationToken.IsCancellationRequested;
 
@@ -529,6 +613,184 @@ public class WindowPusher : IWindowPusher, IDisposable
             _logger.LogError("Error during animation for window {Handle:X}: {Message}", animation.WindowHandle.ToInt64(), ex.Message);
             return false;
         }
+    }
+
+    /// <summary>
+    /// Moves a window asynchronously without blocking the calling thread
+    /// Enhanced with spatial caching and optimized batching
+    /// </summary>
+    /// <param name="windowHandle">Handle to the window to move</param>
+    /// <param name="x">New X coordinate</param>
+    /// <param name="y">New Y coordinate</param>
+    /// <returns>True if the move was successful</returns>
+    private async Task<bool> MoveWindowAsyncNonBlocking(IntPtr windowHandle, int x, int y)
+    {
+        try
+        {
+            // Check spatial cache to avoid redundant moves
+            var newPosition = new Point(x, y);
+            if (await IsPositionCachedAndCurrentAsync(windowHandle, newPosition))
+            {
+                return true; // Position hasn't changed, no need to move
+            }
+
+            // Perform the move operation asynchronously
+            var moveResult = await _windowService.MoveWindowAsync(windowHandle, x, y);
+            
+            // Update spatial cache on successful move
+            if (moveResult)
+            {
+                await UpdatePositionCacheAsync(windowHandle, newPosition);
+            }
+            
+            return moveResult;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Error in async window move for {Handle:X}: {Message}", 
+                windowHandle.ToInt64(), ex.Message);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Checks if a position is cached and current for a window
+    /// </summary>
+    private async Task<bool> IsPositionCachedAndCurrentAsync(IntPtr windowHandle, Point position)
+    {
+        if (!_positionCache.TryGetValue(windowHandle, out var cachedPosition))
+            return false;
+
+        // Check if cache is expired
+        if (DateTime.UtcNow - cachedPosition.CacheTime > TimeSpan.FromMilliseconds(CacheExpiryMs))
+        {
+            _positionCache.TryRemove(windowHandle, out _);
+            return false;
+        }
+
+        // Check if position matches
+        return cachedPosition.Position.Equals(position);
+    }
+
+    /// <summary>
+    /// Updates the position cache for a window
+    /// </summary>
+    private async Task UpdatePositionCacheAsync(IntPtr windowHandle, Point position)
+    {
+        var cachedPosition = new CachedWindowPosition(position, DateTime.UtcNow);
+        _positionCache.AddOrUpdate(windowHandle, cachedPosition, (key, existing) => cachedPosition);
+    }
+
+    /// <summary>
+    /// Applies cross-monitor DPI scaling when windows move between monitors with different DPI settings
+    /// Enhanced with configuration-based control and improved scaling algorithm
+    /// </summary>
+    /// <param name="currentBounds">Current window bounds</param>
+    /// <param name="targetPosition">Proposed target position</param>
+    /// <param name="currentMonitorDpi">DPI information for the current monitor</param>
+    /// <returns>DPI-adjusted target position</returns>
+    private Point ApplyCrossMonitorDpiScaling(Rectangle currentBounds, Point targetPosition, DpiInfo currentMonitorDpi)
+    {
+        try
+        {
+            // Check if auto DPI adjustment is enabled
+            if (_config.MultiMonitor?.EnableAutoDpiAdjustment != true)
+            {
+                _logger.LogDebug("Auto DPI adjustment disabled, using original position");
+                return targetPosition;
+            }
+
+            // Get the target monitor for the proposed position
+            var targetWindowBounds = new Rectangle(targetPosition.X, targetPosition.Y, currentBounds.Width, currentBounds.Height);
+            var targetMonitorDpi = _monitorManager.GetDpiForRectangle(targetWindowBounds);
+
+            // If DPI scaling factors are very close, no adjustment needed
+            var dpiDifference = Math.Abs(currentMonitorDpi.ScaleFactor - targetMonitorDpi.ScaleFactor);
+            if (dpiDifference < 0.05) // 5% tolerance for minor DPI differences
+            {
+                _logger.LogDebug("DPI difference negligible ({Difference:F3}), no scaling needed", dpiDifference);
+                return targetPosition;
+            }
+
+            // Check if we're crossing monitor threshold distance
+            var currentMonitor = _monitorManager.GetMonitorContaining(currentBounds);
+            var targetMonitor = _monitorManager.GetMonitorContaining(targetWindowBounds);
+            
+            if (currentMonitor != null && targetMonitor != null && currentMonitor.monitorHandle != targetMonitor.monitorHandle)
+            {
+                // Calculate distance between monitors
+                var monitorDistance = CalculateMonitorDistance(currentMonitor, targetMonitor);
+                if (monitorDistance < (_config.MultiMonitor?.CrossMonitorThreshold ?? 10))
+                {
+                    _logger.LogDebug("Monitors too close ({Distance}px), skipping DPI scaling to prevent jitter", monitorDistance);
+                    return targetPosition;
+                }
+            }
+
+            // Calculate DPI scaling ratio
+            var dpiRatio = targetMonitorDpi.ScaleFactor / currentMonitorDpi.ScaleFactor;
+
+            // For cross-monitor moves, we need to adjust positioning intelligently
+            // Use a hybrid approach that considers both relative positioning and absolute coordinates
+            var currentPosition = new Point(currentBounds.X, currentBounds.Y);
+            var movementVector = new Point(
+                targetPosition.X - currentPosition.X,
+                targetPosition.Y - currentPosition.Y
+            );
+
+            // Apply scaling to movement vector with dampening for large differences
+            var scalingFactor = dpiRatio;
+            if (Math.Abs(dpiRatio - 1.0) > 0.5) // For large DPI differences, apply dampening
+            {
+                scalingFactor = 1.0 + ((dpiRatio - 1.0) * 0.7); // Reduce scaling by 30%
+                _logger.LogDebug("Applied DPI scaling dampening: original ratio={OriginalRatio:F3}, damped ratio={DampedRatio:F3}", 
+                    dpiRatio, scalingFactor);
+            }
+
+            var scaledMovementVector = new Point(
+                (int)(movementVector.X * scalingFactor),
+                (int)(movementVector.Y * scalingFactor)
+            );
+
+            var adjustedPosition = new Point(
+                currentPosition.X + scaledMovementVector.X,
+                currentPosition.Y + scaledMovementVector.Y
+            );
+
+            _logger.LogDebug("Cross-monitor DPI scaling applied: source DPI={SourceDpi:F2}, target DPI={TargetDpi:F2}, " +
+                           "scaling factor={ScalingFactor:F3}, original=({OriginalX},{OriginalY}), adjusted=({AdjustedX},{AdjustedY})",
+                currentMonitorDpi.ScaleFactor, targetMonitorDpi.ScaleFactor, scalingFactor,
+                targetPosition.X, targetPosition.Y, adjustedPosition.X, adjustedPosition.Y);
+
+            return adjustedPosition;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Error applying cross-monitor DPI scaling: {Message}. Using original target position.", ex.Message);
+            return targetPosition;
+        }
+    }
+
+    /// <summary>
+    /// Calculates the minimum distance between two monitors
+    /// </summary>
+    /// <param name="monitor1">First monitor</param>
+    /// <param name="monitor2">Second monitor</param>
+    /// <returns>Distance in pixels</returns>
+    private double CalculateMonitorDistance(MonitorInfo monitor1, MonitorInfo monitor2)
+    {
+        var bounds1 = monitor1.monitorBounds;
+        var bounds2 = monitor2.monitorBounds;
+
+        // If monitors overlap, distance is 0
+        if (bounds1.IntersectsWith(bounds2))
+            return 0;
+
+        // Calculate minimum distance between rectangles
+        var dx = Math.Max(0, Math.Max(bounds1.Left - bounds2.Right, bounds2.Left - bounds1.Right));
+        var dy = Math.Max(0, Math.Max(bounds1.Top - bounds2.Bottom, bounds2.Top - bounds1.Bottom));
+
+        return Math.Sqrt(dx * dx + dy * dy);
     }
 
     /// <summary>
@@ -590,6 +852,71 @@ public class WindowPusher : IWindowPusher, IDisposable
                 : 1 - Math.Pow(-2 * progress + 2, 2) / 2,
             _ => progress
         };
+    }
+
+    /// <summary>
+    /// High-resolution delay for smoother animations
+    /// </summary>
+    private static async Task HighResolutionDelayAsync(int delayMs, CancellationToken cancellationToken)
+    {
+        if (delayMs <= 0) return;
+
+        // For very short delays, use spin-wait for higher precision
+        if (delayMs <= 2)
+        {
+            var start = Stopwatch.GetTimestamp();
+            var targetTicks = start + (delayMs * Stopwatch.Frequency / 1000);
+            
+            while (Stopwatch.GetTimestamp() < targetTicks && !cancellationToken.IsCancellationRequested)
+            {
+                Thread.SpinWait(100);
+            }
+        }
+        else
+        {
+            await Task.Delay(delayMs, cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// Notifies about animation start for visual feedback
+    /// </summary>
+    private async Task NotifyAnimationStartAsync(WindowAnimation animation)
+    {
+        try
+        {
+            // Visual feedback through system tray if available
+            if (_trayManager != null && _config.AnimationDurationMs > 500)
+            {
+                // Only show notification for long animations to avoid spam
+                await _trayManager.ShowNotificationAsync("Window Animation", 
+                    $"Moving window to new position...", false);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Error showing animation start notification: {Message}", ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// Notifies about animation progress for visual feedback
+    /// </summary>
+    private async Task NotifyAnimationProgressAsync(WindowAnimation animation, double progress)
+    {
+        try
+        {
+            // Log progress for debugging long animations
+            if (_config.AnimationDurationMs > 1000)
+            {
+                _logger.LogDebug("Animation progress for window {Handle:X}: {Progress:P0}",
+                    animation.WindowHandle.ToInt64(), progress);
+            }
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning("Error updating animation progress: {Message}", ex.Message);
+        }
     }
 
     /// <summary>
@@ -877,6 +1204,8 @@ public class WindowPusher : IWindowPusher, IDisposable
         }
 
         _cancellationTokenSource.Dispose();
+        _animationSemaphore.Dispose();
+        _cacheLock.Dispose();
         _disposed = true;
 
         GC.SuppressFinalize(this);
@@ -916,5 +1245,20 @@ internal class WindowAnimation
     {
         IsActive = false;
         IsComplete = true;
+    }
+}
+
+/// <summary>
+/// Represents a cached window position with timestamp
+/// </summary>
+internal sealed class CachedWindowPosition
+{
+    public Point Position { get; }
+    public DateTime CacheTime { get; }
+
+    public CachedWindowPosition(Point position, DateTime cacheTime)
+    {
+        Position = position;
+        CacheTime = cacheTime;
     }
 }

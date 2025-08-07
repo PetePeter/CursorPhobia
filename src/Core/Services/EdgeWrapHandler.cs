@@ -108,6 +108,7 @@ public class EdgeWrapHandler
 
     /// <summary>
     /// Calculates wrap destination using smart logic (adjacent if available, otherwise opposite)
+    /// Enhanced to try multiple adjacent monitors and fall back gracefully
     /// </summary>
     /// <param name="windowRect">Current window rectangle</param>
     /// <param name="edgeType">Edge being crossed</param>
@@ -120,9 +121,28 @@ public class EdgeWrapHandler
 
         if (adjacentMonitor != null)
         {
-            return CalculateAdjacentMonitorWrap(windowRect, edgeType, adjacentMonitor);
+            var adjacentPosition = CalculateAdjacentMonitorWrap(windowRect, edgeType, adjacentMonitor);
+            
+            // Verify the adjacent position would be safe and visible
+            var adjacentBounds = new Rectangle(adjacentPosition, windowRect.Size);
+            var adjacentMonitorCheck = _monitorManager.GetMonitorContaining(adjacentBounds);
+            
+            if (adjacentMonitorCheck != null && adjacentMonitorCheck.workAreaBounds.Contains(adjacentBounds))
+            {
+                return adjacentPosition;
+            }
         }
 
+        // Try to find any suitable monitor in the desired direction
+        var allMonitors = _monitorManager.GetAllMonitors();
+        var bestAlternativeMonitor = FindBestAlternativeMonitor(currentMonitor, direction, allMonitors);
+        
+        if (bestAlternativeMonitor != null)
+        {
+            return CalculateAdjacentMonitorWrap(windowRect, edgeType, bestAlternativeMonitor);
+        }
+
+        // Fall back to opposite edge wrapping on the same monitor
         return CalculateOppositeEdgeWrap(windowRect, edgeType, currentMonitor);
     }
 
@@ -218,6 +238,85 @@ public class EdgeWrapHandler
             WrapPreference.Smart => CalculateSmartWrap(windowRect, constrainedEdge, currentMonitor),
             _ => null
         };
+    }
+
+    /// <summary>
+    /// Finds the best alternative monitor for wrapping when the direct adjacent monitor isn't suitable
+    /// </summary>
+    /// <param name="currentMonitor">Current monitor</param>
+    /// <param name="direction">Desired direction</param>
+    /// <param name="allMonitors">All available monitors</param>
+    /// <returns>Best alternative monitor or null</returns>
+    private MonitorInfo? FindBestAlternativeMonitor(MonitorInfo currentMonitor, EdgeDirection direction, List<MonitorInfo> allMonitors)
+    {
+        MonitorInfo? bestAlternative = null;
+        double bestScore = double.MaxValue;
+
+        var currentBounds = currentMonitor.monitorBounds;
+
+        foreach (var monitor in allMonitors)
+        {
+            if (monitor.monitorHandle == currentMonitor.monitorHandle)
+                continue;
+
+            var monitorBounds = monitor.monitorBounds;
+            double score = 0;
+
+            // Calculate directional alignment and distance
+            switch (direction)
+            {
+                case EdgeDirection.Left:
+                    if (monitorBounds.Right <= currentBounds.Left)
+                    {
+                        score = currentBounds.Left - monitorBounds.Right; // Distance penalty
+                        score += Math.Abs(monitorBounds.Y - currentBounds.Y) * 0.5; // Vertical misalignment penalty
+                    }
+                    else
+                        continue; // Not in the right direction
+                    break;
+
+                case EdgeDirection.Right:
+                    if (monitorBounds.Left >= currentBounds.Right)
+                    {
+                        score = monitorBounds.Left - currentBounds.Right;
+                        score += Math.Abs(monitorBounds.Y - currentBounds.Y) * 0.5;
+                    }
+                    else
+                        continue;
+                    break;
+
+                case EdgeDirection.Up:
+                    if (monitorBounds.Bottom <= currentBounds.Top)
+                    {
+                        score = currentBounds.Top - monitorBounds.Bottom;
+                        score += Math.Abs(monitorBounds.X - currentBounds.X) * 0.5;
+                    }
+                    else
+                        continue;
+                    break;
+
+                case EdgeDirection.Down:
+                    if (monitorBounds.Top >= currentBounds.Bottom)
+                    {
+                        score = monitorBounds.Top - currentBounds.Bottom;
+                        score += Math.Abs(monitorBounds.X - currentBounds.X) * 0.5;
+                    }
+                    else
+                        continue;
+                    break;
+
+                default:
+                    continue;
+            }
+
+            if (score < bestScore)
+            {
+                bestScore = score;
+                bestAlternative = monitor;
+            }
+        }
+
+        return bestAlternative;
     }
 
     /// <summary>
