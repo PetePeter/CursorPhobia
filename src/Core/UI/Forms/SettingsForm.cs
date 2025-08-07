@@ -17,9 +17,10 @@ public partial class SettingsForm : Form
     private readonly IMonitorManager? _monitorManager;
     private readonly SettingsViewModel _viewModel;
     private readonly System.Windows.Forms.Timer _previewUpdateTimer;
+    private readonly System.Windows.Forms.ToolTip _validationToolTip;
     private string? _configurationPath;
-    private volatile bool _isInitializing;
-    private volatile bool _isClosing;
+    private bool _isInitializing;
+    private bool _isClosing;
 
     public SettingsForm(
         IConfigurationService configService,
@@ -42,6 +43,14 @@ public partial class SettingsForm : Form
             Enabled = false
         };
         _previewUpdateTimer.Tick += OnPreviewUpdateTimerTick;
+
+        // Single ToolTip instance for validation errors
+        _validationToolTip = new System.Windows.Forms.ToolTip
+        {
+            ToolTipTitle = "Validation Error",
+            ToolTipIcon = ToolTipIcon.Error,
+            IsBalloon = true
+        };
 
         InitializeComponent();
         SetupDataBindings();
@@ -267,25 +276,13 @@ public partial class SettingsForm : Form
         }
     }
 
-    protected override void OnLoad(EventArgs e)
+    protected override async void OnLoad(EventArgs e)
     {
         base.OnLoad(e);
 
-        // Load configuration when form loads
-        _ = Task.Run(async () =>
-        {
-            await LoadConfigurationAsync();
-
-            // Update UI on main thread
-            if (InvokeRequired)
-            {
-                Invoke(() => UpdatePreview());
-            }
-            else
-            {
-                UpdatePreview();
-            }
-        });
+        // Load on UI thread to avoid cross-thread flags
+        await LoadConfigurationAsync();
+        UpdatePreview();
     }
 
     protected override void OnFormClosing(FormClosingEventArgs e)
@@ -363,7 +360,10 @@ public partial class SettingsForm : Form
                 _viewModel.PropertyChanged -= OnViewModelPropertyChanged;
             }
 
+            // Unsubscribe and dispose resources
+            _previewUpdateTimer.Tick -= OnPreviewUpdateTimerTick;
             _previewUpdateTimer?.Dispose();
+            _validationToolTip?.Dispose();
         }
         base.Dispose(disposing);
     }
@@ -729,13 +729,7 @@ public partial class SettingsForm : Form
             control.BackColor = errorColor;
 
             // Add tooltip with error message
-            var toolTip = new ToolTip
-            {
-                ToolTipTitle = "Validation Error",
-                ToolTipIcon = ToolTipIcon.Error,
-                IsBalloon = true
-            };
-            toolTip.SetToolTip(control, errorMessage);
+            _validationToolTip.SetToolTip(control, errorMessage);
         }
     }
 
