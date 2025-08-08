@@ -9,7 +9,7 @@ namespace CursorPhobia.Core.UI.Forms
         private TabPage generalTabPage;
         private TabPage behaviorTabPage;
         private TabPage multiMonitorTabPage;
-        private TabPage advancedTabPage;
+        // advancedTabPage merged with generalTabPage in Phase 5
         
         // General Tab Controls
         private CheckBox enableCtrlOverrideCheckBox;
@@ -59,10 +59,10 @@ namespace CursorPhobia.Core.UI.Forms
         {
             SuspendLayout();
             
-            // Form properties
+            // Form properties - optimized size for 3-tab layout in Phase 5
             Text = "CursorPhobia Settings";
-            Size = new Size(600, 500);
-            MinimumSize = new Size(550, 450);
+            Size = new Size(580, 480);
+            MinimumSize = new Size(520, 420);
             MaximizeBox = false;
             MinimizeBox = false;
             ShowInTaskbar = false;
@@ -77,18 +77,16 @@ namespace CursorPhobia.Core.UI.Forms
                 Padding = new Point(8, 6)
             };
             
-            // Initialize tab pages
+            // Initialize tab pages - Advanced tab merged with General in Phase 5
             InitializeGeneralTab();
             InitializeBehaviorTab();
             InitializeMultiMonitorTab();
-            InitializeAdvancedTab();
             
-            // Add tabs to control
+            // Add tabs to control - streamlined to 3 essential tabs
             tabControl.TabPages.AddRange(new TabPage[] {
                 generalTabPage,
                 behaviorTabPage,
-                multiMonitorTabPage,
-                advancedTabPage
+                multiMonitorTabPage
             });
             
             // Initialize form buttons
@@ -102,7 +100,7 @@ namespace CursorPhobia.Core.UI.Forms
 
         private void InitializeGeneralTab()
         {
-            generalTabPage = new TabPage("General")
+            generalTabPage = new TabPage("Settings")
             {
                 Padding = new Padding(12),
                 UseVisualStyleBackColor = true
@@ -135,15 +133,23 @@ namespace CursorPhobia.Core.UI.Forms
                 UseVisualStyleBackColor = true
             };
 
-            // Add help text
-            var generalHelpLabel = new Label
+            // Reset to Defaults button (moved from Advanced tab in Phase 5)
+            resetButton = new Button
             {
-                Text = "General settings control the basic behavior of CursorPhobia.\n\n" +
-                       "• CTRL Override: Hold CTRL to temporarily disable window pushing\n" +
-                       "• All Windows: Apply to all windows, not just the active window\n" +
-                       "• Start with Windows: Automatically start CursorPhobia when Windows starts",
+                Text = "Reset to Defaults",
                 Location = new Point(12, 110),
-                Size = new Size(550, 80),
+                Size = new Size(120, 23),
+                UseVisualStyleBackColor = true
+            };
+
+            // Performance and configuration info (consolidated from Advanced tab)
+            var systemInfoLabel = new Label
+            {
+                Text = "Performance settings are automatically optimized for your system.\n" +
+                       "Configuration settings are saved automatically when you apply changes.\n" +
+                       "Your personalized settings will be remembered between sessions.",
+                Location = new Point(12, 145),
+                Size = new Size(550, 60),
                 ForeColor = SystemColors.GrayText
             };
 
@@ -151,7 +157,8 @@ namespace CursorPhobia.Core.UI.Forms
                 enableCtrlOverrideCheckBox,
                 applyToAllWindowsCheckBox,
                 startWithWindowsCheckBox,
-                generalHelpLabel
+                resetButton,
+                systemInfoLabel
             });
         }
 
@@ -311,7 +318,7 @@ namespace CursorPhobia.Core.UI.Forms
 
         private void InitializeMultiMonitorTab()
         {
-            multiMonitorTabPage = new TabPage("Multi-Monitor")
+            multiMonitorTabPage = new TabPage("Monitors")
             {
                 Padding = new Padding(12),
                 UseVisualStyleBackColor = true
@@ -450,58 +457,8 @@ namespace CursorPhobia.Core.UI.Forms
             });
         }
 
-        private void InitializeAdvancedTab()
-        {
-            advancedTabPage = new TabPage("Advanced")
-            {
-                Padding = new Padding(12),
-                UseVisualStyleBackColor = true
-            };
-
-            int yPos = 12;
-
-            // Performance Settings are now hardcoded to smart defaults
-            // Removed complex performance tuning controls per Issue #10 Phase 3
-            var performanceInfoLabel = new Label
-            {
-                Text = "Performance settings are automatically optimized for your system.\n" +
-                       "CursorPhobia uses intelligent defaults that balance responsiveness\n" +
-                       "with system resource usage - no manual tuning required.",
-                Location = new Point(12, yPos),
-                Size = new Size(550, 60),
-                ForeColor = SystemColors.GrayText
-            };
-
-            yPos += 70;
-
-            // Configuration management removed in Phase 4 to reduce cognitive load
-            // Import/Export and preset functionality removed per user feedback
-            var configInfoLabel = new Label
-            {
-                Text = "Configuration settings are automatically saved when you click OK or Apply.\n" +
-                       "Your personalized settings will be remembered between sessions.",
-                Location = new Point(12, yPos),
-                Size = new Size(550, 40),
-                ForeColor = SystemColors.GrayText
-            };
-
-            yPos += 50;
-
-            // Keep only Reset button for emergency situations
-            resetButton = new Button
-            {
-                Text = "Reset to Defaults",
-                Location = new Point(12, yPos),
-                Size = new Size(120, 23),
-                UseVisualStyleBackColor = true
-            };
-
-            advancedTabPage.Controls.AddRange(new Control[] {
-                performanceInfoLabel,
-                configInfoLabel,
-                resetButton
-            });
-        }
+        // InitializeAdvancedTab() method removed in Phase 5
+        // Advanced tab functionality consolidated into General tab for better UX
 
         private void InitializeFormButtons()
         {
