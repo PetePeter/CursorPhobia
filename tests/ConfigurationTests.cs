@@ -14,17 +14,22 @@ public class CursorPhobiaConfigurationTests
         // Act
         var config = new CursorPhobiaConfiguration();
 
-        // Assert
+        // Assert - Only test user-configurable properties
         Assert.Equal(50, config.ProximityThreshold);
         Assert.Equal(100, config.PushDistance);
-        Assert.Equal(16, config.UpdateIntervalMs);
-        Assert.Equal(33, config.MaxUpdateIntervalMs);
         Assert.True(config.EnableCtrlOverride);
-        Assert.Equal(20, config.ScreenEdgeBuffer);
         Assert.False(config.ApplyToAllWindows);
-        Assert.Equal(200, config.AnimationDurationMs);
-        Assert.True(config.EnableAnimations);
-        Assert.Equal(AnimationEasing.EaseOut, config.AnimationEasing);
+        Assert.Equal(5000, config.HoverTimeoutMs);
+        Assert.True(config.EnableHoverTimeout);
+        Assert.NotNull(config.MultiMonitor);
+        
+        // Assert hardcoded values are set (these are no longer user-configurable)
+        Assert.Equal(HardcodedDefaults.UpdateIntervalMs, config.UpdateIntervalMs);
+        Assert.Equal(HardcodedDefaults.MaxUpdateIntervalMs, config.MaxUpdateIntervalMs);
+        Assert.Equal(HardcodedDefaults.ScreenEdgeBuffer, config.ScreenEdgeBuffer);
+        Assert.Equal(HardcodedDefaults.AnimationDurationMs, config.AnimationDurationMs);
+        Assert.Equal(HardcodedDefaults.EnableAnimations, config.EnableAnimations);
+        Assert.Equal(HardcodedDefaults.AnimationEasing, config.AnimationEasing);
     }
 
     [Fact]
@@ -72,69 +77,9 @@ public class CursorPhobiaConfigurationTests
         Assert.Contains(expectedError, errors);
     }
 
-    [Theory]
-    [InlineData(0, "UpdateIntervalMs must be at least 1ms")]
-    [InlineData(100, "UpdateIntervalMs cannot be greater than MaxUpdateIntervalMs")]
-    public void Validate_WithInvalidUpdateInterval_ReturnsError(int interval, string expectedError)
-    {
-        // Arrange
-        var config = new CursorPhobiaConfiguration
-        {
-            UpdateIntervalMs = interval,
-            MaxUpdateIntervalMs = 33
-        };
 
-        // Act
-        var errors = config.Validate();
 
-        // Assert
-        Assert.Contains(expectedError, errors);
-    }
 
-    [Theory]
-    [InlineData(5, "MaxUpdateIntervalMs must be at least 10ms to prevent excessive CPU usage")]
-    [InlineData(1500, "MaxUpdateIntervalMs should not exceed 1000ms for responsiveness")]
-    public void Validate_WithInvalidMaxUpdateInterval_ReturnsError(int maxInterval, string expectedError)
-    {
-        // Arrange
-        var config = new CursorPhobiaConfiguration { MaxUpdateIntervalMs = maxInterval };
-
-        // Act
-        var errors = config.Validate();
-
-        // Assert
-        Assert.Contains(expectedError, errors);
-    }
-
-    [Theory]
-    [InlineData(-1, "ScreenEdgeBuffer cannot be negative")]
-    [InlineData(150, "ScreenEdgeBuffer should not exceed 100 pixels for usability")]
-    public void Validate_WithInvalidScreenEdgeBuffer_ReturnsError(int buffer, string expectedError)
-    {
-        // Arrange
-        var config = new CursorPhobiaConfiguration { ScreenEdgeBuffer = buffer };
-
-        // Act
-        var errors = config.Validate();
-
-        // Assert
-        Assert.Contains(expectedError, errors);
-    }
-
-    [Theory]
-    [InlineData(-1, "AnimationDurationMs cannot be negative")]
-    [InlineData(2500, "AnimationDurationMs should not exceed 2000ms for usability")]
-    public void Validate_WithInvalidAnimationDuration_ReturnsError(int duration, string expectedError)
-    {
-        // Arrange
-        var config = new CursorPhobiaConfiguration { AnimationDurationMs = duration };
-
-        // Act
-        var errors = config.Validate();
-
-        // Assert
-        Assert.Contains(expectedError, errors);
-    }
 
     [Fact]
     public void Validate_WithMultipleErrors_ReturnsAllErrors()
@@ -144,7 +89,7 @@ public class CursorPhobiaConfigurationTests
         {
             ProximityThreshold = -1,
             PushDistance = 0,
-            UpdateIntervalMs = 0
+            HoverTimeoutMs = 50 // Invalid - too low
         };
 
         // Act
@@ -154,7 +99,7 @@ public class CursorPhobiaConfigurationTests
         Assert.True(errors.Count >= 3);
         Assert.Contains("ProximityThreshold must be greater than 0", errors);
         Assert.Contains("PushDistance must be greater than 0", errors);
-        Assert.Contains("UpdateIntervalMs must be at least 1ms", errors);
+        Assert.Contains("HoverTimeoutMs must be at least 100ms", errors);
     }
 
     [Fact]
@@ -177,6 +122,7 @@ public class CursorPhobiaConfigurationTests
         // Assert
         Assert.NotNull(config);
         Assert.Empty(config.Validate());
+        // Note: UpdateIntervalMs and MaxUpdateIntervalMs are now set but hardcoded values are used in practice
         Assert.Equal(33, config.UpdateIntervalMs);
         Assert.Equal(100, config.MaxUpdateIntervalMs);
     }
@@ -190,6 +136,7 @@ public class CursorPhobiaConfigurationTests
         // Assert
         Assert.NotNull(config);
         Assert.Empty(config.Validate());
+        // Note: UpdateIntervalMs and MaxUpdateIntervalMs are now set but hardcoded values are used in practice
         Assert.Equal(8, config.UpdateIntervalMs);
         Assert.Equal(25, config.MaxUpdateIntervalMs);
     }
@@ -200,26 +147,34 @@ public class CursorPhobiaConfigurationTests
         // Arrange
         var config = new CursorPhobiaConfiguration();
 
-        // Act
+        // Act - Only test user-configurable properties
         config.ProximityThreshold = 75;
         config.PushDistance = 150;
+        config.EnableCtrlOverride = false;
+        config.ApplyToAllWindows = true;
+        config.HoverTimeoutMs = 3000;
+        config.EnableHoverTimeout = false;
+        
+        // These properties can still be set but use hardcoded values in practice
         config.UpdateIntervalMs = 20;
         config.MaxUpdateIntervalMs = 60;
-        config.EnableCtrlOverride = false;
         config.ScreenEdgeBuffer = 30;
-        config.ApplyToAllWindows = true;
         config.AnimationDurationMs = 300;
         config.EnableAnimations = false;
         config.AnimationEasing = AnimationEasing.EaseIn;
 
-        // Assert
+        // Assert - Test user-configurable properties
         Assert.Equal(75, config.ProximityThreshold);
         Assert.Equal(150, config.PushDistance);
+        Assert.False(config.EnableCtrlOverride);
+        Assert.True(config.ApplyToAllWindows);
+        Assert.Equal(3000, config.HoverTimeoutMs);
+        Assert.False(config.EnableHoverTimeout);
+        
+        // Assert - These properties can be set but hardcoded values are used in practice
         Assert.Equal(20, config.UpdateIntervalMs);
         Assert.Equal(60, config.MaxUpdateIntervalMs);
-        Assert.False(config.EnableCtrlOverride);
         Assert.Equal(30, config.ScreenEdgeBuffer);
-        Assert.True(config.ApplyToAllWindows);
         Assert.Equal(300, config.AnimationDurationMs);
         Assert.False(config.EnableAnimations);
         Assert.Equal(AnimationEasing.EaseIn, config.AnimationEasing);
@@ -391,21 +346,21 @@ public class ProximityConfigurationTests
         // Assert
         Assert.NotNull(config);
         
-        // Verify performance settings
-        Assert.Equal(16, config.UpdateIntervalMs); // ~60 FPS
-        Assert.Equal(33, config.MaxUpdateIntervalMs); // ~30 FPS minimum
+        // Verify hardcoded performance settings match constants
+        Assert.Equal(HardcodedDefaults.UpdateIntervalMs, config.UpdateIntervalMs);
+        Assert.Equal(HardcodedDefaults.MaxUpdateIntervalMs, config.MaxUpdateIntervalMs);
         
-        // Verify spatial settings
-        Assert.Equal(50, config.ProximityThreshold);
-        Assert.Equal(100, config.PushDistance);
-        Assert.Equal(20, config.ScreenEdgeBuffer);
-        Assert.Equal(50, config.CtrlReleaseToleranceDistance);
-        Assert.Equal(30, config.AlwaysOnTopRepelBorderDistance);
+        // Verify hardcoded spatial settings match constants
+        Assert.Equal(HardcodedDefaults.ProximityThreshold, config.ProximityThreshold);
+        Assert.Equal(HardcodedDefaults.PushDistance, config.PushDistance);
+        Assert.Equal(HardcodedDefaults.ScreenEdgeBuffer, config.ScreenEdgeBuffer);
+        Assert.Equal(HardcodedDefaults.CtrlReleaseToleranceDistance, config.CtrlReleaseToleranceDistance);
+        Assert.Equal(HardcodedDefaults.AlwaysOnTopRepelBorderDistance, config.AlwaysOnTopRepelBorderDistance);
         
-        // Verify animation settings
-        Assert.True(config.EnableAnimations);
-        Assert.Equal(200, config.AnimationDurationMs);
-        Assert.Equal(AnimationEasing.EaseOut, config.AnimationEasing);
+        // Verify hardcoded animation settings match constants
+        Assert.Equal(HardcodedDefaults.EnableAnimations, config.EnableAnimations);
+        Assert.Equal(HardcodedDefaults.AnimationDurationMs, config.AnimationDurationMs);
+        Assert.Equal(HardcodedDefaults.AnimationEasing, config.AnimationEasing);
         
         // Verify default feature settings
         Assert.True(config.EnableCtrlOverride);
@@ -417,6 +372,111 @@ public class ProximityConfigurationTests
         // Verify configuration is valid
         var errors = config.Validate();
         Assert.Empty(errors);
+    }
+}
+
+/// <summary>
+/// Unit tests for HardcodedDefaults constants
+/// </summary>
+public class HardcodedDefaultsTests
+{
+    [Fact]
+    public void HardcodedDefaults_UpdateIntervalMs_HasOptimalValue()
+    {
+        // Assert - ~60 FPS for smooth tracking
+        Assert.Equal(16, HardcodedDefaults.UpdateIntervalMs);
+    }
+
+    [Fact]
+    public void HardcodedDefaults_MaxUpdateIntervalMs_HasOptimalValue()
+    {
+        // Assert - ~30 FPS minimum for responsiveness under load
+        Assert.Equal(33, HardcodedDefaults.MaxUpdateIntervalMs);
+    }
+
+    [Fact]
+    public void HardcodedDefaults_ScreenEdgeBuffer_HasOptimalValue()
+    {
+        // Assert - Reasonable buffer to prevent windows getting stuck at edges
+        Assert.Equal(20, HardcodedDefaults.ScreenEdgeBuffer);
+    }
+
+    [Fact]
+    public void HardcodedDefaults_ProximityThreshold_HasOptimalValue()
+    {
+        // Assert - Balanced to avoid accidental triggers while maintaining responsiveness
+        Assert.Equal(50, HardcodedDefaults.ProximityThreshold);
+    }
+
+    [Fact]
+    public void HardcodedDefaults_PushDistance_HasOptimalValue()
+    {
+        // Assert - Moves windows far enough to be useful but not disruptive
+        Assert.Equal(100, HardcodedDefaults.PushDistance);
+    }
+
+    [Fact]
+    public void HardcodedDefaults_CtrlReleaseToleranceDistance_HasOptimalValue()
+    {
+        // Assert - Allows fine cursor movements without re-triggering phobia
+        Assert.Equal(50, HardcodedDefaults.CtrlReleaseToleranceDistance);
+    }
+
+    [Fact]
+    public void HardcodedDefaults_AlwaysOnTopRepelBorderDistance_HasOptimalValue()
+    {
+        // Assert - Provides smooth interaction with always-on-top windows
+        Assert.Equal(30, HardcodedDefaults.AlwaysOnTopRepelBorderDistance);
+    }
+
+    [Fact]
+    public void HardcodedDefaults_EnableAnimations_HasOptimalValue()
+    {
+        // Assert - Animations improve user experience
+        Assert.True(HardcodedDefaults.EnableAnimations);
+    }
+
+    [Fact]
+    public void HardcodedDefaults_AnimationDurationMs_HasOptimalValue()
+    {
+        // Assert - Fast enough to be responsive, slow enough to be smooth
+        Assert.Equal(200, HardcodedDefaults.AnimationDurationMs);
+    }
+
+    [Fact]
+    public void HardcodedDefaults_AnimationEasing_HasOptimalValue()
+    {
+        // Assert - EaseOut provides natural deceleration
+        Assert.Equal(AnimationEasing.EaseOut, HardcodedDefaults.AnimationEasing);
+    }
+
+    [Fact]
+    public void HardcodedDefaults_PerformanceValues_AreConsistent()
+    {
+        // Assert - UpdateIntervalMs should be less than MaxUpdateIntervalMs
+        Assert.True(HardcodedDefaults.UpdateIntervalMs < HardcodedDefaults.MaxUpdateIntervalMs);
+        
+        // Assert - Both should be positive
+        Assert.True(HardcodedDefaults.UpdateIntervalMs > 0);
+        Assert.True(HardcodedDefaults.MaxUpdateIntervalMs > 0);
+    }
+
+    [Fact]
+    public void HardcodedDefaults_SpatialValues_AreReasonable()
+    {
+        // Assert - All spatial values should be positive
+        Assert.True(HardcodedDefaults.ProximityThreshold > 0);
+        Assert.True(HardcodedDefaults.PushDistance > 0);
+        Assert.True(HardcodedDefaults.ScreenEdgeBuffer > 0);
+        Assert.True(HardcodedDefaults.CtrlReleaseToleranceDistance > 0);
+        Assert.True(HardcodedDefaults.AlwaysOnTopRepelBorderDistance > 0);
+        
+        // Assert - PushDistance should be larger than ProximityThreshold for effectiveness
+        Assert.True(HardcodedDefaults.PushDistance > HardcodedDefaults.ProximityThreshold);
+        
+        // Assert - Animation duration should be reasonable (not too fast, not too slow)
+        Assert.True(HardcodedDefaults.AnimationDurationMs >= 100);
+        Assert.True(HardcodedDefaults.AnimationDurationMs <= 1000);
     }
 }
 

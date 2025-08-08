@@ -224,7 +224,8 @@ public class SettingsViewModelTests
     {
         // Arrange
         var config = CursorPhobiaConfiguration.CreateDefault();
-        config.ProximityThreshold = -1; // Invalid value
+        config.ProximityThreshold = -1; // Invalid value - this is still user-configurable
+        config.HoverTimeoutMs = 50; // Invalid value - too low
         var viewModel = new SettingsViewModel(config);
 
         // Act
@@ -233,6 +234,7 @@ public class SettingsViewModelTests
         // Assert
         Assert.NotEmpty(errors);
         Assert.Contains(errors, e => e.Contains("ProximityThreshold"));
+        Assert.Contains(errors, e => e.Contains("HoverTimeoutMs"));
     }
 
     [Fact]
@@ -345,5 +347,52 @@ public class SettingsViewModelTests
 
         // Assert
         Assert.False(viewModel.HasUnsavedChanges);
+    }
+
+    [Fact]
+    public void SettingsViewModel_HardcodedValues_AreExposedCorrectly()
+    {
+        // Arrange
+        var config = CursorPhobiaConfiguration.CreateDefault();
+        var viewModel = new SettingsViewModel(config);
+
+        // Act & Assert - Hardcoded values should match constants
+        Assert.Equal(HardcodedDefaults.UpdateIntervalMs, viewModel.CurrentUpdateInterval);
+        
+        // Performance settings should show hardcoded values
+        var perfSettings = viewModel.CurrentPerformanceSettings;
+        Assert.Contains(HardcodedDefaults.UpdateIntervalMs.ToString(), perfSettings);
+        Assert.Contains(HardcodedDefaults.MaxUpdateIntervalMs.ToString(), perfSettings);
+        Assert.Contains(HardcodedDefaults.ScreenEdgeBuffer.ToString(), perfSettings);
+        
+        // Animation settings should show hardcoded values
+        var animSettings = viewModel.CurrentAnimationSettings;
+        Assert.Contains(HardcodedDefaults.EnableAnimations.ToString(), animSettings);
+        Assert.Contains(HardcodedDefaults.AnimationDurationMs.ToString(), animSettings);
+        Assert.Contains(HardcodedDefaults.AnimationEasing.ToString(), animSettings);
+    }
+
+    [Fact]
+    public void SettingsViewModel_ConfigurationChange_DoesNotAffectHardcodedValues()
+    {
+        // Arrange
+        var config1 = CursorPhobiaConfiguration.CreateDefault();
+        var config2 = CursorPhobiaConfiguration.CreatePerformanceOptimized();
+        var viewModel = new SettingsViewModel(config1);
+
+        var originalUpdateInterval = viewModel.CurrentUpdateInterval;
+        var originalPerfSettings = viewModel.CurrentPerformanceSettings;
+        var originalAnimSettings = viewModel.CurrentAnimationSettings;
+
+        // Act
+        viewModel.Configuration = config2;
+
+        // Assert - Hardcoded values should remain the same regardless of configuration
+        Assert.Equal(originalUpdateInterval, viewModel.CurrentUpdateInterval);
+        Assert.Equal(originalPerfSettings, viewModel.CurrentPerformanceSettings);
+        Assert.Equal(originalAnimSettings, viewModel.CurrentAnimationSettings);
+        
+        // Assert - Should still match hardcoded defaults
+        Assert.Equal(HardcodedDefaults.UpdateIntervalMs, viewModel.CurrentUpdateInterval);
     }
 }
