@@ -74,37 +74,28 @@ public class SettingsViewModel : INotifyPropertyChanged
         set => SetConfigProperty(_config.ApplyToAllWindows, value, v => _config.ApplyToAllWindows = v);
     }
 
-    // Animation Settings Properties
-    public bool EnableAnimations
-    {
-        get => _config.EnableAnimations;
-        set => SetConfigProperty(_config.EnableAnimations, value, v => _config.EnableAnimations = v);
-    }
+    // Display-only properties for showing hardcoded values in UI tooltips
+    /// <summary>
+    /// Current update interval setting (hardcoded value)
+    /// </summary>
+    public int CurrentUpdateInterval => HardcodedDefaults.UpdateIntervalMs;
 
-    public int AnimationDurationMs
-    {
-        get => _config.AnimationDurationMs;
-        set => SetConfigProperty(_config.AnimationDurationMs, value, v => _config.AnimationDurationMs = v);
-    }
+    /// <summary>
+    /// Current maximum update interval setting (hardcoded value)
+    /// </summary>
+    public int CurrentMaxUpdateInterval => HardcodedDefaults.MaxUpdateIntervalMs;
 
-    public AnimationEasing AnimationEasing
-    {
-        get => _config.AnimationEasing;
-        set => SetConfigProperty(_config.AnimationEasing, value, v => _config.AnimationEasing = v);
-    }
+    /// <summary>
+    /// Current animation settings information (hardcoded values)
+    /// </summary>
+    public string CurrentAnimationSettings => 
+        $"Enabled: {HardcodedDefaults.EnableAnimations}, Duration: {HardcodedDefaults.AnimationDurationMs}ms, Easing: {HardcodedDefaults.AnimationEasing}";
 
-    // Timing Settings Properties
-    public int UpdateIntervalMs
-    {
-        get => _config.UpdateIntervalMs;
-        set => SetConfigProperty(_config.UpdateIntervalMs, value, v => _config.UpdateIntervalMs = v);
-    }
-
-    public int MaxUpdateIntervalMs
-    {
-        get => _config.MaxUpdateIntervalMs;
-        set => SetConfigProperty(_config.MaxUpdateIntervalMs, value, v => _config.MaxUpdateIntervalMs = v);
-    }
+    /// <summary>
+    /// Current performance settings information (hardcoded values)
+    /// </summary>
+    public string CurrentPerformanceSettings =>
+        $"Update: {HardcodedDefaults.UpdateIntervalMs}ms (~{1000 / HardcodedDefaults.UpdateIntervalMs}fps), Max: {HardcodedDefaults.MaxUpdateIntervalMs}ms (~{1000 / HardcodedDefaults.MaxUpdateIntervalMs}fps), Buffer: {HardcodedDefaults.ScreenEdgeBuffer}px";
 
     public int HoverTimeoutMs
     {
@@ -149,12 +140,20 @@ public class SettingsViewModel : INotifyPropertyChanged
         }
     }
 
-    // Advanced Settings Properties
-    public int ScreenEdgeBuffer
-    {
-        get => _config.ScreenEdgeBuffer;
-        set => SetConfigProperty(_config.ScreenEdgeBuffer, value, v => _config.ScreenEdgeBuffer = v);
-    }
+    /// <summary>
+    /// Current screen edge buffer setting (hardcoded value)
+    /// </summary>
+    public int CurrentScreenEdgeBuffer => HardcodedDefaults.ScreenEdgeBuffer;
+
+    /// <summary>
+    /// Current CTRL release tolerance distance (hardcoded value)
+    /// </summary>
+    public int CurrentCtrlReleaseToleranceDistance => HardcodedDefaults.CtrlReleaseToleranceDistance;
+
+    /// <summary>
+    /// Current always-on-top repel border distance (hardcoded value)
+    /// </summary>
+    public int CurrentAlwaysOnTopRepelBorderDistance => HardcodedDefaults.AlwaysOnTopRepelBorderDistance;
 
     // Auto-start functionality (not part of configuration, handled separately)
     private bool _startWithWindows;
@@ -218,17 +217,20 @@ public class SettingsViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(PushDistance));
         OnPropertyChanged(nameof(EnableCtrlOverride));
         OnPropertyChanged(nameof(ApplyToAllWindows));
-        OnPropertyChanged(nameof(EnableAnimations));
-        OnPropertyChanged(nameof(AnimationDurationMs));
-        OnPropertyChanged(nameof(AnimationEasing));
-        OnPropertyChanged(nameof(UpdateIntervalMs));
-        OnPropertyChanged(nameof(MaxUpdateIntervalMs));
         OnPropertyChanged(nameof(HoverTimeoutMs));
         OnPropertyChanged(nameof(EnableHoverTimeout));
         OnPropertyChanged(nameof(EnableWrapping));
         OnPropertyChanged(nameof(PreferredWrapBehavior));
         OnPropertyChanged(nameof(RespectTaskbarAreas));
-        OnPropertyChanged(nameof(ScreenEdgeBuffer));
+        
+        // Refresh display-only properties for hardcoded values
+        OnPropertyChanged(nameof(CurrentUpdateInterval));
+        OnPropertyChanged(nameof(CurrentMaxUpdateInterval));
+        OnPropertyChanged(nameof(CurrentAnimationSettings));
+        OnPropertyChanged(nameof(CurrentPerformanceSettings));
+        OnPropertyChanged(nameof(CurrentScreenEdgeBuffer));
+        OnPropertyChanged(nameof(CurrentCtrlReleaseToleranceDistance));
+        OnPropertyChanged(nameof(CurrentAlwaysOnTopRepelBorderDistance));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

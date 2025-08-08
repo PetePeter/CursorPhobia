@@ -116,65 +116,46 @@ public class SettingsViewModelTests
     }
 
     [Fact]
-    public void SettingsViewModel_EnableAnimations_PropertyNotification()
+    public void SettingsViewModel_CurrentAnimationSettings_ReturnsHardcodedValues()
     {
         // Arrange
         var config = CursorPhobiaConfiguration.CreateDefault();
         var viewModel = new SettingsViewModel(config);
-        var changedProperties = new List<string>();
-
-        viewModel.PropertyChanged += (s, e) => changedProperties.Add(e.PropertyName!);
 
         // Act
-        viewModel.EnableAnimations = !config.EnableAnimations;
+        var animationSettings = viewModel.CurrentAnimationSettings;
 
         // Assert
-        Assert.Equal(viewModel.EnableAnimations, config.EnableAnimations);
-        Assert.Contains(nameof(SettingsViewModel.EnableAnimations), changedProperties);
-        Assert.Contains(nameof(SettingsViewModel.HasUnsavedChanges), changedProperties);
-        Assert.True(viewModel.HasUnsavedChanges);
+        Assert.Contains(HardcodedDefaults.EnableAnimations.ToString(), animationSettings);
+        Assert.Contains(HardcodedDefaults.AnimationDurationMs.ToString(), animationSettings);
+        Assert.Contains(HardcodedDefaults.AnimationEasing.ToString(), animationSettings);
     }
 
     [Fact]
-    public void SettingsViewModel_AnimationDurationMs_PropertyNotification()
+    public void SettingsViewModel_CurrentUpdateInterval_ReturnsHardcodedValue()
     {
         // Arrange
         var config = CursorPhobiaConfiguration.CreateDefault();
         var viewModel = new SettingsViewModel(config);
-        var changedProperties = new List<string>();
 
-        viewModel.PropertyChanged += (s, e) => changedProperties.Add(e.PropertyName!);
-
-        // Act
-        viewModel.AnimationDurationMs = 750;
-
-        // Assert
-        Assert.Equal(750, viewModel.AnimationDurationMs);
-        Assert.Equal(750, config.AnimationDurationMs);
-        Assert.Contains(nameof(SettingsViewModel.AnimationDurationMs), changedProperties);
-        Assert.Contains(nameof(SettingsViewModel.HasUnsavedChanges), changedProperties);
-        Assert.True(viewModel.HasUnsavedChanges);
+        // Act & Assert
+        Assert.Equal(HardcodedDefaults.UpdateIntervalMs, viewModel.CurrentUpdateInterval);
     }
 
     [Fact]
-    public void SettingsViewModel_AnimationEasing_PropertyNotification()
+    public void SettingsViewModel_CurrentPerformanceSettings_ReturnsHardcodedValues()
     {
         // Arrange
         var config = CursorPhobiaConfiguration.CreateDefault();
         var viewModel = new SettingsViewModel(config);
-        var changedProperties = new List<string>();
-
-        viewModel.PropertyChanged += (s, e) => changedProperties.Add(e.PropertyName!);
 
         // Act
-        viewModel.AnimationEasing = AnimationEasing.EaseIn;
+        var performanceSettings = viewModel.CurrentPerformanceSettings;
 
         // Assert
-        Assert.Equal(AnimationEasing.EaseIn, viewModel.AnimationEasing);
-        Assert.Equal(AnimationEasing.EaseIn, config.AnimationEasing);
-        Assert.Contains(nameof(SettingsViewModel.AnimationEasing), changedProperties);
-        Assert.Contains(nameof(SettingsViewModel.HasUnsavedChanges), changedProperties);
-        Assert.True(viewModel.HasUnsavedChanges);
+        Assert.Contains(HardcodedDefaults.UpdateIntervalMs.ToString(), performanceSettings);
+        Assert.Contains(HardcodedDefaults.MaxUpdateIntervalMs.ToString(), performanceSettings);
+        Assert.Contains(HardcodedDefaults.ScreenEdgeBuffer.ToString(), performanceSettings);
     }
 
     [Fact]
@@ -289,10 +270,11 @@ public class SettingsViewModelTests
         viewModel.ApplyPreset("performance");
 
         // Assert
-        var performanceConfig = CursorPhobiaConfiguration.CreatePerformanceOptimized();
-        Assert.Equal(performanceConfig.UpdateIntervalMs, viewModel.UpdateIntervalMs);
+        // Note: UpdateIntervalMs is now hardcoded, so we just verify the preset applied successfully
         Assert.Contains(nameof(SettingsViewModel.HasUnsavedChanges), changedProperties);
         Assert.True(viewModel.HasUnsavedChanges);
+        // Verify that hardcoded values are still accessible
+        Assert.Equal(HardcodedDefaults.UpdateIntervalMs, viewModel.CurrentUpdateInterval);
     }
 
     [Fact]
@@ -309,10 +291,11 @@ public class SettingsViewModelTests
         viewModel.ApplyPreset("responsive");
 
         // Assert
-        var responsiveConfig = CursorPhobiaConfiguration.CreateResponsivenessOptimized();
-        Assert.Equal(responsiveConfig.UpdateIntervalMs, viewModel.UpdateIntervalMs);
+        // Note: UpdateIntervalMs is now hardcoded, so we just verify the preset applied successfully
         Assert.Contains(nameof(SettingsViewModel.HasUnsavedChanges), changedProperties);
         Assert.True(viewModel.HasUnsavedChanges);
+        // Verify that hardcoded values are still accessible
+        Assert.Equal(HardcodedDefaults.UpdateIntervalMs, viewModel.CurrentUpdateInterval);
     }
 
     [Fact]
@@ -344,7 +327,8 @@ public class SettingsViewModelTests
         Assert.Same(config2, viewModel.Configuration);
         Assert.Contains(nameof(SettingsViewModel.Configuration), propertyChanges);
         Assert.Contains(nameof(SettingsViewModel.ProximityThreshold), propertyChanges);
-        Assert.Contains(nameof(SettingsViewModel.UpdateIntervalMs), propertyChanges);
+        // Note: UpdateIntervalMs is now hardcoded, check for CurrentUpdateInterval refresh instead
+        Assert.Contains(nameof(SettingsViewModel.CurrentUpdateInterval), propertyChanges);
     }
 
     [Fact]

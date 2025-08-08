@@ -22,13 +22,17 @@ public class CursorPhobiaConfiguration
     /// <summary>
     /// Minimum time in milliseconds between cursor position checks
     /// Default: 16ms (~60 FPS)
+    /// NOTE: This property is now hardcoded for optimal performance and is no longer user-configurable.
     /// </summary>
+    [Obsolete("This property is now hardcoded and no longer user-configurable. Use HardcodedDefaults.UpdateIntervalMs for the current value.", false)]
     public int UpdateIntervalMs { get; set; } = HardcodedDefaults.UpdateIntervalMs;
 
     /// <summary>
     /// Maximum time in milliseconds between cursor position checks when system is busy
     /// Default: 33ms (~30 FPS minimum)
+    /// NOTE: This property is now hardcoded for optimal performance and is no longer user-configurable.
     /// </summary>
+    [Obsolete("This property is now hardcoded and no longer user-configurable. Use HardcodedDefaults.MaxUpdateIntervalMs for the current value.", false)]
     public int MaxUpdateIntervalMs { get; set; } = HardcodedDefaults.MaxUpdateIntervalMs;
 
     /// <summary>
@@ -42,7 +46,9 @@ public class CursorPhobiaConfiguration
     /// When CTRL is released while hovering over a window, cursor phobia won't activate
     /// until the cursor moves this distance away from the window
     /// Default: 50 pixels
+    /// NOTE: This property is now hardcoded for optimal user experience and is no longer user-configurable.
     /// </summary>
+    [Obsolete("This property is now hardcoded and no longer user-configurable. Use HardcodedDefaults.CtrlReleaseToleranceDistance for the current value.", false)]
     public int CtrlReleaseToleranceDistance { get; set; } = HardcodedDefaults.CtrlReleaseToleranceDistance;
 
     /// <summary>
@@ -50,13 +56,17 @@ public class CursorPhobiaConfiguration
     /// When cursor leaves an always-on-top window, cursor phobia won't activate
     /// until the cursor moves this distance away from the window bounds
     /// Default: 30 pixels
+    /// NOTE: This property is now hardcoded for optimal user experience and is no longer user-configurable.
     /// </summary>
+    [Obsolete("This property is now hardcoded and no longer user-configurable. Use HardcodedDefaults.AlwaysOnTopRepelBorderDistance for the current value.", false)]
     public int AlwaysOnTopRepelBorderDistance { get; set; } = HardcodedDefaults.AlwaysOnTopRepelBorderDistance;
 
     /// <summary>
     /// Minimum distance in pixels from screen edges that windows must maintain
     /// Default: 20 pixels
+    /// NOTE: This property is now hardcoded for optimal user experience and is no longer user-configurable.
     /// </summary>
+    [Obsolete("This property is now hardcoded and no longer user-configurable. Use HardcodedDefaults.ScreenEdgeBuffer for the current value.", false)]
     public int ScreenEdgeBuffer { get; set; } = HardcodedDefaults.ScreenEdgeBuffer;
 
     /// <summary>
@@ -68,19 +78,25 @@ public class CursorPhobiaConfiguration
     /// <summary>
     /// Duration of window movement animation in milliseconds
     /// Default: 200ms for smooth but responsive movement
+    /// NOTE: This property is now hardcoded based on UX research and is no longer user-configurable.
     /// </summary>
+    [Obsolete("This property is now hardcoded and no longer user-configurable. Use HardcodedDefaults.AnimationDurationMs for the current value.", false)]
     public int AnimationDurationMs { get; set; } = HardcodedDefaults.AnimationDurationMs;
 
     /// <summary>
     /// Whether to enable smooth window animations during push movements
     /// Default: true for better user experience
+    /// NOTE: This property is now hardcoded based on UX research and is no longer user-configurable.
     /// </summary>
+    [Obsolete("This property is now hardcoded and no longer user-configurable. Use HardcodedDefaults.EnableAnimations for the current value.", false)]
     public bool EnableAnimations { get; set; } = HardcodedDefaults.EnableAnimations;
 
     /// <summary>
     /// Easing curve type for window animations
     /// Default: EaseOut for natural deceleration
+    /// NOTE: This property is now hardcoded based on UX research and is no longer user-configurable.
     /// </summary>
+    [Obsolete("This property is now hardcoded and no longer user-configurable. Use HardcodedDefaults.AnimationEasing for the current value.", false)]
     public AnimationEasing AnimationEasing { get; set; } = HardcodedDefaults.AnimationEasing;
 
     /// <summary>
@@ -120,41 +136,15 @@ public class CursorPhobiaConfiguration
         if (PushDistance > 1000)
             errors.Add("PushDistance should not exceed 1000 pixels to prevent windows moving off-screen");
 
-        if (UpdateIntervalMs < 1)
-            errors.Add("UpdateIntervalMs must be at least 1ms");
+        // Note: UpdateIntervalMs and MaxUpdateIntervalMs are now hardcoded and no longer validated
 
-        if (UpdateIntervalMs > MaxUpdateIntervalMs)
-            errors.Add("UpdateIntervalMs cannot be greater than MaxUpdateIntervalMs");
+        // Note: ScreenEdgeBuffer is now hardcoded and no longer validated
 
-        if (MaxUpdateIntervalMs < 10)
-            errors.Add("MaxUpdateIntervalMs must be at least 10ms to prevent excessive CPU usage");
+        // Note: CtrlReleaseToleranceDistance is now hardcoded and no longer validated
 
-        if (MaxUpdateIntervalMs > 1000)
-            errors.Add("MaxUpdateIntervalMs should not exceed 1000ms for responsiveness");
+        // Note: AlwaysOnTopRepelBorderDistance is now hardcoded and no longer validated
 
-        if (ScreenEdgeBuffer < 0)
-            errors.Add("ScreenEdgeBuffer cannot be negative");
-
-        if (ScreenEdgeBuffer > 100)
-            errors.Add("ScreenEdgeBuffer should not exceed 100 pixels for usability");
-
-        if (CtrlReleaseToleranceDistance < 0)
-            errors.Add("CtrlReleaseToleranceDistance cannot be negative");
-
-        if (CtrlReleaseToleranceDistance > 200)
-            errors.Add("CtrlReleaseToleranceDistance should not exceed 200 pixels for usability");
-
-        if (AlwaysOnTopRepelBorderDistance < 0)
-            errors.Add("AlwaysOnTopRepelBorderDistance cannot be negative");
-
-        if (AlwaysOnTopRepelBorderDistance > 100)
-            errors.Add("AlwaysOnTopRepelBorderDistance should not exceed 100 pixels for usability");
-
-        if (AnimationDurationMs < 0)
-            errors.Add("AnimationDurationMs cannot be negative");
-
-        if (AnimationDurationMs > 2000)
-            errors.Add("AnimationDurationMs should not exceed 2000ms for usability");
+        // Note: AnimationDurationMs and EnableAnimations are now hardcoded and no longer validated
 
         if (HoverTimeoutMs < 100)
             errors.Add("HoverTimeoutMs must be at least 100ms");

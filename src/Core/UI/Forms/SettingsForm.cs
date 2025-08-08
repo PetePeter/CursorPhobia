@@ -322,14 +322,15 @@ public partial class SettingsForm : Form
         pushDistanceNumeric.DataBindings.Add(
             nameof(NumericUpDown.Value), _viewModel, nameof(_viewModel.PushDistance), false, DataSourceUpdateMode.OnPropertyChanged);
 
-        enableAnimationsCheckBox.DataBindings.Add(
-            nameof(CheckBox.Checked), _viewModel, nameof(_viewModel.EnableAnimations), false, DataSourceUpdateMode.OnPropertyChanged);
-
-        animationDurationNumeric.DataBindings.Add(
-            nameof(NumericUpDown.Value), _viewModel, nameof(_viewModel.AnimationDurationMs), false, DataSourceUpdateMode.OnPropertyChanged);
-
-        animationEasingComboBox.DataBindings.Add(
-            nameof(ComboBox.SelectedItem), _viewModel, nameof(_viewModel.AnimationEasing), false, DataSourceUpdateMode.OnPropertyChanged);
+        // Animation settings are now hardcoded - set values but disable controls
+        enableAnimationsCheckBox.Checked = HardcodedDefaults.EnableAnimations;
+        enableAnimationsCheckBox.Enabled = false;
+        
+        animationDurationNumeric.Value = HardcodedDefaults.AnimationDurationMs;
+        animationDurationNumeric.Enabled = false;
+        
+        animationEasingComboBox.SelectedItem = HardcodedDefaults.AnimationEasing;
+        animationEasingComboBox.Enabled = false;
 
         enableHoverTimeoutCheckBox.DataBindings.Add(
             nameof(CheckBox.Checked), _viewModel, nameof(_viewModel.EnableHoverTimeout), false, DataSourceUpdateMode.OnPropertyChanged);
@@ -486,7 +487,7 @@ public partial class SettingsForm : Form
         var animationPreviews = Controls.Find("animationPreviewPanel", true);
         foreach (Control preview in animationPreviews)
         {
-            preview.Enabled = _viewModel.EnableAnimations;
+            preview.Enabled = HardcodedDefaults.EnableAnimations;
             preview.Invalidate();
         }
     }
