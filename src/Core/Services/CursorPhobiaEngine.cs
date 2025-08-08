@@ -129,11 +129,11 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
         _cancellationTokenSource = new CancellationTokenSource();
 
         // Initialize high-resolution update timer to prevent drift
-        _updateTimer = new HighResolutionTimer(_config.UpdateIntervalMs);
+        _updateTimer = new HighResolutionTimer(HardcodedDefaults.UpdateIntervalMs);
         _updateTimer.Elapsed += UpdateTimer_Elapsed;
 
         _logger.LogInformation("CursorPhobiaEngine initialized with update interval: {UpdateInterval}ms, hover timeout: {HoverTimeout}ms",
-            _config.UpdateIntervalMs, _config.HoverTimeoutMs);
+            HardcodedDefaults.UpdateIntervalMs, _config.HoverTimeoutMs);
     }
 
     /// <summary>
@@ -369,11 +369,7 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
                 _failedUpdates++;
 
             // Log performance warnings if updates are taking too long
-            int maxUpdateIntervalMs;
-            lock (_configurationLock)
-            {
-                maxUpdateIntervalMs = _config.MaxUpdateIntervalMs;
-            }
+            int maxUpdateIntervalMs = HardcodedDefaults.MaxUpdateIntervalMs;
 
             if (updateStartTime.ElapsedMilliseconds > maxUpdateIntervalMs)
             {
@@ -540,7 +536,7 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
         if (isInToleranceMode)
         {
             // Calculate distance from the CTRL release position
-            var toleranceDistance = _config.CtrlReleaseToleranceDistance;
+            var toleranceDistance = HardcodedDefaults.CtrlReleaseToleranceDistance;
             var releasePos = trackingInfo.CtrlReleaseCursorPosition!.Value;
             var currentDistance = Math.Sqrt(
                 Math.Pow(cursorPosition.X - releasePos.X, 2) +
@@ -589,7 +585,7 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
                         trackingInfo.WindowInfo.Title);
 
                     // Check if cursor is within repel border distance
-                    var repelBorderDistance = _config.AlwaysOnTopRepelBorderDistance;
+                    var repelBorderDistance = HardcodedDefaults.AlwaysOnTopRepelBorderDistance;
                     var distanceFromWindow = CalculateDistanceFromWindow(cursorPosition, windowBounds);
 
                     if (distanceFromWindow <= repelBorderDistance)
@@ -608,7 +604,7 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
                 else if (trackingInfo.CursorLeftWindowTime.HasValue)
                 {
                     // Cursor was outside and might still be in repel border tolerance
-                    var repelBorderDistance = _config.AlwaysOnTopRepelBorderDistance;
+                    var repelBorderDistance = HardcodedDefaults.AlwaysOnTopRepelBorderDistance;
                     var distanceFromWindow = CalculateDistanceFromWindow(cursorPosition, windowBounds);
 
                     if (distanceFromWindow <= repelBorderDistance)

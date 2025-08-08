@@ -138,7 +138,7 @@ public class WindowPusher : IWindowPusher, IDisposable
         }
 
         _logger.LogDebug("WindowPusher initialized with animations {Enabled}, duration {Duration}ms, easing {Easing}, hook recovery {HookRecovery}",
-            _config.EnableAnimations, _config.AnimationDurationMs, _config.AnimationEasing, _errorRecoveryManager != null);
+            HardcodedDefaults.EnableAnimations, HardcodedDefaults.AnimationDurationMs, HardcodedDefaults.AnimationEasing, _errorRecoveryManager != null);
     }
 
     /// <summary>
@@ -389,7 +389,7 @@ public class WindowPusher : IWindowPusher, IDisposable
             }
 
             // If animations are disabled, move immediately
-            if (!_config.EnableAnimations || _config.AnimationDurationMs <= 0)
+            if (!HardcodedDefaults.EnableAnimations || HardcodedDefaults.AnimationDurationMs <= 0)
             {
                 (perfScope as IPerformanceScope)?.AddContext("AnimationType", "Immediate");
                 var moveResult = _windowService.MoveWindow(windowHandle, targetPosition.X, targetPosition.Y);
@@ -408,8 +408,8 @@ public class WindowPusher : IWindowPusher, IDisposable
                 windowHandle,
                 currentPosition,
                 targetPosition,
-                _config.AnimationDurationMs,
-                _config.AnimationEasing
+                HardcodedDefaults.AnimationDurationMs,
+                HardcodedDefaults.AnimationEasing
             );
 
             // Atomically add or update the animation
@@ -421,18 +421,18 @@ public class WindowPusher : IWindowPusher, IDisposable
 
             _logger.LogDebug("Starting animation for window {Handle:X} from ({StartX},{StartY}) to ({EndX},{EndY}) over {Duration}ms",
                 windowHandle.ToInt64(), currentPosition.X, currentPosition.Y,
-                targetPosition.X, targetPosition.Y, _config.AnimationDurationMs);
+                targetPosition.X, targetPosition.Y, HardcodedDefaults.AnimationDurationMs);
 
             // Phase 2 WI#8: Window operation logging with log4net
             _logger.LogWindowOperation(Microsoft.Extensions.Logging.LogLevel.Information,
                 "StartAnimation", windowHandle, null,
                 $"Starting animated push from ({currentPosition.X},{currentPosition.Y}) to ({targetPosition.X},{targetPosition.Y})",
-                ("AnimationDuration", _config.AnimationDurationMs),
-                ("AnimationEasing", _config.AnimationEasing.ToString()));
+                ("AnimationDuration", HardcodedDefaults.AnimationDurationMs),
+                ("AnimationEasing", HardcodedDefaults.AnimationEasing.ToString()));
 
             (perfScope as IPerformanceScope)?.AddContext("AnimationType", "Animated");
-            (perfScope as IPerformanceScope)?.AddContext("AnimationDuration", _config.AnimationDurationMs);
-            (perfScope as IPerformanceScope)?.AddContext("AnimationEasing", _config.AnimationEasing.ToString());
+            (perfScope as IPerformanceScope)?.AddContext("AnimationDuration", HardcodedDefaults.AnimationDurationMs);
+            (perfScope as IPerformanceScope)?.AddContext("AnimationEasing", HardcodedDefaults.AnimationEasing.ToString());
 
             // Run the animation with semaphore-based concurrency control
             await _animationSemaphore.WaitAsync(_cancellationTokenSource.Token);
@@ -515,7 +515,7 @@ public class WindowPusher : IWindowPusher, IDisposable
         {
             // Use high-resolution timing for smoother animations
             var stopwatch = Stopwatch.StartNew();
-            var targetFrameTimeMs = Math.Max(8, _config.UpdateIntervalMs); // Minimum 8ms per frame (~120fps max)
+            var targetFrameTimeMs = Math.Max(8, HardcodedDefaults.UpdateIntervalMs); // Minimum 8ms per frame (~120fps max)
             var lastMoveTime = 0L;
             var moveThrottleMs = 1; // Throttle window moves to prevent excessive API calls
             var frameCount = 0;
@@ -886,7 +886,7 @@ public class WindowPusher : IWindowPusher, IDisposable
         try
         {
             // Visual feedback through system tray if available
-            if (_trayManager != null && _config.AnimationDurationMs > 500)
+            if (_trayManager != null && HardcodedDefaults.AnimationDurationMs > 500)
             {
                 // Only show notification for long animations to avoid spam
                 await _trayManager.ShowNotificationAsync("Window Animation", 
@@ -907,7 +907,7 @@ public class WindowPusher : IWindowPusher, IDisposable
         try
         {
             // Log progress for debugging long animations
-            if (_config.AnimationDurationMs > 1000)
+            if (HardcodedDefaults.AnimationDurationMs > 1000)
             {
                 _logger.LogDebug("Animation progress for window {Handle:X}: {Progress:P0}",
                     animation.WindowHandle.ToInt64(), progress);

@@ -38,7 +38,7 @@ public class SafetyManager : ISafetyManager
         RefreshScreenBounds();
 
         _logger.LogDebug("SafetyManager initialized with {ScreenCount} screens and {EdgeBuffer}px edge buffer",
-            _screenBounds.Count, _config.ScreenEdgeBuffer);
+            _screenBounds.Count, HardcodedDefaults.ScreenEdgeBuffer);
     }
 
     /// <summary>
@@ -304,7 +304,7 @@ public class SafetyManager : ISafetyManager
         try
         {
             // Base distance is the configured edge buffer
-            var baseDistance = _config.ScreenEdgeBuffer;
+            var baseDistance = HardcodedDefaults.ScreenEdgeBuffer;
 
             // For very small windows, use a smaller buffer
             if (windowBounds.Width < 200 || windowBounds.Height < 150)
@@ -326,7 +326,7 @@ public class SafetyManager : ISafetyManager
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error calculating minimum safe distance for window bounds {WindowBounds}", windowBounds);
-            return _config.ScreenEdgeBuffer; // Return default on error
+            return HardcodedDefaults.ScreenEdgeBuffer; // Return default on error
         }
     }
 
@@ -394,7 +394,7 @@ public class SafetyManager : ISafetyManager
     /// </summary>
     private Rectangle GetSafeBounds(Rectangle screenBounds)
     {
-        var buffer = _config.ScreenEdgeBuffer;
+        var buffer = HardcodedDefaults.ScreenEdgeBuffer;
 
         return new Rectangle(
             screenBounds.X + buffer,
@@ -521,7 +521,7 @@ public class SafetyManager : ISafetyManager
                 int maxY = _screenBounds.Max(s => s.Bottom);
 
                 // Apply buffer to the overall desktop area
-                var buffer = _config.ScreenEdgeBuffer;
+                var buffer = HardcodedDefaults.ScreenEdgeBuffer;
                 return new Rectangle(
                     minX + buffer,
                     minY + buffer,
