@@ -489,9 +489,6 @@ public partial class SettingsForm : Form
 
         // Per-monitor setting changes
         perMonitorEnabledCheckBox.CheckedChanged += OnPerMonitorSettingChanged;
-        useGlobalSettingsCheckBox.CheckedChanged += OnPerMonitorSettingChanged;
-        perMonitorProximityThresholdNumeric.ValueChanged += OnPerMonitorSettingChanged;
-        perMonitorPushDistanceNumeric.ValueChanged += OnPerMonitorSettingChanged;
 
         // Load monitor list when form is first shown
         Load += (s, e) => LoadMonitorList();
@@ -829,22 +826,12 @@ public partial class SettingsForm : Form
             if (config.MultiMonitor?.PerMonitorSettings?.TryGetValue(monitorKey, out var perMonitorSettings) == true)
             {
                 perMonitorEnabledCheckBox.Checked = perMonitorSettings.Enabled;
-                useGlobalSettingsCheckBox.Checked = !perMonitorSettings.CustomProximityThreshold.HasValue &&
-                                                   !perMonitorSettings.CustomPushDistance.HasValue;
-
-                perMonitorProximityThresholdNumeric.Value = perMonitorSettings.CustomProximityThreshold ?? config.ProximityThreshold;
-                perMonitorPushDistanceNumeric.Value = perMonitorSettings.CustomPushDistance ?? config.PushDistance;
             }
             else
             {
-                // Use global settings as defaults
+                // Default to enabled
                 perMonitorEnabledCheckBox.Checked = true;
-                useGlobalSettingsCheckBox.Checked = true;
-                perMonitorProximityThresholdNumeric.Value = config.ProximityThreshold;
-                perMonitorPushDistanceNumeric.Value = config.PushDistance;
             }
-
-            UpdatePerMonitorControlStates();
         }
         finally
         {
@@ -857,14 +844,8 @@ public partial class SettingsForm : Form
     /// </summary>
     private void UpdatePerMonitorControlStates()
     {
-        var enabled = perMonitorEnabledCheckBox.Checked;
-        var useGlobal = useGlobalSettingsCheckBox.Checked;
-
-        useGlobalSettingsCheckBox.Enabled = enabled;
-        perMonitorProximityThresholdNumeric.Enabled = enabled && !useGlobal;
-        perMonitorPushDistanceNumeric.Enabled = enabled && !useGlobal;
-        perMonitorProximityThresholdLabel.Enabled = enabled && !useGlobal;
-        perMonitorPushDistanceLabel.Enabled = enabled && !useGlobal;
+        // No additional controls to manage with simplified UI
+        // The enabled state is handled directly by the checkbox
     }
 
     /// <summary>
@@ -890,23 +871,11 @@ public partial class SettingsForm : Form
             config.MultiMonitor.PerMonitorSettings[monitorKey] = perMonitorSettings;
         }
 
-        // Update settings
+        // Update only the enabled setting - always use global settings for threshold and distance
         perMonitorSettings.Enabled = perMonitorEnabledCheckBox.Checked;
+        perMonitorSettings.CustomProximityThreshold = null; // Always use global
+        perMonitorSettings.CustomPushDistance = null; // Always use global
 
-        if (useGlobalSettingsCheckBox.Checked)
-        {
-            // Clear custom settings to use global values
-            perMonitorSettings.CustomProximityThreshold = null;
-            perMonitorSettings.CustomPushDistance = null;
-        }
-        else
-        {
-            // Set custom values
-            perMonitorSettings.CustomProximityThreshold = (int)perMonitorProximityThresholdNumeric.Value;
-            perMonitorSettings.CustomPushDistance = (int)perMonitorPushDistanceNumeric.Value;
-        }
-
-        UpdatePerMonitorControlStates();
         _viewModel.HasUnsavedChanges = true;
     }
 

@@ -43,11 +43,6 @@ namespace CursorPhobia.Core.UI.Forms
         private Panel perMonitorSettingsPanel;
         private Label selectedMonitorLabel;
         private CheckBox perMonitorEnabledCheckBox;
-        private NumericUpDown perMonitorProximityThresholdNumeric;
-        private Label perMonitorProximityThresholdLabel;
-        private NumericUpDown perMonitorPushDistanceNumeric;
-        private Label perMonitorPushDistanceLabel;
-        private CheckBox useGlobalSettingsCheckBox;
         
         // Advanced Tab Controls
         private NumericUpDown updateIntervalNumeric;
@@ -402,7 +397,7 @@ namespace CursorPhobia.Core.UI.Forms
             perMonitorSettingsPanel = new Panel
             {
                 Location = new Point(280, yPos),
-                Size = new Size(300, 200),
+                Size = new Size(300, 120),
                 BorderStyle = BorderStyle.FixedSingle
             };
 
@@ -422,59 +417,23 @@ namespace CursorPhobia.Core.UI.Forms
                 UseVisualStyleBackColor = true
             };
 
-            useGlobalSettingsCheckBox = new CheckBox
+            var globalSettingsNote = new Label
             {
-                Text = "Use global settings",
-                Location = new Point(8, 60),
-                Size = new Size(150, 20),
-                UseVisualStyleBackColor = true,
-                Checked = true
-            };
-
-            perMonitorProximityThresholdLabel = new Label
-            {
-                Text = "Proximity Threshold:",
-                Location = new Point(8, 90),
-                Size = new Size(120, 20)
-            };
-
-            perMonitorProximityThresholdNumeric = new NumericUpDown
-            {
-                Location = new Point(140, 87),
-                Size = new Size(80, 23),
-                Minimum = 10,
-                Maximum = 500,
-                Value = 50,
-                Enabled = false
-            };
-
-            perMonitorPushDistanceLabel = new Label
-            {
-                Text = "Push Distance:",
-                Location = new Point(8, 120),
-                Size = new Size(120, 20)
-            };
-
-            perMonitorPushDistanceNumeric = new NumericUpDown
-            {
-                Location = new Point(140, 117),
-                Size = new Size(80, 23),
-                Minimum = 10,
-                Maximum = 1000,
-                Value = 100,
-                Enabled = false
+                Text = "Global settings from Behavior tab will be used for all enabled monitors.",
+                Location = new Point(8, 65),
+                Size = new Size(280, 30),
+                ForeColor = SystemColors.GrayText,
+                Font = new Font(Font.FontFamily, 8)
             };
 
             // Add controls to per-monitor settings panel
             perMonitorSettingsPanel.Controls.AddRange(new Control[] {
                 selectedMonitorLabel,
                 perMonitorEnabledCheckBox,
-                useGlobalSettingsCheckBox,
-                perMonitorProximityThresholdLabel, perMonitorProximityThresholdNumeric,
-                perMonitorPushDistanceLabel, perMonitorPushDistanceNumeric
+                globalSettingsNote
             });
 
-            yPos += 220;
+            yPos += 140;
 
             // Help text
             var multiMonitorHelpLabel = new Label
