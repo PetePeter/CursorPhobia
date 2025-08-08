@@ -118,12 +118,14 @@ public class CursorPhobiaConfiguration
 
     /// <summary>
     /// Validates the configuration settings and returns any errors
+    /// Gracefully handles obsolete properties by not validating them (they use hardcoded defaults)
     /// </summary>
     /// <returns>List of validation error messages, empty if valid</returns>
     public List<string> Validate()
     {
         var errors = new List<string>();
 
+        // Validate user-configurable properties
         if (ProximityThreshold <= 0)
             errors.Add("ProximityThreshold must be greater than 0");
 
@@ -136,27 +138,36 @@ public class CursorPhobiaConfiguration
         if (PushDistance > 1000)
             errors.Add("PushDistance should not exceed 1000 pixels to prevent windows moving off-screen");
 
-        // Note: UpdateIntervalMs and MaxUpdateIntervalMs are now hardcoded and no longer validated
-
-        // Note: ScreenEdgeBuffer is now hardcoded and no longer validated
-
-        // Note: CtrlReleaseToleranceDistance is now hardcoded and no longer validated
-
-        // Note: AlwaysOnTopRepelBorderDistance is now hardcoded and no longer validated
-
-        // Note: AnimationDurationMs and EnableAnimations are now hardcoded and no longer validated
-
         if (HoverTimeoutMs < 100)
             errors.Add("HoverTimeoutMs must be at least 100ms");
 
         if (HoverTimeoutMs > 30000)
             errors.Add("HoverTimeoutMs should not exceed 30000ms (30 seconds)");
 
-        // Validate multi-monitor configuration
+        // Validate multi-monitor configuration with enhanced error handling
         if (MultiMonitor != null)
         {
-            errors.AddRange(MultiMonitor.Validate());
+            try
+            {
+                var multiMonitorErrors = MultiMonitor.Validate();
+                errors.AddRange(multiMonitorErrors);
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"Error validating multi-monitor configuration: {ex.Message}");
+            }
         }
+
+        // Note: The following properties are now hardcoded and no longer validated:
+        // - UpdateIntervalMs (uses HardcodedDefaults.UpdateIntervalMs)
+        // - MaxUpdateIntervalMs (uses HardcodedDefaults.MaxUpdateIntervalMs)
+        // - ScreenEdgeBuffer (uses HardcodedDefaults.ScreenEdgeBuffer)
+        // - CtrlReleaseToleranceDistance (uses HardcodedDefaults.CtrlReleaseToleranceDistance)
+        // - AlwaysOnTopRepelBorderDistance (uses HardcodedDefaults.AlwaysOnTopRepelBorderDistance)
+        // - AnimationDurationMs (uses HardcodedDefaults.AnimationDurationMs)
+        // - EnableAnimations (uses HardcodedDefaults.EnableAnimations)
+        // - AnimationEasing (uses HardcodedDefaults.AnimationEasing)
+        // These values are automatically migrated during configuration loading.
 
         return errors;
     }

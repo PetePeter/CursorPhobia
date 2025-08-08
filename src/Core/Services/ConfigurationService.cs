@@ -101,17 +101,20 @@ public class ConfigurationService : IConfigurationService
                 return GetDefaultConfiguration();
             }
 
-            // Validate the loaded configuration
-            var validationErrors = configuration.Validate();
+            // Apply migration logic for old configurations
+            var migratedConfig = MigrateConfiguration(configuration, filePath);
+
+            // Validate the migrated configuration
+            var validationErrors = migratedConfig.Validate();
             if (validationErrors.Count > 0)
             {
-                _logger.LogWarning("Loaded configuration has validation errors: {Errors}. Using default configuration.",
+                _logger.LogWarning("Migrated configuration has validation errors: {Errors}. Using default configuration.",
                     string.Join(", ", validationErrors));
                 return GetDefaultConfiguration();
             }
 
-            _logger.LogInformation("Successfully loaded configuration from: {FilePath}", filePath);
-            return configuration;
+            _logger.LogInformation("Successfully loaded and migrated configuration from: {FilePath}", filePath);
+            return migratedConfig;
         }
         catch (JsonException ex)
         {
@@ -390,5 +393,164 @@ public class ConfigurationService : IConfigurationService
             _logger.LogError(ex, "Error during path validation for: {FilePath}", filePath);
             throw new ArgumentException($"Invalid path format: {filePath}", nameof(filePath), ex);
         }
+    }
+
+    /// <summary>
+    /// Migrates old configuration files to ensure they use hardcoded defaults for obsolete properties
+    /// and gracefully handles out-of-range values by resetting them to optimal defaults
+    /// </summary>
+    /// <param name="config">Configuration loaded from file</param>
+    /// <param name="filePath">File path for logging purposes</param>
+    /// <returns>Migrated configuration with hardcoded defaults applied</returns>
+    private CursorPhobiaConfiguration MigrateConfiguration(CursorPhobiaConfiguration config, string filePath)
+    {
+        var wasMigrated = false;
+        var migrationMessages = new List<string>();
+
+        // Check if obsolete properties have non-hardcoded values and migrate them
+        if (config.UpdateIntervalMs != HardcodedDefaults.UpdateIntervalMs)
+        {
+            _logger.LogInformation("Migrating UpdateIntervalMs from {OldValue}ms to hardcoded default {NewValue}ms for config: {FilePath}",
+                config.UpdateIntervalMs, HardcodedDefaults.UpdateIntervalMs, filePath);
+            var oldValue = config.UpdateIntervalMs;
+            config.UpdateIntervalMs = HardcodedDefaults.UpdateIntervalMs;
+            migrationMessages.Add($"UpdateIntervalMs: {oldValue} → {HardcodedDefaults.UpdateIntervalMs}");
+            wasMigrated = true;
+        }
+
+        if (config.MaxUpdateIntervalMs != HardcodedDefaults.MaxUpdateIntervalMs)
+        {
+            _logger.LogInformation("Migrating MaxUpdateIntervalMs from {OldValue}ms to hardcoded default {NewValue}ms for config: {FilePath}",
+                config.MaxUpdateIntervalMs, HardcodedDefaults.MaxUpdateIntervalMs, filePath);
+            var oldValue = config.MaxUpdateIntervalMs;
+            config.MaxUpdateIntervalMs = HardcodedDefaults.MaxUpdateIntervalMs;
+            migrationMessages.Add($"MaxUpdateIntervalMs: {oldValue} → {HardcodedDefaults.MaxUpdateIntervalMs}");
+            wasMigrated = true;
+        }
+
+        if (config.ScreenEdgeBuffer != HardcodedDefaults.ScreenEdgeBuffer)
+        {
+            _logger.LogInformation("Migrating ScreenEdgeBuffer from {OldValue}px to hardcoded default {NewValue}px for config: {FilePath}",
+                config.ScreenEdgeBuffer, HardcodedDefaults.ScreenEdgeBuffer, filePath);
+            var oldValue = config.ScreenEdgeBuffer;
+            config.ScreenEdgeBuffer = HardcodedDefaults.ScreenEdgeBuffer;
+            migrationMessages.Add($"ScreenEdgeBuffer: {oldValue} → {HardcodedDefaults.ScreenEdgeBuffer}");
+            wasMigrated = true;
+        }
+
+        if (config.CtrlReleaseToleranceDistance != HardcodedDefaults.CtrlReleaseToleranceDistance)
+        {
+            _logger.LogInformation("Migrating CtrlReleaseToleranceDistance from {OldValue}px to hardcoded default {NewValue}px for config: {FilePath}",
+                config.CtrlReleaseToleranceDistance, HardcodedDefaults.CtrlReleaseToleranceDistance, filePath);
+            var oldValue = config.CtrlReleaseToleranceDistance;
+            config.CtrlReleaseToleranceDistance = HardcodedDefaults.CtrlReleaseToleranceDistance;
+            migrationMessages.Add($"CtrlReleaseToleranceDistance: {oldValue} → {HardcodedDefaults.CtrlReleaseToleranceDistance}");
+            wasMigrated = true;
+        }
+
+        if (config.AlwaysOnTopRepelBorderDistance != HardcodedDefaults.AlwaysOnTopRepelBorderDistance)
+        {
+            _logger.LogInformation("Migrating AlwaysOnTopRepelBorderDistance from {OldValue}px to hardcoded default {NewValue}px for config: {FilePath}",
+                config.AlwaysOnTopRepelBorderDistance, HardcodedDefaults.AlwaysOnTopRepelBorderDistance, filePath);
+            var oldValue = config.AlwaysOnTopRepelBorderDistance;
+            config.AlwaysOnTopRepelBorderDistance = HardcodedDefaults.AlwaysOnTopRepelBorderDistance;
+            migrationMessages.Add($"AlwaysOnTopRepelBorderDistance: {oldValue} → {HardcodedDefaults.AlwaysOnTopRepelBorderDistance}");
+            wasMigrated = true;
+        }
+
+        if (config.AnimationDurationMs != HardcodedDefaults.AnimationDurationMs)
+        {
+            _logger.LogInformation("Migrating AnimationDurationMs from {OldValue}ms to hardcoded default {NewValue}ms for config: {FilePath}",
+                config.AnimationDurationMs, HardcodedDefaults.AnimationDurationMs, filePath);
+            var oldValue = config.AnimationDurationMs;
+            config.AnimationDurationMs = HardcodedDefaults.AnimationDurationMs;
+            migrationMessages.Add($"AnimationDurationMs: {oldValue} → {HardcodedDefaults.AnimationDurationMs}");
+            wasMigrated = true;
+        }
+
+        if (config.EnableAnimations != HardcodedDefaults.EnableAnimations)
+        {
+            _logger.LogInformation("Migrating EnableAnimations from {OldValue} to hardcoded default {NewValue} for config: {FilePath}",
+                config.EnableAnimations, HardcodedDefaults.EnableAnimations, filePath);
+            var oldValue = config.EnableAnimations;
+            config.EnableAnimations = HardcodedDefaults.EnableAnimations;
+            migrationMessages.Add($"EnableAnimations: {oldValue} → {HardcodedDefaults.EnableAnimations}");
+            wasMigrated = true;
+        }
+
+        if (config.AnimationEasing != HardcodedDefaults.AnimationEasing)
+        {
+            _logger.LogInformation("Migrating AnimationEasing from {OldValue} to hardcoded default {NewValue} for config: {FilePath}",
+                config.AnimationEasing, HardcodedDefaults.AnimationEasing, filePath);
+            var oldValue = config.AnimationEasing;
+            config.AnimationEasing = HardcodedDefaults.AnimationEasing;
+            migrationMessages.Add($"AnimationEasing: {oldValue} → {HardcodedDefaults.AnimationEasing}");
+            wasMigrated = true;
+        }
+
+        // Apply graceful degradation for user-configurable properties that are out of range
+        wasMigrated |= ApplyGracefulDegradation(config, filePath, migrationMessages);
+
+        if (wasMigrated)
+        {
+            _logger.LogInformation("Configuration migration completed for {FilePath}. Migrated settings: {MigratedSettings}",
+                filePath, string.Join(", ", migrationMessages));
+        }
+        else
+        {
+            _logger.LogDebug("No migration needed for configuration: {FilePath}", filePath);
+        }
+
+        return config;
+    }
+
+    /// <summary>
+    /// Applies graceful degradation for user-configurable properties that are outside optimal ranges
+    /// </summary>
+    /// <param name="config">Configuration to check and potentially modify</param>
+    /// <param name="filePath">File path for logging purposes</param>
+    /// <param name="migrationMessages">List to add migration messages to</param>
+    /// <returns>True if any values were modified, false otherwise</returns>
+    private bool ApplyGracefulDegradation(CursorPhobiaConfiguration config, string filePath, List<string> migrationMessages)
+    {
+        var wasModified = false;
+
+        // Graceful degradation for ProximityThreshold
+        if (config.ProximityThreshold < 10 || config.ProximityThreshold > 500)
+        {
+            var oldValue = config.ProximityThreshold;
+            config.ProximityThreshold = HardcodedDefaults.ProximityThreshold;
+            _logger.LogWarning("ProximityThreshold value {OldValue} is outside optimal range (10-500px). " +
+                "Applying graceful degradation to {NewValue}px for config: {FilePath}",
+                oldValue, config.ProximityThreshold, filePath);
+            migrationMessages.Add($"ProximityThreshold: {oldValue} → {config.ProximityThreshold} (out-of-range)");
+            wasModified = true;
+        }
+
+        // Graceful degradation for PushDistance
+        if (config.PushDistance < 10 || config.PushDistance > 1000)
+        {
+            var oldValue = config.PushDistance;
+            config.PushDistance = HardcodedDefaults.PushDistance;
+            _logger.LogWarning("PushDistance value {OldValue} is outside optimal range (10-1000px). " +
+                "Applying graceful degradation to {NewValue}px for config: {FilePath}",
+                oldValue, config.PushDistance, filePath);
+            migrationMessages.Add($"PushDistance: {oldValue} → {config.PushDistance} (out-of-range)");
+            wasModified = true;
+        }
+
+        // Graceful degradation for HoverTimeoutMs
+        if (config.HoverTimeoutMs < 100 || config.HoverTimeoutMs > 30000)
+        {
+            var oldValue = config.HoverTimeoutMs;
+            config.HoverTimeoutMs = 5000; // Default hover timeout
+            _logger.LogWarning("HoverTimeoutMs value {OldValue} is outside optimal range (100-30000ms). " +
+                "Applying graceful degradation to {NewValue}ms for config: {FilePath}",
+                oldValue, config.HoverTimeoutMs, filePath);
+            migrationMessages.Add($"HoverTimeoutMs: {oldValue} → {config.HoverTimeoutMs} (out-of-range)");
+            wasModified = true;
+        }
+
+        return wasModified;
     }
 }
