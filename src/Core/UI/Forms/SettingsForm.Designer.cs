@@ -46,11 +46,8 @@ namespace CursorPhobia.Core.UI.Forms
         
         // Advanced Tab Controls - Performance controls removed in Phase 3
         // updateIntervalNumeric, maxUpdateIntervalNumeric, screenEdgeBufferNumeric removed
-        private Button exportButton;
-        private Button importButton;
         private Button resetButton;
-        private ComboBox presetComboBox;
-        private Label presetLabel;
+        // exportButton, importButton, presetComboBox, presetLabel removed in Phase 4
         
         // Form Buttons
         private Button okButton;
@@ -477,63 +474,32 @@ namespace CursorPhobia.Core.UI.Forms
 
             yPos += 70;
 
-            // Configuration Management Group
-            var configGroupBox = new GroupBox
+            // Configuration management removed in Phase 4 to reduce cognitive load
+            // Import/Export and preset functionality removed per user feedback
+            var configInfoLabel = new Label
             {
-                Text = "Configuration Management",
+                Text = "Configuration settings are automatically saved when you click OK or Apply.\n" +
+                       "Your personalized settings will be remembered between sessions.",
                 Location = new Point(12, yPos),
-                Size = new Size(550, 80)
+                Size = new Size(550, 40),
+                ForeColor = SystemColors.GrayText
             };
 
-            // Preset Selection
-            presetLabel = new Label
-            {
-                Text = "Presets:",
-                Location = new Point(12, 25),
-                Size = new Size(60, 20)
-            };
+            yPos += 50;
 
-            presetComboBox = new ComboBox
-            {
-                Location = new Point(80, 25),
-                Size = new Size(120, 21),
-                DropDownStyle = ComboBoxStyle.DropDownList
-            };
-            presetComboBox.Items.AddRange(new[] { "Default", "Performance", "Responsive" });
-
-            // Export/Import/Reset buttons
-            exportButton = new Button
-            {
-                Text = "Export...",
-                Location = new Point(220, 24),
-                Size = new Size(75, 23),
-                UseVisualStyleBackColor = true
-            };
-
-            importButton = new Button
-            {
-                Text = "Import...",
-                Location = new Point(305, 24),
-                Size = new Size(75, 23),
-                UseVisualStyleBackColor = true
-            };
-
+            // Keep only Reset button for emergency situations
             resetButton = new Button
             {
-                Text = "Reset",
-                Location = new Point(390, 24),
-                Size = new Size(75, 23),
+                Text = "Reset to Defaults",
+                Location = new Point(12, yPos),
+                Size = new Size(120, 23),
                 UseVisualStyleBackColor = true
             };
-
-            configGroupBox.Controls.AddRange(new Control[] {
-                presetLabel, presetComboBox,
-                exportButton, importButton, resetButton
-            });
 
             advancedTabPage.Controls.AddRange(new Control[] {
                 performanceInfoLabel,
-                configGroupBox
+                configInfoLabel,
+                resetButton
             });
         }
 
@@ -586,8 +552,6 @@ namespace CursorPhobia.Core.UI.Forms
             okButton.Click += OnOkButtonClick;
             cancelButton.Click += OnCancelButtonClick;
             applyButton.Click += OnApplyButtonClick;
-            exportButton.Click += OnExportButtonClick;
-            importButton.Click += OnImportButtonClick;
             resetButton.Click += OnResetButtonClick;
         }
 

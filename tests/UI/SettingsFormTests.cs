@@ -98,25 +98,7 @@ public class SettingsFormTests
         // This would need integration testing or mocking MessageBox
     }
 
-    [Fact]
-    public async Task SettingsForm_ExportConfiguration_CallsConfigService()
-    {
-        // Arrange
-        using var form = new SettingsForm(_configService, _engine, _logger);
-
-        // Note: ExportConfigurationAsync shows a dialog, so we can't easily test it in unit tests
-        // This would need integration testing or mocking SaveFileDialog
-    }
-
-    [Fact]
-    public async Task SettingsForm_ImportConfiguration_CallsConfigService()
-    {
-        // Arrange
-        using var form = new SettingsForm(_configService, _engine, _logger);
-
-        // Note: ImportConfigurationAsync shows a dialog, so we can't easily test it in unit tests
-        // This would need integration testing or mocking OpenFileDialog
-    }
+    // Export and Import test methods removed in Phase 4 - functionality eliminated per user feedback
 }
 
 /// <summary>

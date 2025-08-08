@@ -205,82 +205,9 @@ public partial class SettingsForm : Form
         }
     }
 
-    /// <summary>
-    /// Exports the current configuration to a file
-    /// </summary>
-    public async Task ExportConfigurationAsync()
-    {
-        using var saveDialog = new SaveFileDialog
-        {
-            Title = "Export Configuration",
-            Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
-            DefaultExt = "json",
-            FileName = "CursorPhobia-Config.json"
-        };
-
-        if (saveDialog.ShowDialog() == DialogResult.OK)
-        {
-            try
-            {
-                await _configService.SaveConfigurationAsync(_viewModel.Configuration, saveDialog.FileName);
-                MessageBox.Show(
-                    $"Configuration exported successfully to:\n{saveDialog.FileName}",
-                    "Export Complete",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(
-                    $"Failed to export configuration:\n{ex.Message}",
-                    "Export Error",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
-            }
-        }
-    }
-
-    /// <summary>
-    /// Imports configuration from a file
-    /// </summary>
-    public async Task ImportConfigurationAsync()
-    {
-        using var openDialog = new OpenFileDialog
-        {
-            Title = "Import Configuration",
-            Filter = "JSON files (*.json)|*.json|All files (*.*)|*.*",
-            DefaultExt = "json"
-        };
-
-        if (openDialog.ShowDialog() == DialogResult.OK)
-        {
-            try
-            {
-                var importedConfig = await _configService.LoadConfigurationAsync(openDialog.FileName);
-
-                var result = MessageBox.Show(
-                    $"Configuration loaded from:\n{openDialog.FileName}\n\nApply these settings?",
-                    "Import Configuration",
-                    MessageBoxButtons.YesNo,
-                    MessageBoxIcon.Question);
-
-                if (result == DialogResult.Yes)
-                {
-                    _viewModel.Configuration = importedConfig;
-                    _viewModel.HasUnsavedChanges = true;
-                    UpdatePreview();
-                }
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(
-                    $"Failed to import configuration:\n{ex.Message}",
-                    "Import Error",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
-            }
-        }
-    }
+    // Export and Import functionality removed in Phase 4 per user feedback
+    // These features added complexity without significant user value
+    // Configuration is automatically saved/loaded through normal settings flow
 
     protected override async void OnLoad(EventArgs e)
     {
@@ -423,14 +350,7 @@ public partial class SettingsForm : Form
         // Advanced Tab - Performance controls removed in Phase 3 to reduce cognitive load
         // Performance values now use smart defaults: 16ms update, 50ms max, 20px edge buffer
 
-        // Setup preset selection handler
-        presetComboBox.SelectedIndexChanged += (s, e) =>
-        {
-            if (presetComboBox.SelectedItem is string preset && !_isInitializing)
-            {
-                _viewModel.ApplyPreset(preset.ToLower());
-            }
-        };
+        // Preset selection handler removed in Phase 4 - presets eliminated per user feedback
 
             // Setup control state management
             SetupControlStates();
@@ -723,15 +643,8 @@ public partial class SettingsForm : Form
         ResetToDefaults();
     }
 
-    private async void OnExportButtonClick(object sender, EventArgs e)
-    {
-        await ExportConfigurationAsync();
-    }
-
-    private async void OnImportButtonClick(object sender, EventArgs e)
-    {
-        await ImportConfigurationAsync();
-    }
+    // Export and Import button handlers removed in Phase 4
+    // Functionality eliminated per user feedback to reduce cognitive load
 
     #region Per-Monitor Settings Methods
 
