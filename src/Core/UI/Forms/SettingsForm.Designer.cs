@@ -44,13 +44,8 @@ namespace CursorPhobia.Core.UI.Forms
         private Label selectedMonitorLabel;
         private CheckBox perMonitorEnabledCheckBox;
         
-        // Advanced Tab Controls
-        private NumericUpDown updateIntervalNumeric;
-        private Label updateIntervalLabel;
-        private NumericUpDown maxUpdateIntervalNumeric;
-        private Label maxUpdateIntervalLabel;
-        private NumericUpDown screenEdgeBufferNumeric;
-        private Label screenEdgeBufferLabel;
+        // Advanced Tab Controls - Performance controls removed in Phase 3
+        // updateIntervalNumeric, maxUpdateIntervalNumeric, screenEdgeBufferNumeric removed
         private Button exportButton;
         private Button importButton;
         private Button resetButton;
@@ -468,99 +463,19 @@ namespace CursorPhobia.Core.UI.Forms
 
             int yPos = 12;
 
-            // Performance Settings Group
-            var performanceGroupBox = new GroupBox
+            // Performance Settings are now hardcoded to smart defaults
+            // Removed complex performance tuning controls per Issue #10 Phase 3
+            var performanceInfoLabel = new Label
             {
-                Text = "Performance Settings",
+                Text = "Performance settings are automatically optimized for your system.\n" +
+                       "CursorPhobia uses intelligent defaults that balance responsiveness\n" +
+                       "with system resource usage - no manual tuning required.",
                 Location = new Point(12, yPos),
-                Size = new Size(550, 120)
+                Size = new Size(550, 60),
+                ForeColor = SystemColors.GrayText
             };
 
-            // Update Interval
-            updateIntervalLabel = new Label
-            {
-                Text = "Update Interval (ms):",
-                Location = new Point(12, 25),
-                Size = new Size(120, 20)
-            };
-
-            updateIntervalNumeric = new NumericUpDown
-            {
-                Location = new Point(140, 25),
-                Size = new Size(70, 20),
-                Minimum = 1,
-                Maximum = 100,
-                DecimalPlaces = 0
-            };
-
-            var updateIntervalHelpLabel = new Label
-            {
-                Text = "Lower = more responsive, higher = better performance",
-                Location = new Point(220, 25),
-                Size = new Size(300, 20),
-                ForeColor = SystemColors.GrayText,
-                Font = new Font(Font.FontFamily, 8)
-            };
-
-            // Max Update Interval
-            maxUpdateIntervalLabel = new Label
-            {
-                Text = "Max Update Interval (ms):",
-                Location = new Point(12, 50),
-                Size = new Size(120, 20)
-            };
-
-            maxUpdateIntervalNumeric = new NumericUpDown
-            {
-                Location = new Point(140, 50),
-                Size = new Size(70, 20),
-                Minimum = 10,
-                Maximum = 1000,
-                DecimalPlaces = 0
-            };
-
-            var maxUpdateIntervalHelpLabel = new Label
-            {
-                Text = "Fallback interval when system is busy",
-                Location = new Point(220, 50),
-                Size = new Size(300, 20),
-                ForeColor = SystemColors.GrayText,
-                Font = new Font(Font.FontFamily, 8)
-            };
-
-            // Screen Edge Buffer
-            screenEdgeBufferLabel = new Label
-            {
-                Text = "Screen Edge Buffer (px):",
-                Location = new Point(12, 75),
-                Size = new Size(120, 20)
-            };
-
-            screenEdgeBufferNumeric = new NumericUpDown
-            {
-                Location = new Point(140, 75),
-                Size = new Size(70, 20),
-                Minimum = 0,
-                Maximum = 100,
-                DecimalPlaces = 0
-            };
-
-            var screenEdgeBufferHelpLabel = new Label
-            {
-                Text = "Minimum distance from screen edges",
-                Location = new Point(220, 75),
-                Size = new Size(300, 20),
-                ForeColor = SystemColors.GrayText,
-                Font = new Font(Font.FontFamily, 8)
-            };
-
-            performanceGroupBox.Controls.AddRange(new Control[] {
-                updateIntervalLabel, updateIntervalNumeric, updateIntervalHelpLabel,
-                maxUpdateIntervalLabel, maxUpdateIntervalNumeric, maxUpdateIntervalHelpLabel,
-                screenEdgeBufferLabel, screenEdgeBufferNumeric, screenEdgeBufferHelpLabel
-            });
-
-            yPos += 130;
+            yPos += 70;
 
             // Configuration Management Group
             var configGroupBox = new GroupBox
@@ -617,7 +532,7 @@ namespace CursorPhobia.Core.UI.Forms
             });
 
             advancedTabPage.Controls.AddRange(new Control[] {
-                performanceGroupBox,
+                performanceInfoLabel,
                 configGroupBox
             });
         }

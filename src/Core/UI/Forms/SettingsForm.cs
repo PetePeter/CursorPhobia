@@ -113,8 +113,11 @@ public partial class SettingsForm : Form
     {
         try
         {
-            // Validate the configuration
-            var errors = _viewModel.ValidateConfiguration();
+            // Validate the configuration, filtering out performance errors (hardcoded to defaults)
+            var errors = _viewModel.ValidateConfiguration()
+                .Where(error => !error.Contains("UpdateInterval", StringComparison.OrdinalIgnoreCase) &&
+                               !error.Contains("ScreenEdgeBuffer", StringComparison.OrdinalIgnoreCase))
+                .ToList();
             if (errors.Any())
             {
                 var errorMessage = "Configuration validation failed:\n\n" + string.Join("\n", errors);
@@ -156,7 +159,10 @@ public partial class SettingsForm : Form
     {
         try
         {
-            var errors = _viewModel.ValidateConfiguration();
+            var errors = _viewModel.ValidateConfiguration()
+                .Where(error => !error.Contains("UpdateInterval", StringComparison.OrdinalIgnoreCase) &&
+                               !error.Contains("ScreenEdgeBuffer", StringComparison.OrdinalIgnoreCase))
+                .ToList();
 
             if (errors.Any())
             {
@@ -414,15 +420,8 @@ public partial class SettingsForm : Form
         respectTaskbarAreasCheckBox.DataBindings.Add(
             nameof(CheckBox.Checked), _viewModel, nameof(_viewModel.RespectTaskbarAreas), false, DataSourceUpdateMode.OnPropertyChanged);
 
-        // Advanced Tab Bindings
-        updateIntervalNumeric.DataBindings.Add(
-            nameof(NumericUpDown.Value), _viewModel, nameof(_viewModel.UpdateIntervalMs), false, DataSourceUpdateMode.OnPropertyChanged);
-
-        maxUpdateIntervalNumeric.DataBindings.Add(
-            nameof(NumericUpDown.Value), _viewModel, nameof(_viewModel.MaxUpdateIntervalMs), false, DataSourceUpdateMode.OnPropertyChanged);
-
-        screenEdgeBufferNumeric.DataBindings.Add(
-            nameof(NumericUpDown.Value), _viewModel, nameof(_viewModel.ScreenEdgeBuffer), false, DataSourceUpdateMode.OnPropertyChanged);
+        // Advanced Tab - Performance controls removed in Phase 3 to reduce cognitive load
+        // Performance values now use smart defaults: 16ms update, 50ms max, 20px edge buffer
 
         // Setup preset selection handler
         presetComboBox.SelectedIndexChanged += (s, e) =>
@@ -647,21 +646,9 @@ public partial class SettingsForm : Form
         {
             HighlightControl("animationDurationNumeric", errorColor, errorMessage);
         }
-        else if (errorMessage.Contains("UpdateInterval", StringComparison.OrdinalIgnoreCase))
-        {
-            HighlightControl("updateIntervalNumeric", errorColor, errorMessage);
-        }
-        else if (errorMessage.Contains("MaxUpdateInterval", StringComparison.OrdinalIgnoreCase))
-        {
-            HighlightControl("maxUpdateIntervalNumeric", errorColor, errorMessage);
-        }
         else if (errorMessage.Contains("HoverTimeout", StringComparison.OrdinalIgnoreCase))
         {
             HighlightControl("hoverTimeoutNumeric", errorColor, errorMessage);
-        }
-        else if (errorMessage.Contains("ScreenEdgeBuffer", StringComparison.OrdinalIgnoreCase))
-        {
-            HighlightControl("screenEdgeBufferNumeric", errorColor, errorMessage);
         }
     }
 
