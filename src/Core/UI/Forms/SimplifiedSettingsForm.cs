@@ -24,9 +24,9 @@ public partial class SimplifiedSettingsForm : Form
     // Preset configurations
     private static readonly Dictionary<string, (int ProximityThreshold, int PushDistance)> Presets = new()
     {
-        { "gentle", (ProximityThreshold: 30, PushDistance: 75) },
+        { "gentle", (ProximityThreshold: 75, PushDistance: 75) },
         { "balanced", (ProximityThreshold: 50, PushDistance: 100) },
-        { "aggressive", (ProximityThreshold: 75, PushDistance: 150) }
+        { "aggressive", (ProximityThreshold: 25, PushDistance: 150) }
     };
 
     public SimplifiedSettingsForm(
@@ -343,11 +343,11 @@ public partial class SimplifiedSettingsForm : Form
 
         // Preset tooltips
         _toolTip.SetToolTip(gentleRadioButton, 
-            "Gentle: Small trigger distance (30px), moderate push distance (75px)");
+            "Gentle: Large trigger distance (75px), moderate push distance (75px)");
         _toolTip.SetToolTip(balancedRadioButton, 
             "Balanced: Medium trigger distance (50px), standard push distance (100px) - Recommended");
         _toolTip.SetToolTip(aggressiveRadioButton, 
-            "Aggressive: Large trigger distance (75px), strong push distance (150px)");
+            "Aggressive: Small trigger distance (25px), strong push distance (150px)");
 
         // Fine-tuning tooltips (with help icon functionality)
         _toolTip.SetToolTip(proximityThresholdNumeric, 

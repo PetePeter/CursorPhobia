@@ -1000,7 +1000,7 @@ class Program
             _logger?.LogInformation("Opening settings dialog from tray");
 
             // Create and show settings form
-            using var settingsForm = new CursorPhobia.Core.UI.Forms.SettingsForm(
+            using var settingsForm = new CursorPhobia.Core.UI.Forms.SimplifiedSettingsForm(
                 _serviceProvider!.GetRequiredService<IConfigurationService>(),
                 _engine!,
                 _logger!);
