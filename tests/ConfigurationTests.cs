@@ -19,7 +19,7 @@ public class CursorPhobiaConfigurationTests
         Assert.Equal(100, config.PushDistance);
         Assert.True(config.EnableCtrlOverride);
         Assert.False(config.ApplyToAllWindows);
-        Assert.Equal(5000, config.HoverTimeoutMs);
+        Assert.Equal(HardcodedDefaults.HoverTimeoutMs, config.HoverTimeoutMs);
         Assert.True(config.EnableHoverTimeout);
         Assert.NotNull(config.MultiMonitor);
         
@@ -88,18 +88,16 @@ public class CursorPhobiaConfigurationTests
         var config = new CursorPhobiaConfiguration
         {
             ProximityThreshold = -1,
-            PushDistance = 0,
-            HoverTimeoutMs = 50 // Invalid - too low
+            PushDistance = 0
         };
 
         // Act
         var errors = config.Validate();
 
         // Assert
-        Assert.True(errors.Count >= 3);
+        Assert.True(errors.Count >= 2);
         Assert.Contains("ProximityThreshold must be greater than 0", errors);
         Assert.Contains("PushDistance must be greater than 0", errors);
-        Assert.Contains("HoverTimeoutMs must be at least 100ms", errors);
     }
 
     [Fact]
@@ -363,9 +361,9 @@ public class ProximityConfigurationTests
         Assert.Equal(HardcodedDefaults.AnimationEasing, config.AnimationEasing);
         
         // Verify default feature settings
-        Assert.True(config.EnableCtrlOverride);
+        Assert.Equal(HardcodedDefaults.EnableCtrlOverride, config.EnableCtrlOverride);
         Assert.False(config.ApplyToAllWindows);
-        Assert.Equal(5000, config.HoverTimeoutMs);
+        Assert.Equal(HardcodedDefaults.HoverTimeoutMs, config.HoverTimeoutMs);
         Assert.True(config.EnableHoverTimeout);
         Assert.NotNull(config.MultiMonitor);
         

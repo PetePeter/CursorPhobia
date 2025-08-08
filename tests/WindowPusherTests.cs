@@ -170,11 +170,11 @@ public class WindowPusherTests
     }
 
     [Fact]
-    public async Task PushWindowAsync_WithAnimationsDisabled_MovesImmediately()
+    public async Task PushWindowAsync_WithHardcodedAnimationsEnabled_UsesAnimation()
     {
         // Arrange
         var config = CursorPhobiaConfiguration.CreateDefault();
-        config.EnableAnimations = false;
+        // Note: EnableAnimations is now hardcoded to true and this setting is ignored
 
         var windowService = new MockWindowManipulationService();
         var safetyManager = new MockSafetyManager();
@@ -193,7 +193,9 @@ public class WindowPusherTests
 
         // Assert
         Assert.True(result);
-        Assert.Equal(1, windowService.MoveWindowCallCount); // Should move only once, immediately
+        // Since animations are now hardcoded to be enabled, expect multiple move calls during animation
+        Assert.True(windowService.MoveWindowCallCount > 1, 
+            $"Expected multiple animation calls but got {windowService.MoveWindowCallCount}");
     }
 
     #endregion
@@ -351,45 +353,6 @@ public class WindowPusherTests
         Assert.True(result);
     }
 
-    [Theory]
-    [InlineData(0)]    // Disabled animations
-    [InlineData(50)]   // Fast animation
-    [InlineData(200)]  // Default animation
-    [InlineData(500)]  // Slow animation
-    public async Task PushWindowAsync_WithDifferentDurations_BehavesCorrectly(int durationMs)
-    {
-        // Arrange
-        var config = CursorPhobiaConfiguration.CreateDefault();
-        config.AnimationDurationMs = durationMs;
-        config.EnableAnimations = durationMs > 0;
-
-        var windowService = new MockWindowManipulationService();
-        var safetyManager = new MockSafetyManager();
-        var proximityDetector = new MockProximityDetector();
-        using var pusher = CreateWindowPusher(windowService, safetyManager, proximityDetector, config);
-
-        var handle = new IntPtr(12345);
-        windowService.SetWindowBounds(handle, new Rectangle(100, 100, 200, 150));
-        proximityDetector.SetPushVector(new Point(50, 0));
-        safetyManager.SetValidatedPosition(new Point(150, 100));
-
-        // Act
-        var result = await pusher.PushWindowAsync(handle, new Point(50, 125), 50);
-
-        // Assert
-        Assert.True(result);
-
-        if (durationMs <= 0)
-        {
-            // Should move immediately without animation
-            Assert.Equal(1, windowService.MoveWindowCallCount);
-        }
-        else
-        {
-            // Should have multiple moves for animation
-            Assert.True(windowService.MoveWindowCallCount >= 1);
-        }
-    }
 
     #endregion
 

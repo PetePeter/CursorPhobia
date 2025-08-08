@@ -43,7 +43,7 @@ public class SafetyManagerTests
         // Arrange
         var invalidConfig = new CursorPhobiaConfiguration
         {
-            ScreenEdgeBuffer = -1 // Invalid value
+            ProximityThreshold = -1 // Invalid value - still validated
         };
 
         // Act & Assert

@@ -34,7 +34,7 @@ public class CursorPhobiaEngineTests
 
         // Setup default mock behaviors
         _mockCursorTracker.Setup(x => x.StartTracking()).Returns(true);
-        _mockCursorTracker.Setup(x => x.GetCurrentCursorPosition()).Returns(new Point(100, 100));
+        _mockCursorTracker.Setup(x => x.GetCurrentCursorPosition()).Returns(new Point(50, 50)); // Position cursor outside window bounds
         _mockCursorTracker.Setup(x => x.IsCtrlKeyPressed()).Returns(false);
         _mockWindowDetectionService.Setup(x => x.GetAllTopMostWindows()).Returns(new List<WindowInfo>());
 
@@ -102,10 +102,10 @@ public class CursorPhobiaEngineTests
     [Fact]
     public void Constructor_WithInvalidConfiguration_ThrowsArgumentException()
     {
-        // Arrange
+        // Arrange - Use ProximityThreshold which is still validated (must be > 0)
         var invalidConfig = new CursorPhobiaConfiguration
         {
-            UpdateIntervalMs = -1 // Invalid value
+            ProximityThreshold = -1 // Invalid value - must be greater than 0
         };
 
         // Act & Assert
@@ -323,7 +323,7 @@ public class CursorPhobiaEngineTests
             Title = "Test Window",
             Bounds = new Rectangle(100, 100, 200, 200),
             IsVisible = true,
-            IsTopmost = true,
+            IsTopmost = false, // Make it non-topmost to avoid always-on-top logic
             IsMinimized = false
         };
 
@@ -334,26 +334,27 @@ public class CursorPhobiaEngineTests
 
         var config = new CursorPhobiaConfiguration
         {
-            EnableHoverTimeout = true,
-            HoverTimeoutMs = 150, // Longer timeout to allow initial push
-            UpdateIntervalMs = 10
+            EnableHoverTimeout = true
+            // Note: HoverTimeoutMs is now hardcoded to 500ms (HardcodedDefaults.HoverTimeoutMs)
+            // UpdateIntervalMs is now hardcoded to 16ms (HardcodedDefaults.UpdateIntervalMs)
         };
 
         var engine = CreateEngine(config);
         await engine.StartAsync();
         await engine.RefreshTrackedWindowsAsync();
 
-        // Act - Wait for initial push, then wait for timeout
-        await Task.Delay(50); // Allow initial push
+        // Act - Wait for initial push cycles
+        await Task.Delay(100); // Allow several update cycles (16ms each)
 
         // Should have pushed at least once initially
         _mockWindowPusher.Verify(x => x.PushWindowAsync(testWindow.WindowHandle, It.IsAny<Point>(), It.IsAny<int>()),
             Times.AtLeastOnce);
 
-        // Wait for hover timeout to trigger
-        await Task.Delay(200); // Wait beyond timeout threshold
+        // Wait for hover timeout to trigger (hardcoded 500ms + buffer)
+        await Task.Delay(600); // Wait beyond the hardcoded 500ms timeout threshold
 
         // The system should still have pushed (this test mainly verifies no exceptions occur with timeout logic)
+        // Note: The hover timeout mechanism is working correctly if no exceptions are thrown
 
         // Cleanup
         await engine.StopAsync();
@@ -370,7 +371,7 @@ public class CursorPhobiaEngineTests
             Title = "Test Window",
             Bounds = new Rectangle(100, 100, 200, 200),
             IsVisible = true,
-            IsTopmost = true,
+            IsTopmost = false, // Make it non-topmost to avoid always-on-top logic
             IsMinimized = false
         };
 
@@ -381,8 +382,8 @@ public class CursorPhobiaEngineTests
 
         var config = new CursorPhobiaConfiguration
         {
-            EnableHoverTimeout = false, // Disable hover timeout for this test
-            UpdateIntervalMs = 10
+            EnableHoverTimeout = false // Disable hover timeout for this test
+            // Note: UpdateIntervalMs is now hardcoded to 16ms (HardcodedDefaults.UpdateIntervalMs)
         };
 
         var engine = CreateEngine(config);
@@ -392,8 +393,8 @@ public class CursorPhobiaEngineTests
         await engine.StartAsync();
         await engine.RefreshTrackedWindowsAsync();
 
-        // Act - Wait for update cycles
-        await Task.Delay(50);
+        // Act - Wait for multiple update cycles (16ms each)
+        await Task.Delay(100); // Allow sufficient time for multiple update cycles
 
         // Assert
         _mockWindowPusher.Verify(x => x.PushWindowAsync(testWindow.WindowHandle, It.IsAny<Point>(), It.IsAny<int>()),

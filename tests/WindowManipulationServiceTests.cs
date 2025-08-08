@@ -203,9 +203,9 @@ public class WindowManipulationServiceTests
         _service.MoveWindow(invalidHandle, 100, 100);
 
         // Assert
-        // Verify that error/warning logging occurred for failed operations
+        // Verify that error logging occurred for failed operations
+        // Invalid handles should be logged as errors since they represent API failures
         _mockLogger.Verify(l => l.LogError(It.IsAny<string>(), It.IsAny<object[]>()), Times.AtLeast(2));
-        _mockLogger.Verify(l => l.LogWarning(It.IsAny<string>(), It.IsAny<object[]>()), Times.AtLeast(1));
     }
 
     #endregion

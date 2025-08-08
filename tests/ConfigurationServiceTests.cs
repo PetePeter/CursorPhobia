@@ -66,17 +66,17 @@ public class ConfigurationServiceTests : IDisposable
 
         // Assert
         Assert.NotNull(config);
-        Assert.Equal(50, config.ProximityThreshold);
-        Assert.Equal(100, config.PushDistance);
-        Assert.Equal(16, config.UpdateIntervalMs);
-        Assert.Equal(33, config.MaxUpdateIntervalMs);
-        Assert.True(config.EnableCtrlOverride);
-        Assert.Equal(20, config.ScreenEdgeBuffer);
+        Assert.Equal(HardcodedDefaults.ProximityThreshold, config.ProximityThreshold);
+        Assert.Equal(HardcodedDefaults.PushDistance, config.PushDistance);
+        Assert.Equal(HardcodedDefaults.UpdateIntervalMs, config.UpdateIntervalMs);
+        Assert.Equal(HardcodedDefaults.MaxUpdateIntervalMs, config.MaxUpdateIntervalMs);
+        Assert.Equal(HardcodedDefaults.EnableCtrlOverride, config.EnableCtrlOverride);
+        Assert.Equal(HardcodedDefaults.ScreenEdgeBuffer, config.ScreenEdgeBuffer);
         Assert.False(config.ApplyToAllWindows);
-        Assert.Equal(200, config.AnimationDurationMs);
-        Assert.True(config.EnableAnimations);
-        Assert.Equal(AnimationEasing.EaseOut, config.AnimationEasing);
-        Assert.Equal(5000, config.HoverTimeoutMs);
+        Assert.Equal(HardcodedDefaults.AnimationDurationMs, config.AnimationDurationMs);
+        Assert.Equal(HardcodedDefaults.EnableAnimations, config.EnableAnimations);
+        Assert.Equal(HardcodedDefaults.AnimationEasing, config.AnimationEasing);
+        Assert.Equal(HardcodedDefaults.HoverTimeoutMs, config.HoverTimeoutMs);
         Assert.True(config.EnableHoverTimeout);
         Assert.NotNull(config.MultiMonitor);
 
@@ -719,7 +719,7 @@ public class ConfigurationServiceTests : IDisposable
         // Assert - Out-of-range values should be reset to hardcoded defaults
         Assert.Equal(HardcodedDefaults.ProximityThreshold, migratedConfig.ProximityThreshold);
         Assert.Equal(HardcodedDefaults.PushDistance, migratedConfig.PushDistance);
-        Assert.Equal(5000, migratedConfig.HoverTimeoutMs); // Default hover timeout
+        Assert.Equal(HardcodedDefaults.HoverTimeoutMs, migratedConfig.HoverTimeoutMs); // Default hover timeout
 
         // Verify graceful degradation was logged
         Assert.Contains(_testLogger.Logs, log => 

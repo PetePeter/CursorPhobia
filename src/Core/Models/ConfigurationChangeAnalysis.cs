@@ -54,32 +54,23 @@ public class ConfigurationChangeAnalysis
     private void AnalyzeChanges()
     {
         // Hot-swappable settings (can be applied immediately)
+        // Only user-configurable properties are considered hot-swappable
         CheckHotSwappableSetting(nameof(CursorPhobiaConfiguration.ProximityThreshold),
             OldConfiguration.ProximityThreshold, NewConfiguration.ProximityThreshold);
 
         CheckHotSwappableSetting(nameof(CursorPhobiaConfiguration.PushDistance),
             OldConfiguration.PushDistance, NewConfiguration.PushDistance);
 
-        CheckHotSwappableSetting(nameof(CursorPhobiaConfiguration.EnableCtrlOverride),
-            OldConfiguration.EnableCtrlOverride, NewConfiguration.EnableCtrlOverride);
-
-        CheckHotSwappableSetting(nameof(CursorPhobiaConfiguration.ScreenEdgeBuffer),
-            OldConfiguration.ScreenEdgeBuffer, NewConfiguration.ScreenEdgeBuffer);
-
-        CheckHotSwappableSetting(nameof(CursorPhobiaConfiguration.AnimationDurationMs),
-            OldConfiguration.AnimationDurationMs, NewConfiguration.AnimationDurationMs);
-
-        CheckHotSwappableSetting(nameof(CursorPhobiaConfiguration.EnableAnimations),
-            OldConfiguration.EnableAnimations, NewConfiguration.EnableAnimations);
-
-        CheckHotSwappableSetting(nameof(CursorPhobiaConfiguration.AnimationEasing),
-            OldConfiguration.AnimationEasing, NewConfiguration.AnimationEasing);
-
-        CheckHotSwappableSetting(nameof(CursorPhobiaConfiguration.HoverTimeoutMs),
-            OldConfiguration.HoverTimeoutMs, NewConfiguration.HoverTimeoutMs);
-
         CheckHotSwappableSetting(nameof(CursorPhobiaConfiguration.EnableHoverTimeout),
             OldConfiguration.EnableHoverTimeout, NewConfiguration.EnableHoverTimeout);
+
+        // Note: The following properties are now hardcoded and no longer hot-swappable:
+        // - EnableCtrlOverride (uses HardcodedDefaults.EnableCtrlOverride)
+        // - ScreenEdgeBuffer (uses HardcodedDefaults.ScreenEdgeBuffer)
+        // - AnimationDurationMs (uses HardcodedDefaults.AnimationDurationMs)
+        // - EnableAnimations (uses HardcodedDefaults.EnableAnimations)
+        // - AnimationEasing (uses HardcodedDefaults.AnimationEasing)
+        // - HoverTimeoutMs (uses HardcodedDefaults.HoverTimeoutMs)
 
         // Settings that require restart (timing and core behavior changes)
         CheckRestartRequiredSetting(nameof(CursorPhobiaConfiguration.UpdateIntervalMs),

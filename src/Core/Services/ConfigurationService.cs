@@ -543,7 +543,7 @@ public class ConfigurationService : IConfigurationService
         if (config.HoverTimeoutMs < 100 || config.HoverTimeoutMs > 30000)
         {
             var oldValue = config.HoverTimeoutMs;
-            config.HoverTimeoutMs = 5000; // Default hover timeout
+            config.HoverTimeoutMs = HardcodedDefaults.HoverTimeoutMs; // Default hover timeout
             _logger.LogWarning("HoverTimeoutMs value {OldValue} is outside optimal range (100-30000ms). " +
                 "Applying graceful degradation to {NewValue}ms for config: {FilePath}",
                 oldValue, config.HoverTimeoutMs, filePath);

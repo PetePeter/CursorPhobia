@@ -44,7 +44,7 @@ public class CursorTrackerTests
         // Arrange
         var invalidConfig = new CursorPhobiaConfiguration
         {
-            UpdateIntervalMs = -1 // Invalid value
+            ProximityThreshold = -1 // Invalid value - still validated
         };
 
         // Act & Assert

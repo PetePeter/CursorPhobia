@@ -44,7 +44,7 @@ public class ConfigurationHotSwapTests : IDisposable
             AnimationDurationMs = 200,
             EnableAnimations = true,
             AnimationEasing = AnimationEasing.EaseOut,
-            HoverTimeoutMs = 5000,
+            HoverTimeoutMs = HardcodedDefaults.HoverTimeoutMs,
             EnableHoverTimeout = true
         };
 
@@ -80,7 +80,7 @@ public class ConfigurationHotSwapTests : IDisposable
             AnimationDurationMs = 200,
             EnableAnimations = true,
             AnimationEasing = AnimationEasing.EaseOut,
-            HoverTimeoutMs = 5000,
+            HoverTimeoutMs = HardcodedDefaults.HoverTimeoutMs,
             EnableHoverTimeout = true
         };
 
@@ -101,18 +101,18 @@ public class ConfigurationHotSwapTests : IDisposable
         // Arrange
         var newConfig = new CursorPhobiaConfiguration
         {
-            ProximityThreshold = 75, // Changed
-            PushDistance = 150, // Changed
-            UpdateIntervalMs = 16, // Same
-            MaxUpdateIntervalMs = 33, // Same
-            EnableCtrlOverride = false, // Changed
-            ScreenEdgeBuffer = 30, // Changed
+            ProximityThreshold = 75, // Changed (hot-swappable)
+            PushDistance = 150, // Changed (hot-swappable)
+            UpdateIntervalMs = 16, // Same (hardcoded)
+            MaxUpdateIntervalMs = 33, // Same (hardcoded)
+            EnableCtrlOverride = false, // Same as hardcoded value (no longer user-configurable)
+            ScreenEdgeBuffer = 30, // Same as hardcoded value (no longer user-configurable)
             ApplyToAllWindows = false, // Same
-            AnimationDurationMs = 300, // Changed
-            EnableAnimations = false, // Changed
-            AnimationEasing = AnimationEasing.Linear, // Changed
-            HoverTimeoutMs = 3000, // Changed
-            EnableHoverTimeout = false // Changed
+            AnimationDurationMs = 300, // Same as hardcoded value (no longer user-configurable)
+            EnableAnimations = false, // Same as hardcoded value (no longer user-configurable)
+            AnimationEasing = AnimationEasing.Linear, // Same as hardcoded value (no longer user-configurable)
+            HoverTimeoutMs = 3000, // Same as hardcoded value (no longer user-configurable)
+            EnableHoverTimeout = false // Changed (hot-swappable)
         };
 
         bool configUpdatedEventFired = false;
@@ -129,20 +129,22 @@ public class ConfigurationHotSwapTests : IDisposable
         // Assert
         Assert.True(result.Success);
         Assert.True(result.ChangeAnalysis.HasChanges);
-        Assert.Equal(9, result.AppliedChanges.Count); // All hot-swappable changes
+        Assert.Equal(3, result.AppliedChanges.Count); // Only user-configurable hot-swappable changes
         Assert.Empty(result.QueuedForRestart);
         Assert.False(result.RequiresRestart);
 
-        // Verify specific changes were applied
+        // Verify specific changes were applied (only user-configurable properties)
         Assert.Contains(nameof(CursorPhobiaConfiguration.ProximityThreshold), result.AppliedChanges);
         Assert.Contains(nameof(CursorPhobiaConfiguration.PushDistance), result.AppliedChanges);
-        Assert.Contains(nameof(CursorPhobiaConfiguration.EnableCtrlOverride), result.AppliedChanges);
-        Assert.Contains(nameof(CursorPhobiaConfiguration.ScreenEdgeBuffer), result.AppliedChanges);
-        Assert.Contains(nameof(CursorPhobiaConfiguration.AnimationDurationMs), result.AppliedChanges);
-        Assert.Contains(nameof(CursorPhobiaConfiguration.EnableAnimations), result.AppliedChanges);
-        Assert.Contains(nameof(CursorPhobiaConfiguration.AnimationEasing), result.AppliedChanges);
-        Assert.Contains(nameof(CursorPhobiaConfiguration.HoverTimeoutMs), result.AppliedChanges);
         Assert.Contains(nameof(CursorPhobiaConfiguration.EnableHoverTimeout), result.AppliedChanges);
+
+        // Verify hardcoded properties are NOT in applied changes
+        Assert.DoesNotContain(nameof(CursorPhobiaConfiguration.EnableCtrlOverride), result.AppliedChanges);
+        Assert.DoesNotContain(nameof(CursorPhobiaConfiguration.ScreenEdgeBuffer), result.AppliedChanges);
+        Assert.DoesNotContain(nameof(CursorPhobiaConfiguration.AnimationDurationMs), result.AppliedChanges);
+        Assert.DoesNotContain(nameof(CursorPhobiaConfiguration.EnableAnimations), result.AppliedChanges);
+        Assert.DoesNotContain(nameof(CursorPhobiaConfiguration.AnimationEasing), result.AppliedChanges);
+        Assert.DoesNotContain(nameof(CursorPhobiaConfiguration.HoverTimeoutMs), result.AppliedChanges);
 
         // Verify event was fired
         Assert.True(configUpdatedEventFired);
@@ -166,7 +168,7 @@ public class ConfigurationHotSwapTests : IDisposable
             AnimationDurationMs = 200, // Same
             EnableAnimations = true, // Same
             AnimationEasing = AnimationEasing.EaseOut, // Same
-            HoverTimeoutMs = 5000, // Same
+            HoverTimeoutMs = HardcodedDefaults.HoverTimeoutMs, // Same
             EnableHoverTimeout = true // Same
         };
 
@@ -196,13 +198,13 @@ public class ConfigurationHotSwapTests : IDisposable
             PushDistance = 150, // Changed (hot-swappable)
             UpdateIntervalMs = 33, // Changed (restart required)
             MaxUpdateIntervalMs = 100, // Changed (restart required)
-            EnableCtrlOverride = false, // Changed (hot-swappable)
-            ScreenEdgeBuffer = 30, // Changed (hot-swappable)
+            EnableCtrlOverride = false, // Same as hardcoded value (no longer user-configurable)
+            ScreenEdgeBuffer = 30, // Same as hardcoded value (no longer user-configurable)
             ApplyToAllWindows = true, // Changed (restart required)
-            AnimationDurationMs = 300, // Changed (hot-swappable)
-            EnableAnimations = false, // Changed (hot-swappable)
-            AnimationEasing = AnimationEasing.Linear, // Changed (hot-swappable)
-            HoverTimeoutMs = 3000, // Changed (hot-swappable)
+            AnimationDurationMs = 300, // Same as hardcoded value (no longer user-configurable)
+            EnableAnimations = false, // Same as hardcoded value (no longer user-configurable)
+            AnimationEasing = AnimationEasing.Linear, // Same as hardcoded value (no longer user-configurable)
+            HoverTimeoutMs = 3000, // Same as hardcoded value (no longer user-configurable)
             EnableHoverTimeout = false // Changed (hot-swappable)
         };
 
@@ -212,7 +214,7 @@ public class ConfigurationHotSwapTests : IDisposable
         // Assert
         Assert.True(result.Success);
         Assert.True(result.ChangeAnalysis.HasChanges);
-        Assert.Equal(9, result.AppliedChanges.Count); // Hot-swappable changes
+        Assert.Equal(3, result.AppliedChanges.Count); // Only user-configurable hot-swappable changes
         Assert.Equal(3, result.QueuedForRestart.Count); // Restart required changes
         Assert.True(result.RequiresRestart);
     }
@@ -233,7 +235,7 @@ public class ConfigurationHotSwapTests : IDisposable
             AnimationDurationMs = 200,
             EnableAnimations = true,
             AnimationEasing = AnimationEasing.EaseOut,
-            HoverTimeoutMs = 5000,
+            HoverTimeoutMs = HardcodedDefaults.HoverTimeoutMs,
             EnableHoverTimeout = true
         };
 
@@ -306,7 +308,7 @@ public class ConfigurationHotSwapTests : IDisposable
             AnimationDurationMs = 200,
             EnableAnimations = true,
             AnimationEasing = AnimationEasing.EaseOut,
-            HoverTimeoutMs = 5000,
+            HoverTimeoutMs = HardcodedDefaults.HoverTimeoutMs,
             EnableHoverTimeout = false // Disable hover timeout
         };
 
@@ -328,15 +330,15 @@ public class ConfigurationHotSwapTests : IDisposable
         {
             ProximityThreshold = 75, // Changed (hot-swappable)
             PushDistance = 150, // Changed (hot-swappable)
-            UpdateIntervalMs = 16, // Same
-            MaxUpdateIntervalMs = 33, // Same
-            EnableCtrlOverride = false, // Changed (hot-swappable)
-            ScreenEdgeBuffer = 30, // Changed (hot-swappable)
+            UpdateIntervalMs = 16, // Same (hardcoded)
+            MaxUpdateIntervalMs = 33, // Same (hardcoded)
+            EnableCtrlOverride = false, // Same as hardcoded value (no longer user-configurable)
+            ScreenEdgeBuffer = 30, // Same as hardcoded value (no longer user-configurable)
             ApplyToAllWindows = false, // Same
-            AnimationDurationMs = 300, // Changed (hot-swappable)
-            EnableAnimations = false, // Changed (hot-swappable)
-            AnimationEasing = AnimationEasing.Linear, // Changed (hot-swappable)
-            HoverTimeoutMs = 3000, // Changed (hot-swappable)
+            AnimationDurationMs = 300, // Same as hardcoded value (no longer user-configurable)
+            EnableAnimations = false, // Same as hardcoded value (no longer user-configurable)
+            AnimationEasing = AnimationEasing.Linear, // Same as hardcoded value (no longer user-configurable)
+            HoverTimeoutMs = 3000, // Same as hardcoded value (no longer user-configurable)
             EnableHoverTimeout = false // Changed (hot-swappable)
         };
 
@@ -346,18 +348,21 @@ public class ConfigurationHotSwapTests : IDisposable
         // Assert
         Assert.True(analysis.HasChanges);
         Assert.False(analysis.RequiresRestart);
-        Assert.Equal(9, analysis.HotSwappableChanges.Count);
+        Assert.Equal(3, analysis.HotSwappableChanges.Count); // Only user-configurable properties
         Assert.Empty(analysis.RestartRequiredChanges);
 
+        // Verify only user-configurable properties are detected as hot-swappable
         Assert.Contains(nameof(CursorPhobiaConfiguration.ProximityThreshold), analysis.HotSwappableChanges);
         Assert.Contains(nameof(CursorPhobiaConfiguration.PushDistance), analysis.HotSwappableChanges);
-        Assert.Contains(nameof(CursorPhobiaConfiguration.EnableCtrlOverride), analysis.HotSwappableChanges);
-        Assert.Contains(nameof(CursorPhobiaConfiguration.ScreenEdgeBuffer), analysis.HotSwappableChanges);
-        Assert.Contains(nameof(CursorPhobiaConfiguration.AnimationDurationMs), analysis.HotSwappableChanges);
-        Assert.Contains(nameof(CursorPhobiaConfiguration.EnableAnimations), analysis.HotSwappableChanges);
-        Assert.Contains(nameof(CursorPhobiaConfiguration.AnimationEasing), analysis.HotSwappableChanges);
-        Assert.Contains(nameof(CursorPhobiaConfiguration.HoverTimeoutMs), analysis.HotSwappableChanges);
         Assert.Contains(nameof(CursorPhobiaConfiguration.EnableHoverTimeout), analysis.HotSwappableChanges);
+
+        // Verify hardcoded properties are NOT detected as changes
+        Assert.DoesNotContain(nameof(CursorPhobiaConfiguration.EnableCtrlOverride), analysis.HotSwappableChanges);
+        Assert.DoesNotContain(nameof(CursorPhobiaConfiguration.ScreenEdgeBuffer), analysis.HotSwappableChanges);
+        Assert.DoesNotContain(nameof(CursorPhobiaConfiguration.AnimationDurationMs), analysis.HotSwappableChanges);
+        Assert.DoesNotContain(nameof(CursorPhobiaConfiguration.EnableAnimations), analysis.HotSwappableChanges);
+        Assert.DoesNotContain(nameof(CursorPhobiaConfiguration.AnimationEasing), analysis.HotSwappableChanges);
+        Assert.DoesNotContain(nameof(CursorPhobiaConfiguration.HoverTimeoutMs), analysis.HotSwappableChanges);
     }
 
     [Fact]
@@ -376,7 +381,7 @@ public class ConfigurationHotSwapTests : IDisposable
             AnimationDurationMs = 200, // Same
             EnableAnimations = true, // Same
             AnimationEasing = AnimationEasing.EaseOut, // Same
-            HoverTimeoutMs = 5000, // Same
+            HoverTimeoutMs = HardcodedDefaults.HoverTimeoutMs, // Same
             EnableHoverTimeout = true // Same
         };
 
@@ -410,7 +415,7 @@ public class ConfigurationHotSwapTests : IDisposable
             AnimationDurationMs = 200,
             EnableAnimations = true,
             AnimationEasing = AnimationEasing.EaseOut,
-            HoverTimeoutMs = 5000,
+            HoverTimeoutMs = HardcodedDefaults.HoverTimeoutMs,
             EnableHoverTimeout = true
         };
 
