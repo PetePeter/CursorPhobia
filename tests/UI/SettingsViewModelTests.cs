@@ -76,23 +76,14 @@ public class SettingsViewModelTests
     }
 
     [Fact]
-    public void SettingsViewModel_EnableCtrlOverride_PropertyNotification()
+    public void SettingsViewModel_CurrentEnableCtrlOverride_ReturnsHardcodedValue()
     {
         // Arrange
         var config = CursorPhobiaConfiguration.CreateDefault();
         var viewModel = new SettingsViewModel(config);
-        var changedProperties = new List<string>();
 
-        viewModel.PropertyChanged += (s, e) => changedProperties.Add(e.PropertyName!);
-
-        // Act
-        viewModel.EnableCtrlOverride = !config.EnableCtrlOverride;
-
-        // Assert
-        Assert.Equal(viewModel.EnableCtrlOverride, config.EnableCtrlOverride);
-        Assert.Contains(nameof(SettingsViewModel.EnableCtrlOverride), changedProperties);
-        Assert.Contains(nameof(SettingsViewModel.HasUnsavedChanges), changedProperties);
-        Assert.True(viewModel.HasUnsavedChanges);
+        // Act & Assert
+        Assert.Equal(HardcodedDefaults.EnableCtrlOverride, viewModel.CurrentEnableCtrlOverride);
     }
 
     [Fact]
@@ -179,24 +170,14 @@ public class SettingsViewModelTests
     }
 
     [Fact]
-    public void SettingsViewModel_PreferredWrapBehavior_PropertyNotification()
+    public void SettingsViewModel_PreferredWrapBehavior_ReturnsHardcodedValue()
     {
         // Arrange
         var config = CursorPhobiaConfiguration.CreateDefault();
         var viewModel = new SettingsViewModel(config);
-        var changedProperties = new List<string>();
 
-        viewModel.PropertyChanged += (s, e) => changedProperties.Add(e.PropertyName!);
-
-        // Act
-        viewModel.PreferredWrapBehavior = WrapPreference.Adjacent;
-
-        // Assert
-        Assert.Equal(WrapPreference.Adjacent, viewModel.PreferredWrapBehavior);
-        Assert.Equal(WrapPreference.Adjacent, config.MultiMonitor?.PreferredWrapBehavior);
-        Assert.Contains(nameof(SettingsViewModel.PreferredWrapBehavior), changedProperties);
-        Assert.Contains(nameof(SettingsViewModel.HasUnsavedChanges), changedProperties);
-        Assert.True(viewModel.HasUnsavedChanges);
+        // Act & Assert
+        Assert.Equal(HardcodedDefaults.PreferredWrapBehavior, viewModel.PreferredWrapBehavior);
     }
 
     [Fact]
@@ -225,7 +206,6 @@ public class SettingsViewModelTests
         // Arrange
         var config = CursorPhobiaConfiguration.CreateDefault();
         config.ProximityThreshold = -1; // Invalid value - this is still user-configurable
-        config.HoverTimeoutMs = 50; // Invalid value - too low
         var viewModel = new SettingsViewModel(config);
 
         // Act
@@ -234,7 +214,7 @@ public class SettingsViewModelTests
         // Assert
         Assert.NotEmpty(errors);
         Assert.Contains(errors, e => e.Contains("ProximityThreshold"));
-        Assert.Contains(errors, e => e.Contains("HoverTimeoutMs"));
+        // Note: HoverTimeoutMs is now hardcoded and no longer validated
     }
 
     [Fact]

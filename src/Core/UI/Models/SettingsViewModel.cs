@@ -62,11 +62,10 @@ public class SettingsViewModel : INotifyPropertyChanged
         set => SetConfigProperty(_config.PushDistance, value, v => _config.PushDistance = v);
     }
 
-    public bool EnableCtrlOverride
-    {
-        get => _config.EnableCtrlOverride;
-        set => SetConfigProperty(_config.EnableCtrlOverride, value, v => _config.EnableCtrlOverride = v);
-    }
+    /// <summary>
+    /// Current CTRL override setting (hardcoded value, display-only)
+    /// </summary>
+    public bool CurrentEnableCtrlOverride => HardcodedDefaults.EnableCtrlOverride;
 
     public bool ApplyToAllWindows
     {
@@ -97,11 +96,10 @@ public class SettingsViewModel : INotifyPropertyChanged
     public string CurrentPerformanceSettings =>
         $"Update: {HardcodedDefaults.UpdateIntervalMs}ms (~{1000 / HardcodedDefaults.UpdateIntervalMs}fps), Max: {HardcodedDefaults.MaxUpdateIntervalMs}ms (~{1000 / HardcodedDefaults.MaxUpdateIntervalMs}fps), Buffer: {HardcodedDefaults.ScreenEdgeBuffer}px";
 
-    public int HoverTimeoutMs
-    {
-        get => _config.HoverTimeoutMs;
-        set => SetConfigProperty(_config.HoverTimeoutMs, value, v => _config.HoverTimeoutMs = v);
-    }
+    /// <summary>
+    /// Current hover timeout setting (hardcoded value, display-only)
+    /// </summary>
+    public int CurrentHoverTimeoutMs => HardcodedDefaults.HoverTimeoutMs;
 
     public bool EnableHoverTimeout
     {
@@ -120,15 +118,11 @@ public class SettingsViewModel : INotifyPropertyChanged
         }
     }
 
-    public WrapPreference PreferredWrapBehavior
-    {
-        get => _config.MultiMonitor?.PreferredWrapBehavior ?? WrapPreference.Smart;
-        set
-        {
-            EnsureMultiMonitorConfig();
-            SetConfigProperty(_config.MultiMonitor!.PreferredWrapBehavior, value, v => _config.MultiMonitor!.PreferredWrapBehavior = v);
-        }
-    }
+    /// <summary>
+    /// Current wrap behavior preference (hardcoded value, display-only)
+    /// Note: This property now returns the hardcoded optimal value
+    /// </summary>
+    public WrapPreference PreferredWrapBehavior => HardcodedDefaults.PreferredWrapBehavior;
 
     public bool RespectTaskbarAreas
     {
@@ -154,6 +148,16 @@ public class SettingsViewModel : INotifyPropertyChanged
     /// Current always-on-top repel border distance (hardcoded value)
     /// </summary>
     public int CurrentAlwaysOnTopRepelBorderDistance => HardcodedDefaults.AlwaysOnTopRepelBorderDistance;
+
+    /// <summary>
+    /// Current cross-monitor movement setting (hardcoded value, display-only)
+    /// </summary>
+    public bool CurrentEnableCrossMonitorMovement => HardcodedDefaults.EnableCrossMonitorMovement;
+
+    /// <summary>
+    /// Current wrap behavior preference (hardcoded value, display-only)
+    /// </summary>
+    public WrapPreference CurrentPreferredWrapBehavior => HardcodedDefaults.PreferredWrapBehavior;
 
     // Auto-start functionality (not part of configuration, handled separately)
     private bool _startWithWindows;
@@ -215,9 +219,7 @@ public class SettingsViewModel : INotifyPropertyChanged
     {
         OnPropertyChanged(nameof(ProximityThreshold));
         OnPropertyChanged(nameof(PushDistance));
-        OnPropertyChanged(nameof(EnableCtrlOverride));
         OnPropertyChanged(nameof(ApplyToAllWindows));
-        OnPropertyChanged(nameof(HoverTimeoutMs));
         OnPropertyChanged(nameof(EnableHoverTimeout));
         OnPropertyChanged(nameof(EnableWrapping));
         OnPropertyChanged(nameof(PreferredWrapBehavior));
@@ -231,6 +233,10 @@ public class SettingsViewModel : INotifyPropertyChanged
         OnPropertyChanged(nameof(CurrentScreenEdgeBuffer));
         OnPropertyChanged(nameof(CurrentCtrlReleaseToleranceDistance));
         OnPropertyChanged(nameof(CurrentAlwaysOnTopRepelBorderDistance));
+        OnPropertyChanged(nameof(CurrentEnableCtrlOverride));
+        OnPropertyChanged(nameof(CurrentHoverTimeoutMs));
+        OnPropertyChanged(nameof(CurrentEnableCrossMonitorMovement));
+        OnPropertyChanged(nameof(CurrentPreferredWrapBehavior));
     }
 
     public event PropertyChangedEventHandler? PropertyChanged;

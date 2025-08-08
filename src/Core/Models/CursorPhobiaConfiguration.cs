@@ -38,8 +38,10 @@ public class CursorPhobiaConfiguration
     /// <summary>
     /// Whether to enable the CTRL key override that disables cursor phobia temporarily
     /// Default: true
+    /// NOTE: This property is now hardcoded for optimal user experience and is no longer user-configurable.
     /// </summary>
-    public bool EnableCtrlOverride { get; set; } = true;
+    [Obsolete("This property is now hardcoded and no longer user-configurable. Use HardcodedDefaults.EnableCtrlOverride for the current value.", false)]
+    public bool EnableCtrlOverride { get; set; } = HardcodedDefaults.EnableCtrlOverride;
 
     /// <summary>
     /// Tolerance distance in pixels around windows after releasing CTRL key
@@ -101,9 +103,11 @@ public class CursorPhobiaConfiguration
 
     /// <summary>
     /// Time in milliseconds that cursor must hover over window area before pushing stops
-    /// Default: 5000ms (5 seconds)
+    /// Default: 500ms (optimized for responsiveness)
+    /// NOTE: This property is now hardcoded for optimal user experience and is no longer user-configurable.
     /// </summary>
-    public int HoverTimeoutMs { get; set; } = 5000;
+    [Obsolete("This property is now hardcoded and no longer user-configurable. Use HardcodedDefaults.HoverTimeoutMs for the current value.", false)]
+    public int HoverTimeoutMs { get; set; } = HardcodedDefaults.HoverTimeoutMs;
 
     /// <summary>
     /// Whether to enable hover timeout behavior (stop pushing after hovering for HoverTimeoutMs)
@@ -138,11 +142,7 @@ public class CursorPhobiaConfiguration
         if (PushDistance > 1000)
             errors.Add("PushDistance should not exceed 1000 pixels to prevent windows moving off-screen");
 
-        if (HoverTimeoutMs < 100)
-            errors.Add("HoverTimeoutMs must be at least 100ms");
-
-        if (HoverTimeoutMs > 30000)
-            errors.Add("HoverTimeoutMs should not exceed 30000ms (30 seconds)");
+        // Note: HoverTimeoutMs is now hardcoded and no longer validated
 
         // Validate multi-monitor configuration with enhanced error handling
         if (MultiMonitor != null)
@@ -167,6 +167,10 @@ public class CursorPhobiaConfiguration
         // - AnimationDurationMs (uses HardcodedDefaults.AnimationDurationMs)
         // - EnableAnimations (uses HardcodedDefaults.EnableAnimations)
         // - AnimationEasing (uses HardcodedDefaults.AnimationEasing)
+        // - EnableCtrlOverride (uses HardcodedDefaults.EnableCtrlOverride)
+        // - HoverTimeoutMs (uses HardcodedDefaults.HoverTimeoutMs)
+        // - EnableCrossMonitorMovement (uses HardcodedDefaults.EnableCrossMonitorMovement)
+        // - PreferredWrapBehavior (uses HardcodedDefaults.PreferredWrapBehavior)
         // These values are automatically migrated during configuration loading.
 
         return errors;
@@ -234,11 +238,15 @@ public class CursorPhobiaConfiguration
             AnimationEasing = HardcodedDefaults.AnimationEasing,
             
             // Default feature settings
-            EnableCtrlOverride = true,
+            EnableCtrlOverride = HardcodedDefaults.EnableCtrlOverride,
             ApplyToAllWindows = false,
-            HoverTimeoutMs = 5000,
+            HoverTimeoutMs = HardcodedDefaults.HoverTimeoutMs,
             EnableHoverTimeout = true,
-            MultiMonitor = new MultiMonitorConfiguration()
+            MultiMonitor = new MultiMonitorConfiguration
+            {
+                EnableCrossMonitorMovement = HardcodedDefaults.EnableCrossMonitorMovement,
+                PreferredWrapBehavior = HardcodedDefaults.PreferredWrapBehavior
+            }
         };
     }
 }
@@ -357,8 +365,10 @@ public class MultiMonitorConfiguration
     /// <summary>
     /// Preferred wrapping behavior when multiple options are available
     /// Default: Smart (adjacent if available, otherwise opposite edge)
+    /// NOTE: This property is now hardcoded for optimal user experience and is no longer user-configurable.
     /// </summary>
-    public WrapPreference PreferredWrapBehavior { get; set; } = WrapPreference.Smart;
+    [Obsolete("This property is now hardcoded and no longer user-configurable. Use HardcodedDefaults.PreferredWrapBehavior for the current value.", false)]
+    public WrapPreference PreferredWrapBehavior { get; set; } = HardcodedDefaults.PreferredWrapBehavior;
 
     /// <summary>
     /// Whether to respect taskbar areas when calculating wrap destinations
@@ -369,8 +379,10 @@ public class MultiMonitorConfiguration
     /// <summary>
     /// Whether to enable cross-monitor window movement
     /// Default: true (allows windows to move between monitors)
+    /// NOTE: This property is now hardcoded for optimal user experience and is no longer user-configurable.
     /// </summary>
-    public bool EnableCrossMonitorMovement { get; set; } = true;
+    [Obsolete("This property is now hardcoded and no longer user-configurable. Use HardcodedDefaults.EnableCrossMonitorMovement for the current value.", false)]
+    public bool EnableCrossMonitorMovement { get; set; } = HardcodedDefaults.EnableCrossMonitorMovement;
 
     /// <summary>
     /// Whether to show visual feedback during cross-monitor transitions
@@ -627,4 +639,28 @@ public static class HardcodedDefaults
     /// EaseOut provides natural deceleration that feels intuitive
     /// </summary>
     public static readonly AnimationEasing AnimationEasing = AnimationEasing.EaseOut;
+
+    /// <summary>
+    /// Optimal CTRL key override enablement state
+    /// Allows users to temporarily disable cursor phobia when needed
+    /// </summary>
+    public const bool EnableCtrlOverride = true;
+
+    /// <summary>
+    /// Optimal hover timeout in milliseconds (500ms)
+    /// Fast enough to be responsive but prevents accidental timeouts
+    /// </summary>
+    public const int HoverTimeoutMs = 500;
+
+    /// <summary>
+    /// Optimal cross-monitor movement enablement state
+    /// Allows natural window movement across monitor boundaries
+    /// </summary>
+    public const bool EnableCrossMonitorMovement = true;
+
+    /// <summary>
+    /// Optimal wrap behavior preference
+    /// Smart wrapping provides the best user experience across different setups
+    /// </summary>
+    public static readonly WrapPreference PreferredWrapBehavior = WrapPreference.Smart;
 }

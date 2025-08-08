@@ -133,7 +133,7 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
         _updateTimer.Elapsed += UpdateTimer_Elapsed;
 
         _logger.LogInformation("CursorPhobiaEngine initialized with update interval: {UpdateInterval}ms, hover timeout: {HoverTimeout}ms",
-            HardcodedDefaults.UpdateIntervalMs, _config.HoverTimeoutMs);
+            HardcodedDefaults.UpdateIntervalMs, HardcodedDefaults.HoverTimeoutMs);
     }
 
     /// <summary>
@@ -390,12 +390,8 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
     /// </summary>
     private async Task ProcessUpdateCycleAsync()
     {
-        // Get configuration values in a thread-safe manner
-        bool enableCtrlOverride;
-        lock (_configurationLock)
-        {
-            enableCtrlOverride = _config.EnableCtrlOverride;
-        }
+        // Get hardcoded configuration values (thread-safe as they're constants)
+        bool enableCtrlOverride = HardcodedDefaults.EnableCtrlOverride;
 
         // Get current cursor position (needed for CTRL tolerance logic)
         var cursorPosition = _cursorTracker.GetCurrentCursorPosition();
@@ -781,13 +777,7 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
                         oldConfiguration.PushDistance, newConfiguration.PushDistance);
                 }
 
-                if (changeAnalysis.HotSwappableChanges.Contains(nameof(CursorPhobiaConfiguration.EnableCtrlOverride)))
-                {
-                    updatedConfig.EnableCtrlOverride = newConfiguration.EnableCtrlOverride;
-                    appliedChanges.Add(nameof(CursorPhobiaConfiguration.EnableCtrlOverride));
-                    _logger.LogDebug("Updated EnableCtrlOverride from {Old} to {New}",
-                        oldConfiguration.EnableCtrlOverride, newConfiguration.EnableCtrlOverride);
-                }
+                // Note: EnableCtrlOverride is now hardcoded and cannot be hot-swapped
 
                 if (changeAnalysis.HotSwappableChanges.Contains(nameof(CursorPhobiaConfiguration.ScreenEdgeBuffer)))
                 {
@@ -821,13 +811,7 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
                         oldConfiguration.AnimationEasing, newConfiguration.AnimationEasing);
                 }
 
-                if (changeAnalysis.HotSwappableChanges.Contains(nameof(CursorPhobiaConfiguration.HoverTimeoutMs)))
-                {
-                    updatedConfig.HoverTimeoutMs = newConfiguration.HoverTimeoutMs;
-                    appliedChanges.Add(nameof(CursorPhobiaConfiguration.HoverTimeoutMs));
-                    _logger.LogDebug("Updated HoverTimeoutMs from {Old} to {New}",
-                        oldConfiguration.HoverTimeoutMs, newConfiguration.HoverTimeoutMs);
-                }
+                // Note: HoverTimeoutMs is now hardcoded and cannot be hot-swapped
 
                 if (changeAnalysis.HotSwappableChanges.Contains(nameof(CursorPhobiaConfiguration.EnableHoverTimeout)))
                 {

@@ -306,8 +306,9 @@ public partial class SettingsForm : Form
         try
         {
             // General Tab Bindings
-            enableCtrlOverrideCheckBox.DataBindings.Add(
-                nameof(CheckBox.Checked), _viewModel, nameof(_viewModel.EnableCtrlOverride), false, DataSourceUpdateMode.OnPropertyChanged);
+            // CTRL override is now hardcoded - set value but disable control
+            enableCtrlOverrideCheckBox.Checked = HardcodedDefaults.EnableCtrlOverride;
+            enableCtrlOverrideCheckBox.Enabled = false;
 
         applyToAllWindowsCheckBox.DataBindings.Add(
             nameof(CheckBox.Checked), _viewModel, nameof(_viewModel.ApplyToAllWindows), false, DataSourceUpdateMode.OnPropertyChanged);
@@ -335,15 +336,17 @@ public partial class SettingsForm : Form
         enableHoverTimeoutCheckBox.DataBindings.Add(
             nameof(CheckBox.Checked), _viewModel, nameof(_viewModel.EnableHoverTimeout), false, DataSourceUpdateMode.OnPropertyChanged);
 
-        hoverTimeoutNumeric.DataBindings.Add(
-            nameof(NumericUpDown.Value), _viewModel, nameof(_viewModel.HoverTimeoutMs), false, DataSourceUpdateMode.OnPropertyChanged);
+        // Hover timeout is now hardcoded - set value but disable control
+        hoverTimeoutNumeric.Value = HardcodedDefaults.HoverTimeoutMs;
+        hoverTimeoutNumeric.Enabled = false;
 
         // Multi-Monitor Tab Bindings
         enableWrappingCheckBox.DataBindings.Add(
             nameof(CheckBox.Checked), _viewModel, nameof(_viewModel.EnableWrapping), false, DataSourceUpdateMode.OnPropertyChanged);
 
-        wrapPreferenceComboBox.DataBindings.Add(
-            nameof(ComboBox.SelectedItem), _viewModel, nameof(_viewModel.PreferredWrapBehavior), false, DataSourceUpdateMode.OnPropertyChanged);
+        // Wrap preference is now hardcoded - set value but disable control
+        wrapPreferenceComboBox.SelectedItem = HardcodedDefaults.PreferredWrapBehavior;
+        wrapPreferenceComboBox.Enabled = false;
 
         respectTaskbarAreasCheckBox.DataBindings.Add(
             nameof(CheckBox.Checked), _viewModel, nameof(_viewModel.RespectTaskbarAreas), false, DataSourceUpdateMode.OnPropertyChanged);
