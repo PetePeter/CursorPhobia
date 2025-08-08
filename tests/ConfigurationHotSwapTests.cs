@@ -37,7 +37,7 @@ public class ConfigurationHotSwapTests : IDisposable
             ProximityThreshold = 50,
             PushDistance = 100,
             UpdateIntervalMs = 16,
-            MaxUpdateIntervalMs = 50,
+            MaxUpdateIntervalMs = 33,
             EnableCtrlOverride = true,
             ScreenEdgeBuffer = 20,
             ApplyToAllWindows = false,
@@ -73,7 +73,7 @@ public class ConfigurationHotSwapTests : IDisposable
             ProximityThreshold = 50,
             PushDistance = 100,
             UpdateIntervalMs = 16,
-            MaxUpdateIntervalMs = 50,
+            MaxUpdateIntervalMs = 33,
             EnableCtrlOverride = true,
             ScreenEdgeBuffer = 20,
             ApplyToAllWindows = false,
@@ -104,7 +104,7 @@ public class ConfigurationHotSwapTests : IDisposable
             ProximityThreshold = 75, // Changed
             PushDistance = 150, // Changed
             UpdateIntervalMs = 16, // Same
-            MaxUpdateIntervalMs = 50, // Same
+            MaxUpdateIntervalMs = 33, // Same
             EnableCtrlOverride = false, // Changed
             ScreenEdgeBuffer = 30, // Changed
             ApplyToAllWindows = false, // Same
@@ -226,7 +226,7 @@ public class ConfigurationHotSwapTests : IDisposable
             ProximityThreshold = -10, // Invalid (negative)
             PushDistance = 2000, // Invalid (too large)
             UpdateIntervalMs = 0, // Invalid (too small)
-            MaxUpdateIntervalMs = 50,
+            MaxUpdateIntervalMs = 33,
             EnableCtrlOverride = true,
             ScreenEdgeBuffer = 20,
             ApplyToAllWindows = false,
@@ -299,7 +299,7 @@ public class ConfigurationHotSwapTests : IDisposable
             ProximityThreshold = 50,
             PushDistance = 100,
             UpdateIntervalMs = 16,
-            MaxUpdateIntervalMs = 50,
+            MaxUpdateIntervalMs = 33,
             EnableCtrlOverride = true,
             ScreenEdgeBuffer = 20,
             ApplyToAllWindows = false,
@@ -329,7 +329,7 @@ public class ConfigurationHotSwapTests : IDisposable
             ProximityThreshold = 75, // Changed (hot-swappable)
             PushDistance = 150, // Changed (hot-swappable)
             UpdateIntervalMs = 16, // Same
-            MaxUpdateIntervalMs = 50, // Same
+            MaxUpdateIntervalMs = 33, // Same
             EnableCtrlOverride = false, // Changed (hot-swappable)
             ScreenEdgeBuffer = 30, // Changed (hot-swappable)
             ApplyToAllWindows = false, // Same
@@ -403,7 +403,7 @@ public class ConfigurationHotSwapTests : IDisposable
             ProximityThreshold = 50,
             PushDistance = 100,
             UpdateIntervalMs = 16,
-            MaxUpdateIntervalMs = 50,
+            MaxUpdateIntervalMs = 33,
             EnableCtrlOverride = true,
             ScreenEdgeBuffer = 20,
             ApplyToAllWindows = false,

@@ -526,6 +526,7 @@ public class CursorPhobiaEngineTests
         var customConfig = new CursorPhobiaConfiguration
         {
             UpdateIntervalMs = 50,
+            MaxUpdateIntervalMs = 100, // Must be greater than UpdateIntervalMs
             HoverTimeoutMs = 1000,
             EnableHoverTimeout = true,
             EnableCtrlOverride = false,

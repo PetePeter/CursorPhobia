@@ -18,7 +18,7 @@ public class CursorPhobiaConfigurationTests
         Assert.Equal(50, config.ProximityThreshold);
         Assert.Equal(100, config.PushDistance);
         Assert.Equal(16, config.UpdateIntervalMs);
-        Assert.Equal(50, config.MaxUpdateIntervalMs);
+        Assert.Equal(33, config.MaxUpdateIntervalMs);
         Assert.True(config.EnableCtrlOverride);
         Assert.Equal(20, config.ScreenEdgeBuffer);
         Assert.False(config.ApplyToAllWindows);
@@ -81,7 +81,7 @@ public class CursorPhobiaConfigurationTests
         var config = new CursorPhobiaConfiguration
         {
             UpdateIntervalMs = interval,
-            MaxUpdateIntervalMs = 50
+            MaxUpdateIntervalMs = 33
         };
 
         // Act
@@ -380,6 +380,43 @@ public class ProximityConfigurationTests
         Assert.False(config.UseNearestEdge);
         Assert.Equal(2.0, config.HorizontalSensitivityMultiplier);
         Assert.Equal(0.5, config.VerticalSensitivityMultiplier);
+    }
+
+    [Fact]
+    public void CreateOptimalDefaults_ReturnsConfigurationWithOptimalValues()
+    {
+        // Act
+        var config = CursorPhobiaConfiguration.CreateOptimalDefaults();
+
+        // Assert
+        Assert.NotNull(config);
+        
+        // Verify performance settings
+        Assert.Equal(16, config.UpdateIntervalMs); // ~60 FPS
+        Assert.Equal(33, config.MaxUpdateIntervalMs); // ~30 FPS minimum
+        
+        // Verify spatial settings
+        Assert.Equal(50, config.ProximityThreshold);
+        Assert.Equal(100, config.PushDistance);
+        Assert.Equal(20, config.ScreenEdgeBuffer);
+        Assert.Equal(50, config.CtrlReleaseToleranceDistance);
+        Assert.Equal(30, config.AlwaysOnTopRepelBorderDistance);
+        
+        // Verify animation settings
+        Assert.True(config.EnableAnimations);
+        Assert.Equal(200, config.AnimationDurationMs);
+        Assert.Equal(AnimationEasing.EaseOut, config.AnimationEasing);
+        
+        // Verify default feature settings
+        Assert.True(config.EnableCtrlOverride);
+        Assert.False(config.ApplyToAllWindows);
+        Assert.Equal(5000, config.HoverTimeoutMs);
+        Assert.True(config.EnableHoverTimeout);
+        Assert.NotNull(config.MultiMonitor);
+        
+        // Verify configuration is valid
+        var errors = config.Validate();
+        Assert.Empty(errors);
     }
 }
 

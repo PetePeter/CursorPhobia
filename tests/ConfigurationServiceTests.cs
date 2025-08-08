@@ -69,7 +69,7 @@ public class ConfigurationServiceTests : IDisposable
         Assert.Equal(50, config.ProximityThreshold);
         Assert.Equal(100, config.PushDistance);
         Assert.Equal(16, config.UpdateIntervalMs);
-        Assert.Equal(50, config.MaxUpdateIntervalMs);
+        Assert.Equal(33, config.MaxUpdateIntervalMs);
         Assert.True(config.EnableCtrlOverride);
         Assert.Equal(20, config.ScreenEdgeBuffer);
         Assert.False(config.ApplyToAllWindows);
