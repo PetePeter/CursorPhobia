@@ -295,8 +295,8 @@ public partial class SimplifiedSettingsForm : Form
                 nameof(CheckBox.Checked), _viewModel, nameof(_viewModel.EnableHoverTimeout), false, DataSourceUpdateMode.OnPropertyChanged);
             
             // Hover timeout numeric shows hardcoded value (read-only)
-            hoverTimeoutNumeric.DataBindings.Add(
-                nameof(NumericUpDown.Value), _viewModel, nameof(_viewModel.CurrentHoverTimeoutMs), false, DataSourceUpdateMode.Never);
+            // Don't bind this control since it shows a hardcoded value - set it directly instead
+            hoverTimeoutNumeric.Value = HardcodedDefaults.HoverTimeoutMs;
             hoverTimeoutNumeric.ReadOnly = true; // Make it read-only since it's hardcoded
 
             // Multi-monitor controls

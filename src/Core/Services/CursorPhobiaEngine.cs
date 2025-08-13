@@ -444,7 +444,17 @@ public class CursorPhobiaEngine : ICursorPhobiaEngine, IDisposable
                     {
                         trackingInfo.CtrlReleaseTime = ctrlReleaseTime;
                         trackingInfo.CtrlReleaseCursorPosition = cursorPosition;
-                        _logger.LogDebug("CTRL tolerance activated for window: {Title}", trackingInfo.WindowInfo.Title);
+                        
+                        // For always-on-top windows, also clear any repel border states
+                        // to ensure clean interaction after CTRL release
+                        if (trackingInfo.WindowInfo.IsTopmost)
+                        {
+                            trackingInfo.CursorLeftWindowTime = null;
+                            trackingInfo.WasCursorInsideLastUpdate = true; // Mark as inside since we're releasing CTRL over it
+                        }
+                        
+                        _logger.LogDebug("CTRL tolerance activated for window: {Title} (always-on-top: {IsTopmost})", 
+                            trackingInfo.WindowInfo.Title, trackingInfo.WindowInfo.IsTopmost);
                     }
                 }
             }
